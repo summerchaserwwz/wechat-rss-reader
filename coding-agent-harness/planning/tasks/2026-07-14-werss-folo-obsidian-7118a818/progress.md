@@ -32,7 +32,7 @@
 ## 残余
 
 - P1：固定 WeRSS 摘要的 arm64 manifest 实际为 AMD64 文件系统；本机功能可通过 Rosetta 运行，但 RG-002 原生 ARM64 硬门禁失败。需要用户选择接受模拟运行或授权维护自建原生镜像。
-- P1：公众号运营资格、微信扫码、3 个试验源、Funnel 首次批准、Folo 登录与 72 小时/7 天观察仍是人工/时间门禁。
+- P1：公众号资格与微信授权已完成；Funnel 首次批准、Folo 登录与 72 小时/7 天观察仍是人工/时间门禁。
 - P1：独立备份恢复已通过，但完成真实微信授权后仍需复验 `key.lic`、登录用户与授权状态。
 - P2：Docker Desktop 为 Caddy 发布回环端口需要非 internal bridge，因此 Caddy 具备出站能力；已用只读根、`no-new-privileges`、仅保留 `NET_BIND_SERVICE` 和固定无动态上游的 Caddyfile 降低风险。
 
@@ -70,3 +70,10 @@
 - 验证结果：复审无 P0/P1；合法 GET/HEAD 为 200 且 HEAD 响应体为 0；POST/PUT/PATCH/DELETE/OPTIONS 和非 `.atom` 均 404；Caddy 只读根、`no-new-privileges`、capability 限制生效。最终配置再次完成备份和独立恢复演练。
 - 下一步：保留 P2 深防御 residual；进入用户资格与架构决策门禁。
 - 证据：review:network_fix_review:两轮只读复审无阻塞 finding；command:./scripts/verify.sh --local:全部安全断言通过后仅由原生架构门禁返回 1；command:./scripts/backup.sh && ./scripts/restore-test.sh:最终配置恢复通过
+
+### [2026-07-14 16:57] - GATE-QUAL 微信授权与真实订阅
+
+- 做了什么：用户确认拥有公众号运营权限并在 WeRSS 完成授权；后台显示 Token 有效。用户添加 12 个公众号；创建并应用“公众号每两小时自动更新”任务，Cron 为 `17 */2 * * *`，留空公众号范围表示作用于全部来源。
+- 验证结果：SQLite 有 12 个 feed、45 篇文章、1 个启用任务；已有 5 个公众号成功入库文章，聚合 Atom 输出 20 条合法 entry。其余来源等待定时任务和风控间隔继续抓取。
+- 下一步：用户明确批准 Tailscale Funnel 公网权限；批准后写入公开 `RSS_BASE_URL`、执行 RG-003，并在已登录的 Folo 中添加聚合源。
+- 证据：command:sqlite3 -readonly data/we_mp_rss.db:12 feeds、45 articles、任务已启用；command:xmllint /tmp/wechat-rss-all.atom:20 entries；screenshot:WeRSS UI:公众号列表、授权有效与自动任务配置

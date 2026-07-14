@@ -9,7 +9,7 @@
 | RG-003 | Tailscale Funnel 公网安全 | `./scripts/verify.sh --public` | Funnel、前缀、RSS_BASE_URL、Caddy 变更 | L3-live | 2026-07-14 | paused | user + coordinator | R-003 |
 | RG-004 | SQLite/授权一致性备份与独立恢复 | `./scripts/backup.sh`; `./scripts/restore-test.sh` | data、密钥、镜像升级前后 | L2-local-smoke | 2026-07-14 | pass-with-residual | coordinator | R-004 |
 | RG-005 | Obsidian Base 与收件箱结构 | YAML parse + Obsidian 1.12.7 人工打开 | Base/字段/目录变更 | L1-tests | 2026-07-14 | pass-with-residual | user + coordinator | R-005 |
-| RG-006 | 微信抓取与定时任务 | 3 个试验源 + `17 */2 * * *` | 授权、抓取配置、镜像升级 | L3-live | 2026-07-14 | paused | user | R-006 |
+| RG-006 | 微信抓取与定时任务 | 3 个试验源 + `17 */2 * * *` | 授权、抓取配置、镜像升级 | L3-live | 2026-07-14 | partial（授权/任务/5源有文章） | user | R-006 |
 | RG-007 | Folo 云端刷新稳定性 | `scripts/record-observation.sh` + Folo UI | Feed/订阅/Folo 变更 | L3-live | 2026-07-14 | paused | user | R-007 |
 | RG-008 | Folo -> Obsidian 五类样本与同名保护 | Folo UI + Vault 样本检查 | Folo/Obsidian 集成变更 | L3-live | 2026-07-14 | paused | user | R-008 |
 
@@ -21,7 +21,7 @@
 | R-003 | RG-003 | Tailscale 当前需连接，首次 Funnel 需网页批准 | P1 | user | 2026-07-14 | `configure-funnel.sh` | open |
 | R-004 | RG-004 | 独立恢复实例与 SQLite 已通过；当前备份有 `wx.lic` 和 `.secret_key`，但尚无 `key.lic`，需在真实微信授权后复验登录与授权状态 | P1 | coordinator | 2026-07-14 | 微信授权后再次备份恢复 | open |
 | R-005 | RG-005 | Base 已静态验证，尚未在 Obsidian UI 打开确认列类型/显示 | P2 | user | 2026-07-14 | 打开 `公众号精选.base` | open |
-| R-006 | RG-006 | 微信扫码、3 个源和 36 周期需要用户与时间 | P1 | user | 2026-07-14 | Chrome/WeRSS UI | open |
+| R-006 | RG-006 | 授权、12 个源和 Cron 已完成，5 个源有文章；其余来源及至少 36 个自动周期仍待观察 | P1 | user | 2026-07-14 | WeRSS UI、任务日志与 Atom | open |
 | R-007 | RG-007 | 72 小时/7 天 Folo 观察尚未开始 | P1 | user | 2026-07-14 | `docs/稳定性观察模板.md` | open |
 | R-008 | RG-008 | Basic、集成授权与五类导出样本尚未完成 | P1 | user | 2026-07-14 | 72 小时门禁后执行 | open |
 

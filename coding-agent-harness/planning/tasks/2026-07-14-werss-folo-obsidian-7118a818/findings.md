@@ -23,6 +23,7 @@
 
 - 发现：2026-07-13 最新稳定桌面版为 `1.11.0`，有官方 ARM64 DMG 与 SHA512；Obsidian 集成需要桌面版/Basic。Folo 不是持久批注工具。
 - 影响：先免费 72 小时/7 天观察，再决定 Basic；批注留在 Obsidian。
+- 运行时确认：未登录的新安装会展示 `AI`、`Developer`、`Games`、`News`、`Podcasts`、`Science` 等英文示例目录和公开 Feed；它们不是用户订阅，也不是 WeRSS 生成。Folo 导航与登录流程已随系统显示中文，英文标题来自示例 Feed 内容。
 
 ### Obsidian Base 与 Folo 字段
 
@@ -66,7 +67,7 @@
 
 | 问题 | 当前判断 | Owner | 截止点 |
 | --- | --- | --- | --- |
-| 是否拥有公众号运营权限？ | 硬门禁，尚未由用户确认 | user | 微信扫码前 |
+| 是否拥有公众号运营权限？ | 已确认；WeRSS 显示已授权且 Token 有效 | user | done |
 | Docker 协议/权限是否完成？ | App 安装后需用户操作 | user | 本机 smoke 前 |
 | Funnel 首次批准是否完成？ | 尚未 | user | 公网 smoke 前 |
 | Folo 是否稳定？ | 需 72 小时和 7 天 | user | Basic 购买前 |
