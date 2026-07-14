@@ -29,7 +29,7 @@ flowchart LR
 | --- | --- | --- | --- | ---: | --- | --- | --- | --- | --- | --- | --- |
 | INIT-01 | init | none | done | 100 | Harness 与任务合同 | task files、status/check | `harness task-start 2026-07-14-werss-folo-obsidian-7118a818` | agent | present | none | coordinator |
 | EXEC-01 | execution | INIT-01 | done | 100 | Compose/Caddy/脚本/文档/Inbox/Base | diff、静态检查、reviewer | `harness task-phase 2026-07-14-werss-folo-obsidian-7118a818 EXEC-01 --state done --completion 100 --evidence present` | agent | present | none | coordinator |
-| EXEC-02 | execution | EXEC-01 | in_progress | 55 | Docker/Folo 安装和本机 smoke | App 签名、Docker running、RG-002 | `harness task-phase 2026-07-14-werss-folo-obsidian-7118a818 EXEC-02 --state done --completion 100 --evidence present` | agent | partial | Docker 协议与权限 | user + coordinator |
+| EXEC-02 | execution | EXEC-01 | in_progress | 85 | Docker/Folo 安装和本机 smoke | App 签名、Docker running、RG-002 | `harness task-phase 2026-07-14-werss-folo-obsidian-7118a818 EXEC-02 --state done --completion 100 --evidence present` | agent | partial | Docker 协议与权限 | user + coordinator |
 | GATE-QUAL | gate | EXEC-02 | planned | 0 | 公众号运营资格与 3 个试验源 | Chrome 扫码、WeRSS UI、RG-006 | manual qualification confirmation | human | missing | 无运营权限则停止 Funnel | user |
 | EXEC-03 | execution | GATE-QUAL | planned | 0 | Funnel 与公网安全 | RG-003 | `harness task-phase 2026-07-14-werss-folo-obsidian-7118a818 EXEC-03 --state done --completion 100 --evidence present` | agent | missing | 首次 Funnel 网页批准 | user + coordinator |
 | OBS-01 | execution | EXEC-03 | planned | 0 | Folo 72 小时/7 天判断 | observations、Folo UI、RG-007 | `harness task-phase 2026-07-14-werss-folo-obsidian-7118a818 OBS-01 --state done --completion 100 --evidence present` | coordinator | missing | 时间门禁 | user |
