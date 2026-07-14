@@ -20,7 +20,7 @@
 | R-002 | RG-002 | 上游 arm64 manifest 实际包含 AMD64 layers；固定摘要只能通过 Rosetta 运行 | P1 | user + coordinator | 2026-07-14 | 接受模拟运行或维护自建 ARM64 镜像 | open |
 | R-003 | RG-003 | 创建 Tunnel 与 DNS 需要用户对 Cloudflare 持久账号授权进行 action-time 确认 | P1 | user | 2026-07-15 | 解锁 Mac、确认后运行配置脚本 | open |
 | R-005 | RG-005 | Mac 锁屏，暂时无法取得 Obsidian UI 截图和 Base 实机列验证 | P2 | user + coordinator | 2026-07-15 | 用户解锁后 Computer Use | open |
-| R-006 | RG-006 | 12 源和每小时 Cron 已完成；72 小时/7 天时间性证据尚未达到 | P1 | user | 2026-07-15 | 稳定性观察模板 | open |
+| R-006 | RG-006 | 12 源和每小时 Cron 已完成；72 小时/7 天时间性证据尚未达到 | P1 | user + automation | 2026-07-15 | `wechat-rss-stability-watch` + observation TSV | open |
 | R-008 | RG-008 | 真实长文/高亮/批注/人工保护通过；表格/代码、复杂排版等额外样本待自然出现或构造 | P2 | coordinator | 2026-07-15 | 补充样本 | open |
 
 ## 证据深度

@@ -134,3 +134,10 @@
 - 验证结果：WeRSS 仅连接 `feed-proxy + werss-internet`；Readeck 仅连接 `reading + readeck-internet`；WeRSS 容器无法解析 `readeck`；Reader Caddy 仍返回 303/401；同步幂等为更新 0；最终恢复再次通过。
 - 下一步：仅剩 Obsidian UI、Cloudflare live 和时间门禁。
 - 证据：command:docker inspect networks + getent:isolated；command:restore 20260715-012211:pass
+
+### [2026-07-15 01:28] - 72 小时/7 天自动稳定性巡检
+
+- 做了什么：创建本项目本机自动化 `wechat-rss-stability-watch`，连续 8 天每日只读检查 Compose、WeRSS/Readeck 计数、同步日志和 Reader Caddy 303/401，并写入 ignored observation TSV。
+- 验证结果：自动化已在 Codex App 中激活；提示词明确禁止读取/输出秘密、修改 Cloudflare/DNS、提交 Git或处理付款。
+- 下一步：用每日证据完成 72 小时和 7 天门禁；异常时修复并重跑。
+- 证据：report:Codex automation wechat-rss-stability-watch:ACTIVE, 8 daily runs
