@@ -1,0 +1,90 @@
+name: wechat-rss
+
+services:
+  we-mp-rss:
+    image: ghcr.io/rachelos/we-mp-rss@sha256:53912fcb3d523d1e640adcb7066cc18123f00e9510882a7982d0991f3113845f
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      DB: sqlite:///data/we_mp_rss.db
+      USERNAME: werss_admin
+      PASSWORD: ${WERSS_BOOTSTRAP_PASSWORD:?请先运行 scripts/init-secrets.sh}
+      SAFE_LIC_KEY: ${SAFE_LIC_KEY:?请先运行 scripts/init-secrets.sh}
+      RSS_BASE_URL: ${RSS_BASE_URL:-http://127.0.0.1:8001/}
+      RSS_FULL_CONTEXT: "True"
+      RSS_PAGE_SIZE: "20"
+      RSS_LOCAL: "False"
+      MAX_PAGE: "2"
+      THREADS: "1"
+      BROWSER_TYPE: webkit
+      HEADLESS: "true"
+      ENABLE_XVFB: "false"
+      DEBUG: "False"
+      AUTO_RELOAD: "False"
+      ENABLE_JOB: "True"
+      ARTICLE_STATS_REFRESH_ENABLED: "False"
+      REDIS_SERVER_ENABLED: "True"
+      REDIS_SERVER_HOST: 127.0.0.1
+      REDIS_SERVER_MAX_MEMORY: "64"
+      REDIS_URL: redis://127.0.0.1:6379/0
+      "GATHER.CONTENT": "True"
+      "GATHER.MODEL": web
+      "GATHER.CONTENT_MODE": web
+      "GATHER.CONTENT_AUTO_CHECK": "False"
+      "GATHER.CLEAN_HTML": "False"
+      EXPORT_MARKDOWN: "False"
+      EXPORT_PDF: "False"
+      LOG_LEVEL: INFO
+    ports:
+      - "127.0.0.1:${WERSS_HOST_PORT:-8001}:8001"
+    volumes:
+      - ./data:/app/data
+    networks:
+      - internet
+      - feed-proxy
+    healthcheck:
+      test:
+        - CMD
+        - python3
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/feed/all.atom', timeout=5).read(1)
+      interval: 30s
+      timeout: 8s
+      retries: 10
+      start_period: 90s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  caddy:
+    image: caddy:2.11.4-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
+    restart: unless-stopped
+    depends_on:
+      we-mp-rss:
+        condition: service_healthy
+    environment:
+      FEED_PREFIX: ${FEED_PREFIX:?请先运行 scripts/init-secrets.sh}
+    ports:
+      - "127.0.0.1:${CADDY_HOST_PORT:-8080}:8080"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    networks:
+      - feed-proxy
+    read_only: true
+    tmpfs:
+      - /config
+      - /data
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+networks:
+  internet:
+  feed-proxy:
+    internal: true
