@@ -34,13 +34,29 @@
 - 发现：Vault 有大量既有改动和未跟踪治理文件。
 - 影响：本任务只新增 `02_Archive/02_DailyProcessed/reading`，不修改/提交其他 SummerOS 文件；来源注册表更新延后到 Folo 真正启用后。
 
+### 上游 ARM64 manifest 实际包含 AMD64 文件系统
+
+- 现象：固定摘要的 OCI index 声明有 `linux/arm64`，但在 Apple Silicon 上运行后，`uname -m`、`dpkg --print-architecture`、Python 和系统 ELF 都显示 `x86_64/amd64`。
+- 根因：上游 `base-mini`、`base-full` 和应用 Dockerfile 都使用 `FROM --platform=$BUILDPLATFORM`；多架构 workflow 在 AMD64 runner 上构建时，两个 target manifest 复用了同一组 AMD64 layer，只改了 config 中的架构声明。
+- 反证：同一 Docker daemon 运行官方 Alpine/Debian 的 `linux/arm64` 镜像均返回 `aarch64`，排除 Docker Desktop 与宿主配置问题。
+- 影响：固定摘要当前只能通过 Rosetta 模拟运行，RG-002 的“原生 ARM64”仍失败；不得通过删除或放宽架构断言掩盖。
+- 后续选择：继续用固定摘要并接受模拟运行，或维护一条从原生 Ubuntu ARM64 重建 WeRSS 的自有镜像链；后者会偏离用户锁定的固定上游摘要，需显式决策。
+
+### Docker Desktop 的 internal 网络不发布宿主端口
+
+- 现象：Caddy 的 `HostConfig.PortBindings` 声明 `127.0.0.1:8080`，但 `NetworkSettings.Ports` 为空，宿主无法连接。
+- 根因：Docker Desktop 29.6.1 中，仅连接 `internal: true` 网络的容器不会建立 published port；最小 Caddy 对照实验可稳定复现。
+- 修复：Caddy 同时加入用于宿主回环发布的 `host-ingress` bridge 和内部 `feed-proxy`；WeRSS 仍通过 `feed-proxy` 被反代，宿主绑定仍严格为 `127.0.0.1:8080`。Caddy 继续使用只读根文件系统、`no-new-privileges`，删除默认 capabilities，仅保留镜像二进制执行所需的 `NET_BIND_SERVICE`。
+- 安全残余：普通 `host-ingress` bridge 同时赋予 Caddy 出站与 `host.docker.internal` 可达性，并非单纯的 ingress-only 网络。当前 Caddyfile 没有用户可控上游，且该网络没有 WeRSS；这是 P2 深防御残余，不改变公网路由白名单。
+- HEAD 兼容：WeRSS 的 Atom 端点对原生 HEAD 返回 `405`；Caddy 只在已通过随机前缀和 `.atom` 白名单的 GET/HEAD 路由内把上游方法设为 GET，使公网 HEAD 返回元数据且不放宽其他路径。
+
 ## 技术决策
 
 | 决策 | 选择 | 原因 | 替代方案 | 状态 |
 | --- | --- | --- | --- | --- |
 | WeRSS 浏览器 | WebKit | 与固定镜像实际能力一致 | Firefox（当前不可用） | accepted |
 | 公网边界 | Caddy `.atom` matcher + 随机前缀 + Funnel | 最小暴露面 | 公开 WeRSS / VPN-only | accepted |
-| 网络 | Caddy 内部 feed-proxy；WeRSS 额外 internet | Caddy 无需出网，WeRSS 需访问微信 | 单一 bridge | accepted |
+| 网络 | Caddy 使用 host-ingress 发布回环端口并通过内部 feed-proxy 访问 WeRSS；WeRSS 额外使用 internet | Docker Desktop 对仅 internal 网络不建立端口发布；仍保持服务隔离与回环绑定 | 将 feed-proxy 改为非 internal | accepted |
 | SECRET_KEY | 由 WeRSS 生成到 `data/.secret_key` | 减少日志中的环境秘密 | 注入 `.env` | accepted |
 | 入库 | Folo Basic Obsidian 集成为主，Clipper 备用 | 不依赖未执行的 `EXPORT_MARKDOWN` | WeRSS 自动导出 | accepted |
 | Vault 层级 | Archive processed source inbox | 符合 SummerOS 晋升链路 | 直接 Knowledge | accepted |

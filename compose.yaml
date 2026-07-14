@@ -71,8 +71,13 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
     networks:
+      - host-ingress
       - feed-proxy
     read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
     tmpfs:
       - /config
       - /data
@@ -86,5 +91,6 @@ services:
 
 networks:
   internet:
+  host-ingress:
   feed-proxy:
     internal: true

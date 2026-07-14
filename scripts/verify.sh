@@ -30,16 +30,20 @@ expect_status() {
   local url="$3"
   local actual
 
-  actual="$(curl -sS -o /dev/null -w '%{http_code}' -X "$method" --max-time 30 "$url")"
+  if [[ "$method" == "HEAD" ]]; then
+    actual="$(curl -sS -o /dev/null -w '%{http_code}' --head --max-time 30 "$url")"
+  else
+    actual="$(curl -sS -o /dev/null -w '%{http_code}' -X "$method" --max-time 30 "$url")"
+  fi
   if [[ "$actual" != "$expected" ]]; then
-    die "$method 请求状态不符合预期：期望 $expected，实际 $actual"
+    die "${method} 请求状态不符合预期：期望 ${expected}，实际 ${actual}"
   fi
 }
 
 printf '检查 Compose 配置与容器状态...\n'
 docker_compose config --quiet
 docker_compose ps
-[[ "$(docker_compose exec -T we-mp-rss uname -m)" == "aarch64" ]] || die "WeRSS 容器不是原生 aarch64"
+container_arch="$(docker_compose exec -T we-mp-rss uname -m)"
 docker_compose exec -T caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null
 
 printf '检查管理端只绑定本机...\n'
@@ -53,7 +57,9 @@ expect_status 200 GET "${admin_url}/"
 expect_status 404 GET "${proxy_url}/"
 expect_status 404 GET "${proxy_url}/${prefix}/"
 expect_status 404 GET "${proxy_url}/${prefix}/api"
+expect_status 404 GET "${proxy_url}/${prefix}/feed/all"
 expect_status 404 POST "$local_feed_url"
+expect_status 200 HEAD "$local_feed_url"
 expect_status 200 GET "$local_feed_url"
 traversal_status="$(curl --path-as-is -sS -o /dev/null -w '%{http_code}' --max-time 30 "${proxy_url}/${prefix}/feed/../api/docs")"
 [[ "$traversal_status" == "404" ]] || die "路径穿越请求未被拒绝"
@@ -69,12 +75,16 @@ if [[ "$mode" == "--public" ]]; then
   printf '检查公网 Funnel 安全边界...\n'
   expect_status 404 GET "${public_origin}/"
   expect_status 404 GET "${public_origin}/${prefix}/api"
+  expect_status 404 GET "${rss_base_url}feed/all"
   expect_status 404 POST "$public_feed_url"
+  expect_status 200 HEAD "$public_feed_url"
   expect_status 200 GET "$public_feed_url"
   traversal_status="$(curl --path-as-is -sS -o /dev/null -w '%{http_code}' --max-time 60 "${public_origin}/${prefix}/feed/../api/docs")"
   [[ "$traversal_status" == "404" ]] || die "公网路径穿越请求未被拒绝"
   curl -fsS --max-time 60 "$public_feed_url" -o "$tmp_feed"
   xmllint --noout "$tmp_feed"
 fi
+
+[[ "$container_arch" == "aarch64" ]] || die "安全与 Feed 检查已完成，但 WeRSS 容器不是原生 aarch64（实际：${container_arch}）"
 
 printf '验证通过：管理后台仅本机可见，随机前缀下的只读 Atom Feed 可用。\n'

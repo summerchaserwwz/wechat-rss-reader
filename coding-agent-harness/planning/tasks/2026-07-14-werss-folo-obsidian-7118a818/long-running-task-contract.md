@@ -59,7 +59,7 @@
 ## 证据
 
 - [x] Shell/YAML/Base 静态检查。
-- [x] 镜像摘要 ARM64 核验。
+- [ ] 镜像摘要 ARM64 核验（manifest 元数据存在，但运行时为 AMD64；见 R-002）。
 - [x] reviewer 实现设计无开放重要发现。
 - [ ] Docker 本机 smoke。
 - [ ] Funnel live smoke。

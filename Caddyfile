@@ -11,7 +11,11 @@
 
 	handle @readonly_feed {
 		uri strip_prefix /{$FEED_PREFIX}
-		reverse_proxy we-mp-rss:8001
+		reverse_proxy we-mp-rss:8001 {
+			# WeRSS 对 Atom 端点不实现 HEAD；只对已白名单 Feed 将上游方法改为 GET。
+			# Caddy 仍按客户端的 HEAD 语义抑制响应体。
+			method GET
+		}
 	}
 
 	handle {

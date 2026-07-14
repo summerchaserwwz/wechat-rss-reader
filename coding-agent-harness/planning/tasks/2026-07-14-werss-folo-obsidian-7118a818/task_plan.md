@@ -10,7 +10,7 @@ Task Package Index: required
 ## 范围
 
 - 做什么：Harness、Compose/Caddy、密钥、安装、验证、备份恢复、Funnel、Folo 试验、SummerOS Inbox/Base/模板。
-- 不做什么：修改上游源码、自动接受法律协议、代办账号登录/付费、公开管理端、自动全量附件本地化。
+- 不做什么：未经显式决策维护上游源码 fork/自建镜像、自动接受法律协议、代办账号登录/付费、公开管理端、自动全量附件本地化。
 - 主要风险：微信运营资格、WeRSS 上游风控、随机 URL 泄露、Mac 休眠、Folo 云刷新、SQLite/授权恢复、SummerOS dirty 仓库。
 
 ## 目标对齐反问

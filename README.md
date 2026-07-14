@@ -12,13 +12,19 @@
 ## 已锁定边界
 
 - WeRSS 使用 SQLite，本机 Docker 部署。
-- WeRSS 镜像固定为已核验的多架构摘要，Apple Silicon 使用原生 `linux/arm64` manifest。
+- WeRSS 镜像固定为用户指定摘要。该摘要虽然声明 `linux/arm64`，但上游构建错误使其实际文件系统仍为 AMD64；当前会通过 Rosetta 运行，尚未满足原生 ARM64 验收。
 - Caddy 固定为 `2.11.4-alpine` 的多架构摘要。
 - Folo 是云服务客户端，不自托管；Folo 负责浏览和筛选，不承担永久划线批注。
 - 精读、划线、批注、双链和知识提升统一在 Obsidian 完成。
 - 不使用 WeRSS 的 `EXPORT_MARKDOWN` 自动导出能力。
 - 固定镜像只包含 WebKit 浏览器运行时，因此实际配置为 `BROWSER_TYPE=webkit`。若强制写成 Firefox，配置会与镜像能力不一致，正文抓取可能失败。
 - WeRSS 启动时会打印环境变量。不要公开或转发 `docker compose logs`；其中可能包含 Bootstrap 密码、授权加密键和随机 Feed 前缀。
+
+### 已知上游 ARM64 阻塞
+
+固定 WeRSS 摘要的三个上游 Dockerfile 都使用了 `FROM --platform=$BUILDPLATFORM`。在 AMD64 CI runner 上发布多架构镜像时，arm64 与 amd64 manifest 因而复用了同一组 AMD64 layer；`uname -m`、`dpkg` 和 ELF 检查均能复现。Docker Desktop 本身没有问题，官方 ARM64 Alpine/Debian 对照镜像会正确返回 `aarch64`。
+
+`scripts/verify.sh` 会先完成端口、Caddy、HTTP 方法、路径穿越和 Atom XML 检查，最后仍以非零退出阻断“原生 ARM64”验收。不要删除这个断言。后续必须显式选择：接受固定摘要的 Rosetta 模拟运行，或改为维护基于固定上游源码提交的自建原生 ARM64 镜像。
 
 ## 0. 资格硬门禁
 
@@ -92,6 +98,8 @@ curl -fsS http://127.0.0.1:8001/ >/dev/null
 - 管理端返回 `200`。
 - Caddy 根路径、API、POST 和路径穿越请求返回 `404`。
 - 随机路径下的聚合 Atom Feed 返回 `200` 且 XML 合法。
+
+当前固定 WeRSS 摘要会使最后的原生架构检查失败；此前的安全与 Feed 检查仍会完整执行并输出结果。
 
 ## 3. 首次登录与微信授权
 
