@@ -20,6 +20,7 @@ DEFAULT_INBOX = Path(
     "/Users/summer/Obsidian/SummerOS/02_Archive/02_DailyProcessed/reading/folo_inbox"
 )
 MARKER = "<!-- wechat-rss-note-layout:v1 -->"
+READECK_MARKER = "<!-- readeck-sync:managed:start -->"
 DATE_PREFIX = re.compile(r"^\d{4}-\d{2}-\d{2}-")
 PUBLISHED_KEYS = ("publishedAt", "published_at", "date", "created")
 
@@ -109,6 +110,8 @@ def process(path: Path, dry_run: bool = False, min_age: int = 0) -> str:
         return "too-new"
 
     text = path.read_text(encoding="utf-8")
+    if READECK_MARKER in text:
+        return "skip-readeck-managed"
     frontmatter, body = split_frontmatter(text)
     saved_date = note_date(path, frontmatter)
     destination = target_path(path, saved_date)

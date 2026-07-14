@@ -1,280 +1,288 @@
-# WeRSS + Folo + Obsidian 公众号阅读系统
+# WeRSS + Readeck + Obsidian 公众号阅读系统
 
-本仓库把微信公众号文章接入一条可维护的阅读链路：
+这是一套免费、开源、可自托管的公众号阅读链路。Folo 不再是必需组件。
 
 ```text
-公众号运营者授权 -> 本机 WeRSS -> 只读 Caddy -> Tailscale Funnel
--> Folo 浏览和筛选 -> Obsidian Archive 收件箱 -> 批注、双链与知识提升
+微信公众号运营授权
+  -> WeRSS 每小时抓取新文章与正文
+  -> Readeck 全文阅读、收藏、划线、批注
+  -> 本机同步器每 5 分钟检查
+  -> 精选文章进入 SummerOS Archive
+  -> Obsidian 保留原文、高亮、批注、我的笔记和双链
 ```
 
-管理后台始终只监听 `127.0.0.1:8001`。公网只暴露随机长路径下的 `GET/HEAD /feed/*.atom`；登录页、API、导出接口和其他方法全部返回 `404`。
+当前实测状态：12 个公众号、94 篇文章；90 篇完整正文已经进入 Readeck，4 篇等待 WeRSS 正文抓取。已经用真实文章验证收藏、划线、批注、Obsidian 入库和人工笔记不覆盖。
 
-## 已锁定边界
+## 你最终怎么用
 
-- WeRSS 使用 SQLite，本机 Docker 部署。
-- WeRSS 镜像固定为用户指定摘要。该摘要虽然声明 `linux/arm64`，但上游构建错误使其实际文件系统仍为 AMD64；当前会通过 Rosetta 运行，尚未满足原生 ARM64 验收。
-- Caddy 固定为 `2.11.4-alpine` 的多架构摘要。
-- Folo 是云服务客户端，不自托管；Folo 负责浏览和筛选，不承担永久划线批注。
-- 精读、划线、批注、双链和知识提升统一在 Obsidian 完成。
-- 不使用 WeRSS 的 `EXPORT_MARKDOWN` 自动导出能力。
-- 固定镜像只包含 WebKit 浏览器运行时，因此实际配置为 `BROWSER_TYPE=webkit`。若强制写成 Firefox，配置会与镜像能力不一致，正文抓取可能失败。
-- WeRSS 启动时会打印环境变量。不要公开或转发 `docker compose logs`；其中可能包含 Bootstrap 密码、授权加密键和随机 Feed 前缀。
+1. 平时打开 Readeck 浏览公众号文章。
+2. 值得保留的文章点“收藏”；阅读时选中文字创建高亮，可同时写批注。
+3. 后台同步器每 5 分钟运行一次。
+4. 只要文章被收藏，或存在高亮/批注，就会自动进入 Obsidian：
 
-### 已知上游 ARM64 阻塞
+```text
+/Users/summer/Obsidian/SummerOS/
+02_Archive/02_DailyProcessed/reading/readeck_inbox
+```
 
-固定 WeRSS 摘要的三个上游 Dockerfile 都使用了 `FROM --platform=$BUILDPLATFORM`。在 AMD64 CI runner 上发布多架构镜像时，arm64 与 amd64 manifest 因而复用了同一组 AMD64 layer；`uname -m`、`dpkg` 和 ELF 检查均能复现。Docker Desktop 本身没有问题，官方 ARM64 Alpine/Debian 对照镜像会正确返回 `aarch64`。
+5. Readeck 高亮会变成 Obsidian 的 `==高亮==`，批注会出现在摘录区和原文脚注中。
+6. 你在顶部“我的笔记”里写的内容，以及 `rating`、`topics` 等人工字段，后续同步永远不会覆盖。
 
-`scripts/verify.sh` 会先完成端口、Caddy、HTTP 方法、路径穿越和 Atom XML 检查，最后仍以非零退出阻断“原生 ARM64”验收。不要删除这个断言。后续必须显式选择：接受固定摘要的 Rosetta 模拟运行，或改为维护基于固定上游源码提交的自建原生 ARM64 镜像。
+![Readeck 公众号文章库](docs/images/01-readeck-公众号文章库.png)
 
-## 0. 资格硬门禁
+![Readeck 划线和批注](docs/images/02-readeck-划线批注.png)
 
-继续部署前，你必须同时满足：
+完整阅读教程见 [Readeck 与 Obsidian 图文教程](docs/Readeck与Obsidian图文教程.md)。
 
-1. 能登录 [微信公众平台](https://mp.weixin.qq.com/)。
-2. 拥有至少一个公众号或服务号的管理员/运营者权限。
-3. 微信扫码时能选择该公众号或服务号；普通个人微信关注列表不能作为 WeRSS 授权来源。
-4. 接受随机长路径下的只读 RSS 可以被公网访问。
+## 服务地址和账号
 
-先运行环境诊断：
+| 服务 | 本机地址 | 用途 |
+| --- | --- | --- |
+| WeRSS | `http://127.0.0.1:8001` | 微信授权、公众号管理、抓取任务 |
+| Readeck | `http://127.0.0.1:8002` | 全文阅读、收藏、划线、批注 |
+| 只读 RSS 代理 | `http://127.0.0.1:8080` | 兼容其他 RSS 阅读器，可选 |
+| Readeck 专用反代 | `http://127.0.0.1:8082` | 只供 Cloudflare Tunnel 使用 |
+
+WeRSS 用户名固定为 `werss_admin`；Readeck 用户名固定为 `summer`。密码只保存在本机 `.env`，查看时不要截图或发送给别人：
+
+```bash
+awk -F= '$1 == "WERSS_BOOTSTRAP_PASSWORD" { print $2 }' .env
+awk -F= '$1 == "READECK_ADMIN_PASSWORD" { print $2 }' .env
+```
+
+## 1. 资格和限制
+
+- 必须能在微信扫码时选择自己管理的公众号或服务号；普通个人微信关注列表不能直接授权 WeRSS。
+- 微信没有文章 webhook。本方案的“实时”是安全近实时：WeRSS 每小时第 17 分钟抓取，同步器每 5 分钟搬运。通常延迟为几分钟到一小时多，不能承诺秒级。
+- 微信风控出现 `200013` 时应暂停搜索和添加，不要高频重试。
+- Mac 睡眠或关机时不会抓取。若要求全天稳定，应把同一 Compose 与数据迁移到 NAS 或常开服务器。
+- WeRSS 固定上游镜像虽然声明 ARM64，实际层仍是 AMD64，目前通过 Rosetta 运行；Readeck 是原生 `aarch64`。
+
+## 2. 初始化和启动
+
+首次部署：
 
 ```bash
 cd /Users/summer/Documents/wechat-rss
 ./scripts/doctor.sh
-```
-
-如果第 1–3 条不成立，停止 WeRSS/Funnel 部署，改用“Folo 打开原文 -> Obsidian Web Clipper”或其他来源方案。
-
-## 1. 安装本机应用
-
-准备脚本会从官方来源下载 Apple Silicon 版本，把 `Docker.app` 和 `Folo.app` 复制到 `/Applications`，并校验 Folo SHA512 与两个 App 的代码签名：
-
-```bash
-./scripts/install-macos-apps.sh
-```
-
-之后需要你本人完成：
-
-- 首次打开 Docker Desktop，阅读并接受服务协议，选择推荐设置，按 macOS 提示授权。
-- 首次打开 Folo，通过 Gatekeeper 后登录或注册。
-- 在菜单栏启动并连接 Tailscale。
-
-脚本不会替你接受 Docker 法律协议，也不会代办 Folo 登录或付费。
-
-## 2. 初始化密钥与本机服务
-
-生成一次性 Bootstrap 密码、稳定授权加密键和 48 hex 随机 Feed 前缀：
-
-```bash
 ./scripts/init-secrets.sh
-```
-
-脚本不会覆盖已有 `.env`。生成后：
-
-- `.env` 权限为 `600`。
-- `data/`、`backups/`、`observations/` 权限为 `700`。
-- 所有目录都被 Git 忽略。
-
-Docker Desktop 完成首次启动后运行：
-
-```bash
 docker compose pull
 docker compose up -d
-docker compose ps
-curl -fsS http://127.0.0.1:8001/ >/dev/null
+./scripts/init-readeck.sh
 ```
 
-本机完整冒烟：
+已有 `.env` 时不要再次运行 `init-secrets.sh`；脚本也会拒绝覆盖。
+
+启动后检查：
 
 ```bash
+docker compose ps
 ./scripts/verify.sh --local
 ```
 
-该脚本会验证：
+本机验证会检查：
 
-- Compose 配置可解析，且不会把密码打印到终端。
-- WeRSS 容器原生运行在 `aarch64`。
-- Caddyfile 通过官方 `caddy validate`。
-- 8001 与 8080 都只绑定 `127.0.0.1`。
-- 管理端返回 `200`。
-- Caddy 根路径、API、POST 和路径穿越请求返回 `404`。
-- 随机路径下的聚合 Atom Feed 返回 `200` 且 XML 合法。
+- WeRSS、Readeck 与两个 Caddy 入口都只绑定 `127.0.0.1`。
+- WeRSS 管理端正常，随机 Feed 路径返回合法 Atom。
+- Feed 代理的根路径、API、非 Atom、写方法和路径穿越均被拒绝。
+- Readeck 未登录首页跳转到登录页，未登录 API 返回 `401`。
+- Readeck 专用代理没有绕过登录边界。
 
-当前固定 WeRSS 摘要会使最后的原生架构检查失败；此前的安全与 Feed 检查仍会完整执行并输出结果。
+由于 WeRSS 上游镜像问题，脚本最后仍会对非原生 ARM64 返回非零；前面的安全、Feed 与 Readeck 检查仍会完整执行。
 
-## 3. 首次登录与微信授权
+## 3. 微信授权和公众号抓取
 
-用 Chrome 打开：
+用 Chrome 打开 `http://127.0.0.1:8001`：
+
+1. 登录 WeRSS。
+2. 完成公众号运营者扫码授权。
+3. 添加要看的公众号；搜索和添加之间间隔 30–60 秒。
+4. 确认任务“公众号每小时自动更新”已启用，Cron 为：
 
 ```text
-http://127.0.0.1:8001
+17 * * * *
 ```
 
-Bootstrap 用户名固定为 `werss_admin`。只在你自己的终端查看初始密码：
+5. 添加后可手工运行一次全部公众号更新。不要相信接口里偶发的“执行 0 个订阅号”文案，应以任务队列、文章数量和正文状态为准。
 
-```bash
-awk -F= '$1 == "WERSS_BOOTSTRAP_PASSWORD" { print $2 }' .env
-```
-
-登录后立即在 WeRSS UI 中改成另一组新密码。WeRSS 对已有用户不会在重启时用环境变量重置密码，因此 `.env` 中的 Bootstrap 密码之后只是失效的初始化值。
-
-微信授权步骤：
-
-1. 使用 Chrome，不用 Safari 完成首次扫码。
-2. 扫码后选择自己管理的公众号或服务号。
-3. 先添加 3 个近期每天或隔天更新的精选公众号。
-4. 搜索和添加操作之间间隔 30–60 秒，降低微信 `200013` 风控概率。
-5. 检查标题、发布时间、正文和图片。
-6. 创建定时任务 `17 */2 * * *`，保存后点击“应用”。
-
-本机 Feed：
+本机 Feed 仍可用于其他阅读器：
 
 ```text
 http://127.0.0.1:8001/feed/all.atom
 http://127.0.0.1:8001/feed/<公众号ID>.atom
 ```
 
-## 4. 只读公网 RSS
+## 4. Readeck 全量文章库
 
-当前 Tailscale 已有 tailnet 身份，但服务可能处于 `Stopped`。先从菜单栏连接，再执行：
+自动同步器做两层筛选：
 
-```bash
-./scripts/configure-funnel.sh
-```
+- WeRSS → Readeck：所有已经抓到完整正文的文章都会进入 Readeck。
+- Readeck → Obsidian：默认只导出“已收藏”或“含高亮/批注”的文章，避免 Obsidian 变成全文垃圾场。
 
-首次启用 Funnel 时，Tailscale 可能打开管理网页，要求账号 Owner/Admin 批准 HTTPS 与 Funnel 权限。批准后重新运行脚本。
-
-脚本成功后会：
-
-1. 将本机 `127.0.0.1:8080` 交给 Funnel。
-2. 动态读取当前节点的 `*.ts.net` DNS 名称。
-3. 生成 `https://<host>/<FEED_PREFIX>/`，保留末尾 `/`。
-4. 写入 `.env` 的 `RSS_BASE_URL`。
-5. 重建 WeRSS 容器。
-6. 执行公网安全验收。
-
-需要回滚公网入口时：
+同步器安装：
 
 ```bash
-./scripts/disable-funnel.sh
+./scripts/install-reading-sync.sh
 ```
 
-随机 Feed 前缀等同于 bearer secret，不是真正鉴权。不要放进公开笔记、截图、Issue 或日志。若泄露，轮换 `FEED_PREFIX`、更新 `RSS_BASE_URL`、重建服务并在 Folo 重新订阅。
-
-## 5. Folo 小规模试验
-
-先使用免费账户，不要立即购买 Basic。
-
-Folo 当前已设置为“设置 → 通用 → 语言 → 简体中文”。未登录首页里的 `AI`、`Science`、`Developer` 和英文文章是 Folo 自带演示订阅，不是 WeRSS 内容，也不是汉化失败；登录并加入公众号 Feed 后，实际阅读内容取决于公众号原文语言。
-
-从 `.env` 读取基地址，然后在 Folo 添加：
+LaunchAgent 名称：
 
 ```text
-<RSS_BASE_URL>feed/all.atom
-<RSS_BASE_URL>feed/<一个公众号ID>.atom
+com.summer.wechat-rss-reading-sync
 ```
 
-建立分类“微信公众号测试”，连续观察至少 72 小时，并在 7 天后做最终判断：
-
-- WeRSS 定时抓取成功。
-- Atom XML 已出现新文章。
-- Folo 无需取消订阅或重新添加即可显示新文章。
-- 从 WeRSS 入库到 Folo 出现不超过 12 小时。
-
-每次观察可记录：
+查看最近结果：
 
 ```bash
-./scripts/record-observation.sh <公众号ID> <聚合源在Folo状态> <单源在Folo状态>
+tail -n 20 /tmp/wechat-rss-reading-sync.log
+launchctl print gui/$UID/com.summer.wechat-rss-reading-sync
 ```
 
-记录写入被忽略且权限为 `600` 的 `observations/folo-stability.tsv`，不会公开随机 Feed URL。
+手工立即运行：
 
-判断规则：
+```bash
+/usr/bin/python3 ~/.local/share/wechat-rss/reading-sync.py
+```
 
-- 聚合源和单源都稳定：导入 WeRSS OPML，按单公众号管理。
-- 只有聚合源稳定：使用 `/feed/all.atom`，或以后按 WeRSS 标签建立主题聚合源。
-- RSS 已更新但 Folo 未更新：归类为 Folo 刷新问题。
-- 两者都停止更新：不购买 Basic；保留 WeRSS，改用本地抓取型阅读器。
+日志示例中的正常幂等结果应为“新入 Readeck 0 篇、Obsidian 更新 0 篇”。
 
-## 6. Folo -> Obsidian
+## 5. Obsidian 笔记结构
 
-只有 72 小时门禁通过后，才启用 Folo Basic 试用或订阅，并在桌面版开启 Obsidian 集成。
-
-目标目录：
+文件名固定为：
 
 ```text
-/Users/summer/Obsidian/SummerOS/02_Archive/02_DailyProcessed/reading/folo_inbox
+发布日期-标题--Readeck短ID.md
 ```
 
-仓库实施时会同时建立：
+因此同标题文章不会互相覆盖。每篇笔记包含：
 
-- `reading/公众号精选.base`
-- `reading/README.md`
-- `reading/公众号文章批注模板.md`
-- `reading/folo_inbox/README.md`
+```markdown
+---
+reading_status: 待读
+rating:
+topics: []
+promote_to: 无
+reviewed_at:
+---
 
-Folo 正式订阅标记为“私密关注”。保存到 Obsidian 后：
+> [!note] 我的笔记
+> - 为什么保存：
+> - 核心判断：
+> - 我是否同意：
+> - 可执行动作：
+> - 关联主题：
 
-1. 确认 Markdown 文件出现。
-2. 本机后台每分钟执行一次整理任务（可用 `./scripts/install-obsidian-watcher.sh` 重装）。它会按发布日期重命名，补齐人工字段，并在同一文件的原文上方加入“我的笔记”和“划线与摘录”；重复执行不会重复插入，同名目标存在时不会覆盖。需要立刻整理时也可手工运行 `./scripts/prepare-obsidian-inbox.py`。
-3. 在 Folo 取消 Starred、标记已读。
-4. 在 Obsidian 原文中使用 `==关键句==` 高亮，在顶部记录自己的判断。
-5. 补充 `reading_status`、`rating`、`topics`、`promote_to`、`reviewed_at`。
+## 划线与批注
 
-原文始终留在 Archive。值得提升时，新建综合后的 Knowledge 条目或脱敏 Output 草稿，并引用原文；不要把整篇公众号文章直接移动到 Knowledge。
+> ==从 Readeck 同步的高亮==
+> 批注：从 Readeck 同步的批注
 
-Folo 保存的 `feedUrl` 含随机 RSS 地址。任何公开发布或分享前必须删除该字段。
+## 原文
+```
 
-不购买 Basic 时的免费备用路径：
+“我的笔记”和人工 frontmatter 是人工区；“划线与批注”和“原文”是机器管理区。重复同步只刷新机器区。
+
+原文始终留在 Archive。值得进入 `03_Knowledge` 或 `04_Output` 时，创建新的综合条目并引用原文，不移动或公开整篇公众号文章。
+
+v1 不把全部图片复制进 Vault；Markdown 图片仍引用 Readeck 资源地址。Cloudflare 配好后跨设备可加载这些图片，但资源 URL 本身相当于不可猜测链接。只有评级 4–5 或准备输出的文章，再单独做附件本地化。
+
+## 6. Cloudflare 外网阅读
+
+Cloudflare Tunnel 免费，适合在手机或外网打开 Readeck。目标地址为：
 
 ```text
-Folo 打开原文 -> Obsidian Web Clipper -> 同一 folo_inbox
+https://reader.sumerchaser.top/
 ```
 
-## 7. 备份与恢复
+准备完成后运行：
 
-每周以及每次升级前执行：
+```bash
+./scripts/configure-cloudflare-tunnel.sh
+```
+
+脚本会：
+
+1. 打开 Cloudflare 官方授权页。
+2. 创建独立的 `wechat-rss` Tunnel，不复用其他项目 Tunnel。
+3. 把 `reader.sumerchaser.top` 指向本机 `127.0.0.1:8082`。
+4. 将作用域凭据保存到 `~/.cloudflared/`，权限设为 `600`。
+5. 安装 macOS LaunchAgent，开机自动保持连接。
+6. 把 Readeck 的公开基地址改为 HTTPS 域名。
+
+公网验收：
+
+```bash
+./scripts/verify.sh --reader-public
+```
+
+公网首页只会跳转到 Readeck 登录页，未登录 API 必须返回 `401`。WeRSS 管理端不会通过这个 Tunnel 暴露。
+
+停止本机 Tunnel，但不删除 Cloudflare 端对象：
+
+```bash
+./scripts/disable-cloudflare-tunnel.sh
+```
+
+## 7. 备份和恢复
+
+每周和升级前运行：
 
 ```bash
 ./scripts/backup.sh
 ```
 
-脚本会仅在 WeRSS 原本运行时短暂停止它，打包：
+备份会短暂停止 WeRSS 与 Readeck，确保 SQLite/WAL 一致，并包含：
 
-- `data/`：SQLite、`data/.secret_key`、`key.lic`/`wx.lic`、Redis 持久化数据与缓存。
-- `.env`：Bootstrap 值、`SAFE_LIC_KEY`、Feed 前缀、RSS 基地址。
-- Compose、Caddy 与操作说明。
+- WeRSS SQLite、授权文件、登录密钥和缓存数据。
+- Readeck 用户、90+ 篇文章、收藏、高亮、批注和资源文件。
+- `.env`、最小权限 Readeck API Token、同步映射数据库。
+- Compose、两个 Caddy 配置和操作说明。
+- 若 Cloudflare 已启用，则包含该 Tunnel 的本机配置和作用域凭据；不包含高权限账户 `cert.pem`。
 
-归档权限为 `600`，目录权限为 `700`。
-
-独立恢复演练：
+归档权限为 `600`。独立恢复演练：
 
 ```bash
 ./scripts/restore-test.sh
 ```
 
-脚本会解压到独立目录，运行 SQLite `PRAGMA integrity_check`，再用不同 Compose project 和随机本机端口启动恢复实例；不会覆盖 live data。测试实例会关闭，恢复目录保留用于审计。
+恢复脚本使用独立目录、不同 Compose project 和随机端口，不覆盖线上数据；会检查三个 SQLite 数据库、WeRSS Feed、Readeck 登录、用户、文章、收藏和批注数量。
 
-## 8. 升级流程
+## 8. 安全边界
 
-不安装 Watchtower，不追随 `latest`。
+- 不提交或分享 `.env`、`data/`、`readeck-data/`、`backups/`、API Token、Cloudflare 凭据和随机 Feed 前缀。
+- WeRSS 会把环境变量写入容器日志，不要公开 `docker compose logs we-mp-rss`。
+- Readeck API Token 只授予书签读写权限，不授予用户、系统或管理权限。
+- Readeck 与 WeRSS 均只监听本机回环地址。
+- 不安装 Watchtower，不跟随 `latest`；镜像使用固定摘要。
+- Cloudflare 只暴露 Readeck 专用代理，不暴露 WeRSS、Docker 或本机其他端口。
 
-固定流程：
+## 9. 常见问题
 
-1. `./scripts/backup.sh`
-2. 从官方 registry 获取候选镜像的多架构 digest。
-3. 在独立恢复目录或临时 Compose 项目验证 ARM64、登录、Feed、正文与 Caddy 安全边界。
-4. 修改 `compose.yaml` 的 digest。
-5. `docker compose pull && docker compose up -d`
-6. `./scripts/verify.sh --public`
-7. 保留旧 digest；失败时改回旧 digest并重建。
+### 为什么新公众号文章不全？
 
-## 9. 日常维护
+WeRSS 首次只抓有限历史页，并受公众号授权范围、微信风控和正文抓取成功率影响。先检查：
 
-- 每周检查一次微信授权状态。
-- 每周备份；升级前额外备份。
-- 不向他人分享 WeRSS 容器日志。
-- Folo 导出文件公开前删除 `feedUrl`。
-- Mac 经常休眠导致漏抓时，把同一 Compose 与 `data/` 迁移到 NAS/云服务器，不长期禁用睡眠掩盖问题。
-- v1 不自动下载图片。只有评级 4–5 或准备提升的文章，才单独本地化附件。
+1. 公众号是否已加入 WeRSS。
+2. 全部公众号更新任务是否执行完成。
+3. 文章是否已经 `has_content=1`；正文未就绪的文章不会进入 Readeck。
+4. Mac 在计划执行时间是否处于唤醒状态。
 
-完整验收矩阵见 [docs/验收清单.md](docs/验收清单.md)，Folo/Obsidian 操作约定见 [docs/Folo与Obsidian设置.md](docs/Folo与Obsidian设置.md)。
+### 为什么 Readeck 有文章，Obsidian 没有？
+
+这是默认设计。只有点收藏，或创建至少一条高亮/批注，文章才进入 Obsidian。
+
+### 可以把全部文章都导入 Obsidian 吗？
+
+可以手工运行：
+
+```bash
+/usr/bin/python3 ~/.local/share/wechat-rss/reading-sync.py --sync-all
+```
+
+不建议长期这样做；Readeck 更适合放完整阅读库，Obsidian 更适合放人工筛选后的知识材料。
+
+### Folo 还需要吗？
+
+不需要。Folo 可作为可选 RSS 客户端，但本项目主链路不依赖其付费订阅、私密 Feed 或 Obsidian 集成。
+
+完整验收矩阵见 [docs/验收清单.md](docs/验收清单.md)。

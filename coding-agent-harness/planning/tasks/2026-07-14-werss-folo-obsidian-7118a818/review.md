@@ -1,17 +1,17 @@
-# WeRSS Folo Obsidian 阅读系统 - 审查
+# WeRSS Readeck Obsidian 阅读系统 - 审查
 
 ## 审查者身份（Reviewer Identity）
 
 | Reviewer | Type | Scope |
 | --- | --- | --- |
-| [name] | self / subagent / external / human | [审查范围] |
+| coordinator-self | self | Compose/Caddy、同步器、备份恢复、Cloudflare 脚本、SummerOS 写入边界 |
 
 ## 审查范围
 
-- 审查类型：adversarial / security / regression / architecture / release / other
-- 范围内：[文件、模块、行为、运行目标]
-- 范围外：[明确不审查的内容；如无写“无”]
-- 来源材料：[task plan、diff、commit、PR、测试输出、运行证据]
+- 审查类型：adversarial + security + regression
+- 范围内：本任务所有部署、脚本、文档、真实 Readeck/Obsidian 样本和恢复证据
+- 范围外：尚未获得用户授权的 Cloudflare live 对象；锁屏中的 Obsidian UI
+- 来源材料：task plan、完整 working-tree diff、8 个单测、本机容器、网络 inspect、备份恢复、真实笔记 hash
 
 ## Agent Review Submission（Agent 提交审查）
 
@@ -46,16 +46,19 @@ Scanner 会根据必需文件、章节、证据和这个严格提交块派生 `m
 
 直接回答：你是否对当前计划、实现和策略有 100% 信心？
 
-- Verdict：yes / no
+- Verdict：no
 - 如果不是 100%，剩余漏洞或证据缺口：
-  - [风险 / 漏洞 / 未验证假设；如无写“无”]
-- Fix loop count：[已经执行几轮 review -> fix -> evidence -> review]
-- 当前结论：[为什么现在可以继续、暂停或收口]
+  - Cloudflare 账号授权、DNS 和公网 smoke 尚未执行。
+  - Mac 锁屏，Obsidian UI screenshot/Base 列验证尚未执行。
+  - 72 小时/7 天时间性证据尚未达到。
+- Fix loop count：3（同步幂等；恢复/API Token；Docker 出网网络隔离）
+- 当前结论：本机实现和可恢复性可提交；整体任务不能 closeout，等待明确人工/live gate。
 
 ## 重要发现（Material Findings，表头供 checker 解析）
 
 | ID | Severity | Finding | Evidence Checked | Required Action | Open | Disposition | Blocks Release | Follow-up |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| REV-001 | P2 | WeRSS 与 Readeck 初版复用普通出网 bridge，容器间可直连 | Compose + docker inspect | 拆分 `werss-internet`/`readeck-internet` 并重跑恢复 | no | closed | no | RG-002 |
 
 不要保留示例 finding。若没有重要发现，只保留表头，并补全下面的无重要发现声明。
 
@@ -66,44 +69,54 @@ Scanner 会根据必需文件、章节、证据和这个严格提交块派生 `m
 
 ## 非阻塞备注（Non-Material Notes）
 
-- [不阻塞本轮目标但值得记录的问题；如无写“无”]
+- Reader Caddy 与 RSS Caddy 仍分别连接普通 host-ingress bridge 以支持 Docker Desktop 回环端口发布；固定上游且无用户可控反代目标。
+- WeRSS 上游固定摘要的伪 ARM64 问题仍按 R-002 硬失败保留。
 
 ## 已检查证据（Evidence Checked）
 
 | Evidence ID | Type | Path | Summary |
 | --- | --- | --- | --- |
-| E-001 | command / diff / fixture / screenshot / review / report | PUBLIC:path 或 PRIVATE:path 或 TARGET:path 或 EXTERNAL:path 或 URL:https://example.com | [检查了什么，结论是什么] |
+| E-001 | command | TARGET:tests | 8 unittest pass |
+| E-002 | command | TARGET:scripts/verify.sh | 回环端口、Feed、安全、Readeck 303/401 通过；仅 R-002 架构失败 |
+| E-003 | command | PRIVATE:backups/wechat-rss-20260715-012116.tar.gz | 独立恢复三个 SQLite、用户、90 篇、收藏、批注、API Token 通过 |
+| E-004 | fixture | EXTERNAL:SummerOS/readeck_inbox/真实文章 | 高亮、批注、原文和人工笔记存在，重复同步 hash 稳定 |
+| E-005 | command | TARGET:compose.yaml | WeRSS/Readeck 出网网络隔离，WeRSS 无法解析 Readeck |
+| E-006 | screenshot | TARGET:docs/images/01-readeck-公众号文章库.png | 90 篇中文公众号阅读库 |
+| E-007 | screenshot | TARGET:docs/images/02-readeck-划线批注.png | 真实高亮和批注汇总 |
 
 ## 无重要发现声明
 
-[如果没有重要发现，明确写：本轮已检查上述证据，未发现阻塞目标的重要发现。]
+本轮已检查上述证据，已发现并关闭 REV-001；当前没有开放的代码/配置重要发现。整体发布仍受外部人工和时间门禁约束。
 
 ## 残余风险
 
 | Risk | Owner | Accepted? | Follow-up |
 | --- | --- | --- | --- |
-| [风险] | [负责人] | yes / no | [后续路径或“无”] |
+| Cloudflare live 未验证 | user + coordinator | no | 用户确认后 `configure-cloudflare-tunnel.sh` + `verify --reader-public` |
+| Obsidian UI screenshot/Base 未验证 | user + coordinator | no | 用户解锁 Mac 后 Computer Use |
+| WeRSS x86_64 Rosetta | user + coordinator | no | R-002 |
+| 72h/7d 稳定性 | user | no | 稳定性观察模板 |
 
 ## Lifecycle Queue Routing（生命周期队列路由）
 
 | Queue | Applies? | Reason | Exit condition |
 | --- | --- | --- | --- |
-| Review | yes / no | 已提交审查材料包，且可等待人工确认。 | 人工确认或退回。 |
-| Missing Materials | yes / no | 必需文件、章节、证据或 review submission 缺失 / 不完整。 | Agent 补齐材料并重新提交审查。 |
-| Blocked | yes / no | 存在 open blocking finding、非法状态转换、审计失败或需要人工 waiver。 | blocker 被修复、关闭或明确豁免。 |
-| Lessons | yes / no | Lesson candidate 需要拒绝、留在任务内、dry-run promotion 或创建沉淀任务。 | 人工决定候选路由；除非明确批准，promotion 仍是单独维护任务。 |
-| Confirmed / Finalized | yes / no | 已有人工确认；可能仍待结项或治理收口。 | Closeout、ledger 和 lesson routing 都完成。 |
-| Soft-deleted / Superseded | yes / no | 任务有 tombstone、superseded-by 或 archive 状态；duplicate / abandoned 等语义写在 `Reason`。 | reopen 或作为只读审计历史保留。 |
+| Review | no | live evidence 未齐，尚未提交最终审查。 | Cloudflare/UI/时间证据满足。 |
+| Missing Materials | yes | 缺 Obsidian screenshot、Cloudflare live、时间性证据。 | 补齐材料。 |
+| Blocked | no | 当前是明确人工/时间门禁，不是代码 impasse。 | n/a |
+| Lessons | yes | 候选仍待人工决定。 | 人工决定候选路由。 |
+| Confirmed / Finalized | no | 未人工确认。 | 最终 review-confirm/closeout。 |
+| Soft-deleted / Superseded | no | 任务有效；仅原 Folo 架构被替代。 | n/a |
 
 ## 后续路由（Follow-Up Routing）
 
-- 任务计划：[是否需要更新，路径或“无”]
-- Progress：[对应 `progress.md` 条目]
-- 发现记录：[是否需要写入 `findings.md`]
-- Regression SSoT：[新增 / 调整 / 无]
-- Lessons：[checked-created: L-YYYY-MM-DD-NNN / checked-candidate: LC-YYYYMMDD-NNN / queued-promotion: LC-YYYYMMDD-NNN / checked-none: 一句话原因]
-- 收口记录：[收口时引用路径]
+- 任务计划：已切换 Readeck 架构。
+- Progress：2026-07-15 00:25..01:22 条目。
+- 发现记录：已记录 Folo 替代、同步保护、网络隔离。
+- Regression SSoT：RG-001..008 已调整。
+- Lessons：pending human review。
+- 收口记录：待 live gate 后更新 `walkthrough.md`。
 
 ## 最终信心依据（Final Confidence Basis）
 
-[说明最终信心来自哪些证据、审查层级和已关闭发现。发布前最终审查不能只依赖 self-only。]
+当前信心来自真实容器、真实公众号文章、真实高亮/批注、幂等 hash、独立恢复和网络隔离证据。尚未形成最终发布信心；Cloudflare/UI/时间 gate 后仍需最终复审。

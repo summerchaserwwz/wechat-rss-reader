@@ -2,47 +2,39 @@
 
 Visual Map Contract: v1.0
 
-## 图表索引
-
-| ID | Type | Purpose | Required For Understanding | Source Evidence | Promotion Candidate |
-| --- | --- | --- | --- | --- | --- |
-| MAP-01 | phase | 区分 agent 实施、人工门禁和时间观察 | yes | `task_plan.md` | no |
-| MAP-02 | data-flow | 展示数据与知识晋升 | yes | Architecture SSoT | yes |
-
 ## 阶段关系图
 
 ```mermaid
 flowchart LR
-  I["INIT-01 Harness/计划"] --> P["EXEC-01 部署包与Obsidian"]
-  P --> D["EXEC-02 Docker本机验证"]
-  D --> Q["GATE-QUAL 运营资格/扫码"]
-  Q --> F["EXEC-03 Funnel公网验收"]
-  F --> O["OBS-01 Folo 72h/7d"]
-  O --> B["EXEC-04 Basic/Obsidian样本"]
-  B --> R["GATE-01 Agent审查"]
-  R --> H["GATE-02 人工确认"]
+  I["INIT Harness"] --> W["WeRSS 授权/12源"]
+  W --> R["Readeck 全文库"]
+  R --> O["收藏/高亮 -> Obsidian"]
+  O --> C["Reader Caddy"]
+  C --> CF["Cloudflare 人工授权"]
+  CF --> B["备份恢复/全量验证"]
+  B --> V["Agent 审查"]
+  V --> H["人工确认"]
 ```
 
 ## 阶段表
 
 | Phase ID | Kind | Depends On | State | Completion | Output | Required Evidence | Exit Command | Actor | Evidence Status | Blocking Risk | Owner / Handoff |
 | --- | --- | --- | --- | ---: | --- | --- | --- | --- | --- | --- | --- |
-| INIT-01 | init | none | done | 100 | Harness 与任务合同 | task files、status/check | `harness task-start 2026-07-14-werss-folo-obsidian-7118a818` | agent | present | none | coordinator |
-| EXEC-01 | execution | INIT-01 | done | 100 | Compose/Caddy/脚本/文档/Inbox/Base | diff、静态检查、reviewer | `harness task-phase 2026-07-14-werss-folo-obsidian-7118a818 EXEC-01 --state done --completion 100 --evidence present` | agent | present | none | coordinator |
-| EXEC-02 | execution | EXEC-01 | in_progress | 85 | Docker/Folo 安装和本机 smoke | App 签名、Docker running、RG-002 | `harness task-phase 2026-07-14-werss-folo-obsidian-7118a818 EXEC-02 --state done --completion 100 --evidence present` | agent | partial | 上游伪 ARM64 manifest 需显式决策 | user + coordinator |
-| GATE-QUAL | gate | EXEC-02 | in_progress | 70 | 公众号运营资格与 3 个试验源 | Chrome 扫码、WeRSS UI、RG-006 | manual qualification confirmation | human | partial | 其余来源与 36 个自动周期待验证 | user |
-| EXEC-03 | execution | GATE-QUAL | planned | 0 | Funnel 与公网安全 | RG-003 | `harness task-phase 2026-07-14-werss-folo-obsidian-7118a818 EXEC-03 --state done --completion 100 --evidence present` | agent | missing | 首次 Funnel 网页批准 | user + coordinator |
-| OBS-01 | execution | EXEC-03 | planned | 0 | Folo 72 小时/7 天判断 | observations、Folo UI、RG-007 | `harness task-phase 2026-07-14-werss-folo-obsidian-7118a818 OBS-01 --state done --completion 100 --evidence present` | coordinator | missing | 时间门禁 | user |
-| EXEC-04 | execution | OBS-01 | planned | 0 | Basic/Obsidian 五类样本 | RG-008、恢复演练 | `harness task-phase 2026-07-14-werss-folo-obsidian-7118a818 EXEC-04 --state done --completion 100 --evidence present` | coordinator | missing | 登录/付费/样本 | user + coordinator |
-| GATE-01 | gate | EXEC-04 | planned | 0 | Agent Review Submission | `review.md`、walkthrough、lesson | `harness task-review 2026-07-14-werss-folo-obsidian-7118a818 --message "全链路证据与审查就绪"` | agent | partial | live evidence 未齐 | coordinator |
-| GATE-02 | gate | GATE-01 | planned | 0 | Human Review Confirmation | review packet 和人工确认 | Dashboard human confirmation | human | missing | Agent 不得代办 | user |
+| INIT-01 | init | none | done | 100 | Harness task files | status/check | n/a | agent | present | none | coordinator |
+| WERSS-01 | execution | INIT-01 | in_progress | 85 | 12 源、94 篇、每小时 Cron | SQLite、任务队列、72h/7d | n/a | coordinator | partial | 时间证据 | user + coordinator |
+| READECK-01 | execution | WERSS-01 | done | 100 | 90 loaded、aarch64、中文 UI | API/SQLite/UI | n/a | agent | present | 4 篇正文未就绪 | coordinator |
+| OBSIDIAN-01 | execution | READECK-01 | in_progress | 90 | 收藏/高亮/批注/不覆盖 | 真实笔记、hash、UI screenshot | n/a | agent | partial | Mac 锁屏 | user + coordinator |
+| CLOUDFLARE-01 | gate | OBSIDIAN-01 | in_progress | 40 | Reader Caddy 与 Tunnel 脚本 | 303/401、Tunnel/DNS、公网 smoke | n/a | coordinator | partial | 持久账号授权 | user + coordinator |
+| RECOVERY-01 | execution | READECK-01 | done | 100 | 扩展备份恢复 | 三 SQLite、用户/文章/收藏/批注 | n/a | agent | present | none | coordinator |
+| REVIEW-01 | gate | CLOUDFLARE-01,RECOVERY-01 | planned | 0 | Agent Review Submission | tests、diff、live evidence、review.md | harness task-review | agent | partial | live gate | coordinator |
+| HUMAN-01 | gate | REVIEW-01 | planned | 0 | Human Review Confirmation | review packet | Dashboard human confirmation | human | missing | agent 不得代办 | user |
 
 ## 数据流
 
 ```mermaid
 flowchart LR
-  WX["公众号原文"] --> RSS["WeRSS Atom"] --> FOLO["Folo 浏览/筛选"] --> INBOX["Archive folo_inbox"]
-  INBOX --> NOTE["高亮/批注"]
-  NOTE --> KNOW["Knowledge 综合条目"]
-  NOTE --> OUTPUT["Output 脱敏草稿"]
+  WX["公众号原文"] --> W["WeRSS"] --> R["Readeck 全文库"]
+  R --> H["收藏 / 高亮 / 批注"] --> O["Archive readeck_inbox"]
+  O --> K["Knowledge 综合条目"]
+  O --> OUT["Output 脱敏草稿"]
 ```

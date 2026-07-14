@@ -1,4 +1,4 @@
-# 收口记录：WeRSS Folo Obsidian 阅读系统
+# 收口记录：WeRSS Readeck Obsidian 阅读系统
 
 ## 摘要
 

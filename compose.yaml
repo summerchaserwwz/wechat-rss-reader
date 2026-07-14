@@ -40,7 +40,7 @@ services:
     volumes:
       - ./data:/app/data
     networks:
-      - internet
+      - werss-internet
       - feed-proxy
     healthcheck:
       test:
@@ -89,8 +89,82 @@ services:
         max-size: 10m
         max-file: "3"
 
+  readeck:
+    image: codeberg.org/readeck/readeck:0.22.3@sha256:ed1c513f8e1d59b1d38fda324ac279eeb65afd0327907e498061ec9fd2f31c15
+    restart: unless-stopped
+    user: "${HOST_UID:-501}:${HOST_GID:-20}"
+    environment:
+      TZ: Asia/Shanghai
+      READECK_SECRET_KEY: ${READECK_SECRET_KEY:?请先运行 scripts/ensure-readeck-secrets.sh}
+      READECK_SERVER_BASE_URL: ${READECK_BASE_URL:-http://127.0.0.1:8002/}
+      READECK_ALLOWED_HOSTS: ${READECK_ALLOWED_HOSTS:-127.0.0.1,localhost,readeck,reader.sumerchaser.top}
+      READECK_TRUSTED_PROXIES: 172.16.0.0/12
+      READECK_LOG_LEVEL: info
+    ports:
+      - "127.0.0.1:${READECK_HOST_PORT:-8002}:8000"
+    volumes:
+      - ./readeck-data:/readeck
+    networks:
+      - readeck-internet
+      - reading
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test:
+        - CMD
+        - /bin/readeck
+        - healthcheck
+        - -config
+        - config.toml
+      interval: 30s
+      timeout: 8s
+      retries: 10
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  reader-caddy:
+    image: caddy:2.11.4-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
+    restart: unless-stopped
+    depends_on:
+      readeck:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${READER_CADDY_HOST_PORT:-8082}:8080"
+    volumes:
+      - ./Caddyfile.reader:/etc/caddy/Caddyfile:ro
+    networks:
+      - host-ingress
+      - reading
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    tmpfs:
+      - /config
+      - /data
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
 networks:
-  internet:
+  werss-internet:
+  readeck-internet:
   host-ingress:
+  reading:
+    internal: true
   feed-proxy:
     internal: true

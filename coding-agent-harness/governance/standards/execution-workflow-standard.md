@@ -5,7 +5,7 @@
 3. 静态配置先验证，再安装/启动运行时。
 4. 本机验证通过后才启用 Funnel。
 5. RSS 自身更新通过后才判断 Folo 刷新。
-6. 72 小时门禁通过后才启用 Folo Basic/Obsidian 集成。
+6. Readeck 收藏/高亮样本通过后才启用 Obsidian 自动同步；Cloudflare 只在本机登录边界验证后配置。
 7. 每个切片更新 `progress.md`、`findings.md` 和相关 Regression gate。
 8. 提交只包含本仓任务文件；SummerOS 既有 dirty 不进入本仓提交。
 9. 人工门禁或时间门禁未完成时记录 residual，不虚构结果。

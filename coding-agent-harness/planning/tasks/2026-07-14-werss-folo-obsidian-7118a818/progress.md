@@ -32,8 +32,9 @@
 ## 残余
 
 - P1：固定 WeRSS 摘要的 arm64 manifest 实际为 AMD64 文件系统；本机功能可通过 Rosetta 运行，但 RG-002 原生 ARM64 硬门禁失败。需要用户选择接受模拟运行或授权维护自建原生镜像。
-- P1：公众号资格与微信授权已完成；Funnel 首次批准、Folo 登录与 72 小时/7 天观察仍是人工/时间门禁。
-- P1：独立备份恢复已通过，但完成真实微信授权后仍需复验 `key.lic`、登录用户与授权状态。
+- P1：Cloudflare Tunnel/DNS 需要用户对持久账号授权进行 action-time 确认；本机 Reader Caddy 与配置脚本已完成。
+- P1：公众号资格/授权、12 个来源和每小时任务已完成；72 小时/7 天近实时观察仍是时间门禁。
+- P2：Mac 当前锁屏，Obsidian UI screenshot 和 Base 实机列验证等待用户解锁。
 - P2：Docker Desktop 为 Caddy 发布回环端口需要非 internal bridge，因此 Caddy 具备出站能力；已用只读根、`no-new-privileges`、仅保留 `NET_BIND_SERVICE` 和固定无动态上游的 Caddyfile 降低风险。
 
 ## 协调者交接（Coordinator，启用模块并行时填写）
@@ -91,3 +92,45 @@
 - 验证结果：WeRSS 当前 12 个源、91 篇文章且 12/12 均有内容；Folo 当前为 Free，Obsidian 集成开关禁用，私有订阅不可用；Cloudflare 账户有 `sumerchaser.top`，现有 `sumerchaser-knowledge-gate` Tunnel 离线且属于其他用途，不复用；`cloudflared` 为 Cloudflare Developer ID 签名的 arm64 二进制。
 - 下一步：取得用户对创建 `wechat-rss` Tunnel、绑定 `rss.sumerchaser.top` 的即时确认；另行取得 Folo Basic 试用/订阅的金融确认后，才能启用私有订阅与 Obsidian 一键保存。
 - 证据：screenshot:Folo 设置/计划:Free、第三方集成禁用；screenshot:Cloudflare Dashboard:Tunnel 列表与 `sumerchaser.top`；command:cloudflared --version + file + codesign:2026.7.1 arm64，Cloudflare Inc. 签名；command:sqlite3 data/we_mp_rss.db:12 feeds、91 articles
+
+### [2026-07-15 00:25] - 开源 Readeck 主链路落地
+
+- 做了什么：放弃依赖 Folo Basic 的主链路；部署固定摘要 Readeck 0.22.3；创建中文管理员、最小权限 API Token 和 5 分钟 LaunchAgent；实现 WeRSS 全量正文回填与收藏/高亮筛选入库。
+- 验证结果：Readeck 原生 `aarch64`，仅绑定 `127.0.0.1:8002`；WeRSS 94 篇中 90 篇完整正文已进入 Readeck且 loaded；4 篇正文未就绪；LaunchAgent 最近退出码 0。
+- 下一步：真实高亮/批注/Obsidian 样本与人工区保护。
+- 证据：command:Readeck API/SQLite:90 bookmarks、state 0；command:launchctl print:reading sync exit 0；screenshot:docs/images/01-readeck-公众号文章库.png
+
+### [2026-07-15 00:50] - Readeck 高亮、批注与 Obsidian 不覆盖
+
+- 做了什么：在真实公众号文章创建收藏、高亮和批注；同步成 Obsidian 原文笔记；在人工区填写五条真实判断后再次同步。
+- 验证结果：高亮为 `==给弱模型写步骤，给强模型写责任。==`，批注同时存在于摘录区和原文脚注；重复同步日志为“更新 0 篇”；同步前后 SHA-256 一致，人工 frontmatter 和“我的笔记”完整保留。
+- 下一步：用户解锁后补 Obsidian UI screenshot；补充复杂排版样本。
+- 证据：screenshot:docs/images/02-readeck-划线批注.png；command:reading-sync + shasum:hash stable；fixture:SummerOS/readeck_inbox/真实文章
+
+### [2026-07-15 00:51] - 每小时近实时调度
+
+- 做了什么：短暂停止 WeRSS，创建修改前 SQLite 备份，将任务从 `17 */2 * * *` 改为 `17 * * * *`，任务名改为“公众号每小时自动更新”，随后重启。
+- 验证结果：任务状态 1；WeRSS 恢复 healthy；管理端仍仅绑定 `127.0.0.1:8001`。
+- 下一步：观察 72 小时/7 天真实新文章延迟。
+- 证据：command:sqlite3 message_tasks + docker compose ps:hourly cron and healthy
+
+### [2026-07-15 01:05] - Reader Caddy、Cloudflare 与恢复扩展
+
+- 做了什么：新增仅回环 `127.0.0.1:8082` 的 Readeck 专用 Caddy；准备独立 `wechat-rss` Cloudflare Tunnel/DNS/LaunchAgent 脚本；扩展备份恢复覆盖 Readeck、API Token、实际同步状态和可选 Tunnel 作用域凭据；更新中文教程与架构 SSoT。
+- 验证结果：本机 Reader Caddy 根路径返回 303 登录跳转，匿名 `/api/bookmarks` 返回 401；Cloudflare 外部对象尚未创建，符合 action-time 确认边界。
+- 下一步：静态/本机/恢复全量 rerun；用户解锁和确认 Cloudflare 后完成 live gate。
+- 证据：command:curl 127.0.0.1:8082:303/401；diff:compose/Caddy/scripts/docs/harness
+
+### [2026-07-15 01:18] - 扩展备份恢复与最终本机回归
+
+- 做了什么：对最终配置重新执行一致性备份和独立恢复；恢复实例额外验证实际 API Token；重跑 8 个 unittest、Shell/Compose/plist、Harness、秘密扫描和本机安全 smoke。
+- 验证结果：三个 SQLite integrity_check 均为 ok；恢复出 1 个用户、90 篇文章、1 个收藏、1 篇含批注；API Token 在恢复 Readeck 返回 200；WeRSS Feed、Reader Caddy 303/401 通过；8 tests 与 Harness 通过。`verify --local` 只因已知 WeRSS `x86_64` residual 返回 1，其前置安全检查全部通过。
+- 下一步：用户解锁 Mac 完成 Obsidian screenshot；确认 Cloudflare 持久授权后执行公网 live smoke；随后填 final review/walkthrough。
+- 证据：command:backup 20260715-012116 + restore 20260715-012211:pass；command:unittest/bash/compose/plutil/harness:pass；command:verify --local:security pass, R-002 fail
+
+### [2026-07-15 01:22] - 容器出网隔离复审修复
+
+- 做了什么：最终安全复审发现 WeRSS 与 Readeck 复用普通出网 bridge；拆分为 `werss-internet` 与 `readeck-internet`，随后重建服务并重新执行备份恢复。
+- 验证结果：WeRSS 仅连接 `feed-proxy + werss-internet`；Readeck 仅连接 `reading + readeck-internet`；WeRSS 容器无法解析 `readeck`；Reader Caddy 仍返回 303/401；同步幂等为更新 0；最终恢复再次通过。
+- 下一步：仅剩 Obsidian UI、Cloudflare live 和时间门禁。
+- 证据：command:docker inspect networks + getent:isolated；command:restore 20260715-012211:pass

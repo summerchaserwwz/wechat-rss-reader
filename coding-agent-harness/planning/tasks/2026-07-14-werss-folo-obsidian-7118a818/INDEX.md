@@ -1,4 +1,4 @@
-# WeRSS Folo Obsidian 阅读系统 - 任务包索引
+# WeRSS Readeck Obsidian 阅读系统 - 任务包索引
 
 Task Contract: harness-task/v1
 
@@ -19,7 +19,7 @@ Task Contract: harness-task/v1
 | --- | --- |
 | Created By | harness new-task |
 | Created At | 2026-07-14 |
-| Command Shape | harness new-task --budget complex --locale zh-CN --title 'WeRSS Folo Obsidian 阅读系统' --long-running . |
+| Command Shape | harness new-task --budget complex --locale zh-CN --title 'WeRSS Folo Obsidian 阅读系统' --long-running .（历史创建命令；当前架构已切换 Readeck） |
 | Budget | complex |
 | Template Source | templates-zh-CN/planning/INDEX.md |
 | Task Creator | Codex <codex@local.invalid> |

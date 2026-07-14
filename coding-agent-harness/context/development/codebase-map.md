@@ -3,19 +3,20 @@
 Context Doc Type: codebase-map
 Owner: coordinator
 Source Evidence: repository file tree and current task diff
-Last Verified: 2026-07-14
+Last Verified: 2026-07-15
 Confidence: high
 
 | Path | Responsibility |
 | --- | --- |
-| `compose.yaml` | 镜像、端口、环境、持久化、健康和日志 |
-| `Caddyfile` | 公网只读 Atom 白名单 |
-| `.env.example` | 非秘密配置示例 |
-| `scripts/init-secrets.sh` | 不覆盖式密钥初始化 |
-| `scripts/verify.sh` | 本机/公网硬门禁 |
-| `scripts/backup.sh` | 一致性备份 |
+| `compose.yaml` | WeRSS、Readeck、两个 Caddy、端口、持久化与日志 |
+| `Caddyfile` | 可选只读 Atom 白名单 |
+| `Caddyfile.reader` | Readeck 专用本机反代 |
+| `scripts/reading-sync.py` | 全文入 Readeck、精选入 Obsidian、人工区保护 |
+| `scripts/install-reading-sync.sh` | 安装 5 分钟 LaunchAgent |
+| `scripts/configure-cloudflare-tunnel.sh` | 独立 Tunnel、DNS 与 LaunchAgent |
+| `scripts/verify.sh` | 本机、兼容 RSS 公网、Readeck 公网门禁 |
+| `scripts/backup.sh` | WeRSS/Readeck/同步/Tunnel 一致性备份 |
 | `scripts/restore-test.sh` | 独立恢复演练 |
-| `scripts/configure-funnel.sh` | Funnel 与 RSS_BASE_URL 配置 |
-| `scripts/record-observation.sh` | Folo 时间性观察记录 |
-| `README.md`, `docs/` | 中文操作与验收 |
-| `coding-agent-harness/` | 唯一工程主账本 |
+| `tests/test_reading_sync.py` | Markdown、幂等、命名、权限契约 |
+| `README.md`, `docs/` | 中文图文教程与验收 |
+| `coding-agent-harness/` | 工程主账本 |

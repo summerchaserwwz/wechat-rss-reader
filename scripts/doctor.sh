@@ -17,9 +17,12 @@ fail() { printf '[失败] %s\n' "$*"; failures=$((failures + 1)); }
 
 [[ -d /Applications/Google\ Chrome.app ]] && pass "Google Chrome 已安装" || note_warn "请安装 Google Chrome，用于首次微信扫码授权"
 [[ -d /Applications/Obsidian.app ]] && pass "Obsidian 已安装" || note_warn "请安装 Obsidian"
-[[ -d /Applications/Tailscale.app ]] && pass "Tailscale 已安装" || note_warn "请安装 Tailscale"
 [[ -d /Applications/Docker.app ]] && pass "Docker Desktop 已复制到 /Applications" || note_warn "Docker Desktop 尚未安装"
-[[ -d /Applications/Folo.app ]] && pass "Folo 已复制到 /Applications" || note_warn "Folo 尚未安装"
+if [[ -x "$HOME/.local/bin/cloudflared" ]]; then
+  pass "cloudflared 已安装"
+else
+  note_warn "cloudflared 尚未安装；仅影响外网 Readeck，不影响本机阅读"
+fi
 
 if [[ -f "$ENV_FILE" ]]; then
   pass ".env 已生成"
@@ -39,22 +42,13 @@ else
   note_warn "docker CLI 尚不可用；启动 Docker Desktop 后会安装 CLI"
 fi
 
-if [[ -x /Applications/Tailscale.app/Contents/MacOS/Tailscale ]]; then
-  ts_state="$(/Applications/Tailscale.app/Contents/MacOS/Tailscale status --json 2>/dev/null | jq -r '.BackendState // "Unknown"' || true)"
-  if [[ "$ts_state" == "Running" ]]; then
-    pass "Tailscale 正在运行"
-  else
-    note_warn "Tailscale 当前状态为 ${ts_state:-Unknown}；需要在菜单栏启动连接"
-  fi
-fi
-
 vault="/Users/summer/Obsidian/SummerOS"
 [[ -d "$vault" ]] && pass "SummerOS Vault 存在" || fail "未找到 SummerOS Vault"
 
 printf '\n资格硬门禁（必须由你本人确认）：\n'
 printf '1. 你能登录 mp.weixin.qq.com，并拥有至少一个公众号或服务号的管理员/运营者权限。\n'
 printf '2. 微信扫码后能选择该公众号或服务号；普通个人微信关注列表不满足条件。\n'
-printf '3. 你接受随机长路径下的只读 RSS 可被公网访问。\n'
+printf '3. 如需外网阅读，你接受通过 Cloudflare Tunnel 公开 Readeck 登录页；WeRSS 管理端仍仅本机可见。\n'
 
 if (( failures > 0 )); then
   exit 1

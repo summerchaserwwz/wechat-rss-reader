@@ -4,4 +4,8 @@ data/
 backups/
 downloads/
 observations/
+readeck-data/
+sync-state/
+secrets/
+cloudflared/
 *.dmg

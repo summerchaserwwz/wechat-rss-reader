@@ -2,30 +2,34 @@
 
 Context Doc Type: system-map
 Owner: coordinator
-Source Evidence: `compose.yaml`; `Caddyfile`; `README.md`; SummerOS reading files
-Last Verified: 2026-07-14
+Source Evidence: `compose.yaml`; `Caddyfile.reader`; `scripts/reading-sync.py`; SummerOS reading files
+Last Verified: 2026-07-15
 Confidence: high
 
 ## Scope
 
-图谱覆盖从公众号运营者授权到 SummerOS 知识提升的完整边界；Folo 与 Tailscale 是外部服务，Obsidian Vault 是独立 dirty 仓库。
-
 ```mermaid
 flowchart LR
   WX["微信公众平台\n运营者授权"] --> W["WeRSS\n127.0.0.1:8001"]
-  W --> DB["data/\nSQLite + 授权 + Redis"]
-  W --> C["Caddy\n127.0.0.1:8080"]
-  C --> T["Tailscale Funnel\nHTTPS"]
-  T --> F["Folo 云端抓取"]
-  F --> FC["Folo 桌面/移动端\n浏览与筛选"]
-  FC --> O["SummerOS Archive\nfolo_inbox"]
+  W --> WDB["data/\nSQLite + 授权"]
+  W --> S["reading-sync\n每 5 分钟"]
+  S --> R["Readeck\n127.0.0.1:8002"]
+  R --> RC["收藏 / 高亮 / 批注"]
+  RC --> S
+  S --> O["SummerOS Archive\nreadeck_inbox"]
   O --> K["Knowledge 综合条目"]
   O --> OUT["Output 脱敏草稿"]
+  R --> C["Reader Caddy\n127.0.0.1:8082"]
+  C --> CF["Cloudflare Tunnel\nreader.sumerchaser.top"]
+  CF --> M["桌面 / 手机浏览器"]
 ```
 
 ## Trust Boundaries
 
-- `.env`、`data/`、备份：本机 secret-bearing。
-- 随机 Feed URL：可公网读取的 bearer-secret URL。
-- Folo：外部云服务，会持有 Feed URL。
-- Obsidian 原文：私有 Archive；公开前删除 `feedUrl` 并遵守版权边界。
+- `.env`、`data/`、`readeck-data/`、API Token、备份：本机 secret-bearing。
+- `127.0.0.1:8001`：WeRSS 管理端，永不公开。
+- `127.0.0.1:8002`：Readeck 直连，仅本机。
+- `127.0.0.1:8082`：Cloudflare 唯一 origin，只到 Readeck。
+- `reader.sumerchaser.top`：公网登录面；匿名 API 必须为 `401`。
+- Obsidian 原文：私有 Archive；公开只使用衍生、脱敏内容。
+- Folo/Tailscale：保留为可选历史组件，不属于主链路或完成门禁。

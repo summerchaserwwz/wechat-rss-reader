@@ -29,7 +29,7 @@
 | 审查模型 | adversarial review | 安全、恢复与外部门禁不能只靠 self-check。 |
 | Worktree 策略 | current feature branch | unborn repo 无法先建 linked worktree。 |
 | 冲突控制 | coordinator owns shared files | reviewer 不写文件；SummerOS 只新增专属路径。 |
-| 证据深度 | L1 + L2 + L3 | 当前先完成 L1；Docker/Funnel/Folo gate 逐级升级。 |
+| 证据深度 | L1 + L2 + L3 | Docker/Readeck/Obsidian 已有 live 证据；Cloudflare 与时间 gate 逐级升级。 |
 
 ## 子代理合同
 
@@ -37,7 +37,7 @@
 | --- | --- | --- | --- | --- |
 | Compose/Caddy reviewer | C-001, C-002 | read-only | 镜像、变量、路径绕过、备份 finding | coordinator |
 | Runtime reviewer | C-003, 本机环境 | read-only | 官方安装源、签名、人工门禁 | coordinator |
-| Obsidian reviewer | C-004, C-005 | read-only | Base YAML、Folo 字段、SummerOS 边界 | coordinator |
+| Obsidian reviewer | Readeck Markdown 契约、SummerOS AGENTS | read-only | Base YAML、人工区保护、Archive 边界 | coordinator |
 
 ## 证据计划
 
@@ -46,12 +46,12 @@
 | L0 | diff、自审、秘密扫描 | `progress.md` | 无明显越界或秘密进入 Git |
 | L1 | `bash -n`; YAML/Base parse; registry digest; Caddy validate | `progress.md`; RG-001/RG-005 | 全部通过 |
 | L2 | Docker ARM64、本机 Atom/Caddy、备份恢复 | `progress.md`; RG-002/RG-004 | 脚本非零硬门禁通过 |
-| L3 | 微信、Funnel、Folo、Obsidian 五类样本 | `progress.md`; RG-003/006/007/008 | 真实外部证据通过 |
+| L3 | 微信、Readeck、Cloudflare、Obsidian 样本 | `progress.md`; RG-003/006/007/008 | 真实外部证据通过 |
 
 ## 暂停 / 升级条件
 
 - 用户没有公众号运营权限。
-- Docker 协议、管理员权限、Tailscale 批准或账号登录未完成。
+- Cloudflare 持久账号授权、DNS 变更或桌面应用解锁未完成。
 - reviewer 发现 P0/P1 或改变架构的 P2。
 - SummerOS 目标路径出现冲突或已有文件。
-- 72 小时/7 天尚未达到，不得提前判断稳定。
+- 72 小时/7 天尚未达到，不得提前判断长期稳定。

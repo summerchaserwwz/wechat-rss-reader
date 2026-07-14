@@ -2,26 +2,30 @@
 
 Context Doc Type: critical-flows
 Owner: coordinator
-Source Evidence: `README.md`; `compose.yaml`; `scripts/`; task findings
-Last Verified: 2026-07-14
+Source Evidence: `README.md`; `compose.yaml`; `scripts/reading-sync.py`; task progress
+Last Verified: 2026-07-15
 Confidence: high
 
 ## 启动
 
-`init-secrets -> Docker 首次启动 -> compose pull/up -> verify --local -> Chrome 登录/扫码`。
+`init-secrets -> compose up -> init-readeck -> install-reading-sync -> verify --local`。
+
+## 抓取与阅读
+
+`WeRSS 每小时抓取 -> 完整正文进入 Readeck -> 用户收藏/高亮/批注 -> 5 分钟同步到 readeck_inbox`。
 
 ## 公网发布
 
-`Tailscale Running -> funnel approval -> configure-funnel -> 更新 RSS_BASE_URL -> 重建 WeRSS -> verify --public`。
+`Reader Caddy 本机 303/401 -> 用户确认 Cloudflare 持久授权 -> 创建独立 Tunnel/DNS -> LaunchAgent -> verify --reader-public`。
 
-## 阅读与提升
+## 知识提升
 
-`Folo 未读 -> Starred -> 保存到 folo_inbox -> 取消 Starred/已读 -> Obsidian 批注 -> 新建 Knowledge/Output 衍生条目`。
+`Archive 原文 + 我的笔记 -> 新建 Knowledge/Output 衍生条目 -> 原文保持 Archive`。
 
 ## 备份恢复
 
-`停止原本运行的 WeRSS -> 原子打包 data + .env -> 恢复原状态 -> 独立目录解压 -> SQLite integrity -> 不同 project/端口启动 -> 关闭测试实例`。
+`停止 WeRSS/Readeck -> 打包两套数据/API Token/实际同步状态 -> 恢复原状态 -> 独立端口启动 -> 验证 Feed、用户、文章、收藏、批注`。
 
 ## 失败诊断
 
-先确认 Atom 是否更新；只有 Atom 已更新而 Folo 未显示时，才归类为 Folo 刷新问题。
+依次判断：WeRSS 是否有文章、正文是否完整、Readeck 是否入库、文章是否收藏/高亮、同步 LaunchAgent 是否退出 0。

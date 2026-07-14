@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.summer.wechat-rss-cloudflared</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/summer/.local/bin/cloudflared</string>
+    <string>--no-autoupdate</string>
+    <string>--config</string>
+    <string>/Users/summer/.cloudflared/wechat-rss.yml</string>
+    <string>tunnel</string>
+    <string>run</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/tmp/wechat-rss-cloudflared.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/wechat-rss-cloudflared.err</string>
+  <key>ProcessType</key>
+  <string>Background</string>
+</dict>
+</plist>

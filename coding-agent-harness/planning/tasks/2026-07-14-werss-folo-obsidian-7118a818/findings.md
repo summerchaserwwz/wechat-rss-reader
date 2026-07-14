@@ -27,6 +27,27 @@
 - 设置确认：`设置 → 通用 → 语言` 当前值为“简体中文”；界面语言不会翻译第三方英文 Feed 原文。Folo 有收藏/Starred，但当前链路不把它当作持久文本划线或批注系统，永久高亮继续使用 Obsidian Markdown `==...==`。
 - 登录后确认：账户当前是 Free；`设置 → 集成 → Obsidian` 的启用开关不可用，计划表同时显示 Free 不包含“第三方集成”和“私有订阅”。因此随机 Feed 不能在 Free 下按既定安全模型直接批量加入；无缝一键保存和私密订阅都需要 Basic 或更高计划。
 
+### Folo 主链路被 Readeck 取代
+
+- 用户明确不希望为核心收藏/入库能力持续付费。
+- 已部署开源 Readeck 0.22.3 固定摘要；容器原生 `aarch64`，仅绑定 `127.0.0.1:8002`，界面为简体中文。
+- 当前 WeRSS 94 篇文章中 90 篇正文完整，已全部进入 Readeck；4 篇因正文未就绪跳过。
+- Readeck 实测支持收藏、正文选择高亮和高亮批注；同步器把高亮导出为 `==...==`，批注同时出现在摘录区与原文脚注。
+- 因此 Folo/Tailscale 退出主链路，只保留可选兼容能力。
+
+### Readeck -> Obsidian 人工区保护通过真实验证
+
+- 真实文章《Prompt Engineering 已死，任务合同当立》已收藏，并创建一条高亮和批注。
+- Obsidian 文件使用“发布日期-标题--短 ID”命名；顶部人工笔记填入五条判断。
+- 重新同步后日志为 `Obsidian 入选 1 篇，更新 0 篇`，同步前后 SHA-256 完全一致。
+- 同步器只刷新 managed markers 之间的内容，并保留人工 frontmatter 字段。
+
+### WeRSS 调度从两小时缩短到每小时
+
+- 当前任务名为“公众号每小时自动更新”，Cron `17 * * * *`，状态启用。
+- 修改前短暂停止 WeRSS 并创建独立 SQLite 备份，修改后容器恢复 healthy。
+- 微信没有 webhook；每小时抓取 + 5 分钟同步是当前安全近实时上限，不应宣传为秒级实时。
+
 ### Cloudflare 可替代 Tailscale Funnel
 
 - 发现：用户 Cloudflare 账户管理 `sumerchaser.top`，已有一个离线的 `sumerchaser-knowledge-gate` Tunnel，属于其他用途且不应复用。稳定方案可新建独立 `wechat-rss` Tunnel，将 `rss.sumerchaser.top` 指向本机 Caddy `127.0.0.1:8080`。
@@ -65,15 +86,23 @@
 - 安全残余：普通 `host-ingress` bridge 同时赋予 Caddy 出站与 `host.docker.internal` 可达性，并非单纯的 ingress-only 网络。当前 Caddyfile 没有用户可控上游，且该网络没有 WeRSS；这是 P2 深防御残余，不改变公网路由白名单。
 - HEAD 兼容：WeRSS 的 Atom 端点对原生 HEAD 返回 `405`；Caddy 只在已通过随机前缀和 `.atom` 白名单的 GET/HEAD 路由内把上游方法设为 GET，使公网 HEAD 返回元数据且不放宽其他路径。
 
+### WeRSS 与 Readeck 出网网络必须隔离
+
+- 初版 Readeck Compose 复用了 WeRSS 的普通 `internet` bridge，导致两个服务可在 Docker 内直接互访。
+- 两者都需要出网，但没有业务理由互相访问；最终改为 `werss-internet` 与 `readeck-internet` 两条独立 bridge。
+- WeRSS 只通过 `feed-proxy` 被 RSS Caddy 访问；Readeck 只通过 `reading` 被 Reader Caddy 访问。
+
 ## 技术决策
 
 | 决策 | 选择 | 原因 | 替代方案 | 状态 |
 | --- | --- | --- | --- | --- |
 | WeRSS 浏览器 | WebKit | 与固定镜像实际能力一致 | Firefox（当前不可用） | accepted |
-| 公网边界 | Caddy `.atom` matcher + 随机前缀 + Funnel | 最小暴露面 | 公开 WeRSS / VPN-only | accepted |
+| 兼容 RSS 公网边界 | Caddy `.atom` matcher + 随机前缀 | 保留其他 RSS 阅读器兼容能力，但不再是主链路 | 公开 WeRSS | accepted-optional |
 | 网络 | Caddy 使用 host-ingress 发布回环端口并通过内部 feed-proxy 访问 WeRSS；WeRSS 额外使用 internet | Docker Desktop 对仅 internal 网络不建立端口发布；仍保持服务隔离与回环绑定 | 将 feed-proxy 改为非 internal | accepted |
 | SECRET_KEY | 由 WeRSS 生成到 `data/.secret_key` | 减少日志中的环境秘密 | 注入 `.env` | accepted |
-| 入库 | Folo Basic Obsidian 集成为主，Clipper 备用 | 不依赖未执行的 `EXPORT_MARKDOWN` | WeRSS 自动导出 | accepted |
+| 阅读器 | 自托管 Readeck | 免费开源，支持收藏、高亮、批注和全文库 | Folo Basic | accepted |
+| 入库 | 自有 reading-sync API/Markdown 桥接 | 可测试、幂等、保护人工区，不依赖付费集成 | Folo/Clipper | accepted |
+| Readeck 公网 | 独立 Cloudflare Tunnel + Reader Caddy | 手机可用且不暴露 WeRSS；匿名 API 仍 401 | Tailscale Funnel / 直接公网端口 | accepted-pending-live |
 | Vault 层级 | Archive processed source inbox | 符合 SummerOS 晋升链路 | 直接 Knowledge | accepted |
 | 图片 | v1 不自动本地化 | 避免附件污染 | 全量下载 | accepted |
 
@@ -83,5 +112,5 @@
 | --- | --- | --- | --- |
 | 是否拥有公众号运营权限？ | 已确认；WeRSS 显示已授权且 Token 有效 | user | done |
 | Docker 协议/权限是否完成？ | App 安装后需用户操作 | user | 本机 smoke 前 |
-| Funnel 首次批准是否完成？ | 尚未 | user | 公网 smoke 前 |
-| Folo 是否稳定？ | 需 72 小时和 7 天 | user | Basic 购买前 |
+| Cloudflare Tunnel 是否完成？ | 本机代理与脚本完成；账号授权/DNS 待 action-time 确认 | user + coordinator | 公网 smoke 前 |
+| Readeck 是否稳定？ | 本机 90 篇和真实高亮样本通过；72 小时/7 天待观察 | user + coordinator | 完成判断前 |

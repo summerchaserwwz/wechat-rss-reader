@@ -1,0 +1,12 @@
+# 实际文件由 scripts/configure-cloudflare-tunnel.sh 写入：
+# ~/.cloudflared/wechat-rss.yml
+tunnel: replace-with-tunnel-uuid
+credentials-file: /Users/summer/.cloudflared/replace-with-tunnel-uuid.json
+
+ingress:
+  - hostname: reader.sumerchaser.top
+    service: http://127.0.0.1:8082
+    originRequest:
+      httpHostHeader: reader.sumerchaser.top
+      connectTimeout: 10s
+  - service: http_status:404
