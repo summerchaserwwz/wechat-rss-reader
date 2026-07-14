@@ -25,6 +25,13 @@
 - 影响：先免费 72 小时/7 天观察，再决定 Basic；批注留在 Obsidian。
 - 运行时确认：未登录的新安装会展示 `AI`、`Developer`、`Games`、`News`、`Podcasts`、`Science` 等英文示例目录和公开 Feed；它们不是用户订阅，也不是 WeRSS 生成。Folo 导航与登录流程已随系统显示中文，英文标题来自示例 Feed 内容。
 - 设置确认：`设置 → 通用 → 语言` 当前值为“简体中文”；界面语言不会翻译第三方英文 Feed 原文。Folo 有收藏/Starred，但当前链路不把它当作持久文本划线或批注系统，永久高亮继续使用 Obsidian Markdown `==...==`。
+- 登录后确认：账户当前是 Free；`设置 → 集成 → Obsidian` 的启用开关不可用，计划表同时显示 Free 不包含“第三方集成”和“私有订阅”。因此随机 Feed 不能在 Free 下按既定安全模型直接批量加入；无缝一键保存和私密订阅都需要 Basic 或更高计划。
+
+### Cloudflare 可替代 Tailscale Funnel
+
+- 发现：用户 Cloudflare 账户管理 `sumerchaser.top`，已有一个离线的 `sumerchaser-knowledge-gate` Tunnel，属于其他用途且不应复用。稳定方案可新建独立 `wechat-rss` Tunnel，将 `rss.sumerchaser.top` 指向本机 Caddy `127.0.0.1:8080`。
+- 安全边界：Cloudflare 只负责把 HTTPS 流量送到 Caddy；Caddy 仍只放行随机前缀下的 `GET/HEAD /feed/*.atom`，根路径、管理端、API 和其他方法继续 404。不能启用 Cloudflare Access 登录页，因为 Folo 云端抓取无法交互认证。
+- 本机准备：已安装 `cloudflared` 2026.7.1 官方 arm64 签名二进制。创建 Tunnel、DNS 路由和持久账户授权属于外部权限变更，需用户即时确认后执行。
 
 ### Obsidian Base 与 Folo 字段
 
