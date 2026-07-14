@@ -1,5 +1,11 @@
 # 关键流程
 
+Context Doc Type: critical-flows
+Owner: coordinator
+Source Evidence: `README.md`; `compose.yaml`; `scripts/`; task findings
+Last Verified: 2026-07-14
+Confidence: high
+
 ## 启动
 
 `init-secrets -> Docker 首次启动 -> compose pull/up -> verify --local -> Chrome 登录/扫码`。

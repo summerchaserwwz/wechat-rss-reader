@@ -1,5 +1,11 @@
 # 外部集成契约
 
+Context Doc Type: integrations-index
+Owner: coordinator
+Source Evidence: official WeRSS/Folo/Tailscale docs and local status
+Last Verified: 2026-07-14
+Confidence: medium
+
 ## 微信公众平台
 
 - 资格：必须拥有公众号/服务号运营权限。

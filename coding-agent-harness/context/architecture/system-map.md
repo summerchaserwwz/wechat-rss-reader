@@ -2,6 +2,7 @@
 
 Context Doc Type: system-map
 Owner: coordinator
+Source Evidence: `compose.yaml`; `Caddyfile`; `README.md`; SummerOS reading files
 Last Verified: 2026-07-14
 Confidence: high
 

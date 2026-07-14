@@ -1,5 +1,11 @@
 # 代码库地图
 
+Context Doc Type: codebase-map
+Owner: coordinator
+Source Evidence: repository file tree and current task diff
+Last Verified: 2026-07-14
+Confidence: high
+
 | Path | Responsibility |
 | --- | --- |
 | `compose.yaml` | 镜像、端口、环境、持久化、健康和日志 |

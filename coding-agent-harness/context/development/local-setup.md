@@ -2,8 +2,9 @@
 
 Context Doc Type: local-setup
 Owner: coordinator
+Source Evidence: local macOS/app inspection; `README.md`; scripts
 Last Verified: 2026-07-14
-Confidence: partial until Docker first-run gate
+Confidence: medium
 
 | Task | Command | Expected Result |
 | --- | --- | --- |
