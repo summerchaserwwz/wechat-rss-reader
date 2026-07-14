@@ -1,0 +1,526 @@
+{
+  "schemaVersion": "template-projections/v1",
+  "generatedAt": "2026-07-14T01:43:59.848Z",
+  "entries": [
+    {
+      "destination": "AGENTS.md",
+      "source": "templates-zh-CN/AGENTS.md.template",
+      "ownership": "package-template-pristine",
+      "renderedSha256": "9ae0602bc6fc0e145c1eb4b7d2787a3e48d6287897d3979d2c4b314c53a5b664",
+      "sourceSha256": "488742394d17218075287a49d71a40e7b1424e991c3d6e73b230463316a4593f",
+      "paths": {
+        "harnessRoot": "coding-agent-harness",
+        "planningRoot": "coding-agent-harness/planning",
+        "tasksRoot": "coding-agent-harness/planning/tasks",
+        "modulesRoot": "coding-agent-harness/planning/modules",
+        "externalRoot": "coding-agent-harness/planning/external",
+        "governanceRoot": "coding-agent-harness/governance",
+        "generatedRoot": "coding-agent-harness/governance/generated",
+        "regressionRoot": "coding-agent-harness/governance/regression",
+        "ledgerPath": "coding-agent-harness/governance/generated/Harness-Ledger.md",
+        "closeoutIndexPath": "coding-agent-harness/governance/generated/Closeout-Index.md"
+      },
+      "updatedAt": "2026-07-14T01:43:59.838Z"
+    },
+    {
+      "destination": "CLAUDE.md",
+      "source": "templates-zh-CN/CLAUDE.md.template",
+      "ownership": "package-template-pristine",
+      "renderedSha256": "e6102aea1bdb8d957e344f82b2d69693bbccbd9d8aaa8a1fb894ecfbc4523737",
+      "sourceSha256": "8a4abcde3c2c3fdcff95cb8f2c777369d63d3c0d47abff724901f6ab08f12e46",
+      "paths": {
+        "harnessRoot": "coding-agent-harness",
+        "planningRoot": "coding-agent-harness/planning",
+        "tasksRoot": "coding-agent-harness/planning/tasks",
+        "modulesRoot": "coding-agent-harness/planning/modules",
+        "externalRoot": "coding-agent-harness/planning/external",
+        "governanceRoot": "coding-agent-harness/governance",
+        "generatedRoot": "coding-agent-harness/governance/generated",
+        "regressionRoot": "coding-agent-harness/governance/regression",
+        "ledgerPath": "coding-agent-harness/governance/generated/Harness-Ledger.md",
+        "closeoutIndexPath": "coding-agent-harness/governance/generated/Closeout-Index.md"
+      },
+      "updatedAt": "2026-07-14T01:43:59.839Z"
+    },
+    {
+      "destination": "coding-agent-harness/context/architecture/Architecture-SSoT.md",
+      "source": "templates-zh-CN/architecture/Architecture-SSoT.md",
+      "ownership": "package-template-pristine",
+      "renderedSha256": "420df9aa838f908036a48106c166ea18e1cfea450438fdd1918a78aaac65b3ee",
+      "sourceSha256": "420df9aa838f908036a48106c166ea18e1cfea450438fdd1918a78aaac65b3ee",
+      "paths": {
+        "harnessRoot": "coding-agent-harness",
+        "planningRoot": "coding-agent-harness/planning",
+        "tasksRoot": "coding-agent-harness/planning/tasks",
+        "modulesRoot": "coding-agent-harness/planning/modules",
+        "externalRoot": "coding-agent-harness/planning/external",
+        "governanceRoot": "coding-agent-harness/governance",
+        "generatedRoot": "coding-agent-harness/governance/generated",
+        "regressionRoot": "coding-agent-harness/governance/regression",
+        "ledgerPath": "coding-agent-harness/governance/generated/Harness-Ledger.md",
+        "closeoutIndexPath": "coding-agent-harness/governance/generated/Closeout-Index.md"
+      },
+      "updatedAt": "2026-07-14T01:43:59.840Z"
+    },
+    {
+      "destination": "coding-agent-harness/context/architecture/critical-flows.md",
+      "source": "templates-zh-CN/architecture/critical-flows.md",
+      "ownership": "package-template-pristine",
+      "renderedSha256": "991b881c4eec2b53b093c2cd41ae5cc6d7378a1d54b605e76ab9069f4410c681",
+      "sourceSha256": "991b881c4eec2b53b093c2cd41ae5cc6d7378a1d54b605e76ab9069f4410c681",
+      "paths": {
+        "harnessRoot": "coding-agent-harness",
+        "planningRoot": "coding-agent-harness/planning",
+        "tasksRoot": "coding-agent-harness/planning/tasks",
+        "modulesRoot": "coding-agent-harness/planning/modules",
+        "externalRoot": "coding-agent-harness/planning/external",
+        "governanceRoot": "coding-agent-harness/governance",
+        "generatedRoot": "coding-agent-harness/governance/generated",
+        "regressionRoot": "coding-agent-harness/governance/regression",
+        "ledgerPath": "coding-agent-harness/governance/generated/Harness-Ledger.md",
+        "closeoutIndexPath": "coding-agent-harness/governance/generated/Closeout-Index.md"
+      },
+      "updatedAt": "2026-07-14T01:43:59.842Z"
+    },
+    {
+      "destination": "coding-agent-harness/context/architecture/local-repo-context.md",
+      "source": "templates-zh-CN/architecture/local-repo-context.md",
+      "ownership": "package-template-pristine",
+      "renderedSha256": "c0745d5ff6c37ecf303e9dd50940a923e62e5fe4c36ea5c912ce47e5b00a4ad7",
+      "sourceSha256": "c0745d5ff6c37ecf303e9dd50940a923e62e5fe4c36ea5c912ce47e5b00a4ad7",
+      "paths": {
+        "harnessRoot": "coding-agent-harness",
+        "planningRoot": "coding-agent-harness/planning",
+        "tasksRoot": "coding-agent-harness/planning/tasks",
+        "modulesRoot": "coding-agent-harness/planning/modules",
+        "externalRoot": "coding-agent-harness/planning/external",
+        "governanceRoot": "coding-agent-harness/governance",
+        "generatedRoot": "coding-agent-harness/governance/generated",
+        "regressionRoot": "coding-agent-harness/governance/regression",
+        "ledgerPath": "coding-agent-harness/governance/generated/Harness-Ledger.md",
+        "closeoutIndexPath": "coding-agent-harness/governance/generated/Closeout-Index.md"
+      },
+      "updatedAt": "2026-07-14T01:43:59.840Z"
+    },
+    {
+      "destination": "coding-agent-harness/context/architecture/README.md",
+      "source": "templates-zh-CN/architecture/README.md",
+      "ownership": "package-template-pristine",
+      "renderedSha256": "3f842944d56f870666df7cd5171cbde7b0b3d016d70bc334a6ab8e3692fc96b7",
+      "sourceSha256": "1b0ae17e8e87ea66c25f8e75bf2356c7ad37519d68dd81124d4eedfd0af3d2c6",
+      "paths": {
+        "harnessRoot": "coding-agent-harness",
+        "planningRoot": "coding-agent-harness/planning",
+        "tasksRoot": "coding-agent-harness/planning/tasks",
+        "modulesRoot": "coding-agent-harness/planning/modules",
+        "externalRoot": "coding-agent-harness/planning/external",
+        "governanceRoot": "coding-agent-harness/governance",
+        "generatedRoot": "coding-agent-harness/governance/generated",
+        "regressionRoot": "coding-agent-harness/governance/regression",
+        "ledgerPath": "coding-agent-harness/governance/generated/Harness-Ledger.md",
+        "closeoutIndexPath": "coding-agent-harness/governance/generated/Closeout-Index.md"
+      },
+      "updatedAt": "2026-07-14T01:43:59.839Z"
+    },
+    {
+      "destination": "coding-agent-harness/context/architecture/service-catalog.md",
+      "source": "templates-zh-CN/architecture/service-catalog.md",
+      "ownership": "package-template-pristine",
+      "renderedSha256": "92c3b3c8e6b2ef85761c3b97e96c0de23f5c60b81578f3362cf04f7a059c60e3",
+      "sourceSha256": "d924b8f871d86d240a4addfd786fa798d48e6e76f3bb9d0d2f03760ef4801de5",
+      "paths": {
+        "harnessRoot": "coding-agent-harness",
+        "planningRoot": "coding-agent-harness/planning",
+        "tasksRoot": "coding-agent-harness/planning/tasks",
+        "modulesRoot": "coding-agent-harness/planning/modules",
+        "externalRoot": "coding-agent-harness/planning/external",
+        "governanceRoot": "coding-agent-harness/governance",
+        "generatedRoot": "coding-agent-harness/governance/generated",
+        "regressionRoot": "coding-agent-harness/governance/regression",
+        "ledgerPath": "coding-agent-harness/governance/generated/Harness-Ledger.md",
+        "closeoutIndexPath": "coding-agent-harness/governance/generated/Closeout-Index.md"
+      },
+      "updatedAt": "2026-07-14T01:43:59.841Z"
+    },
+    {
+      "destination": "coding-agent-harness/context/architecture/services/_service-template.md",
+      "source": "templates-zh-CN/architecture/services/service-template.md",
+      "ownership": "package-template-pristine",
+      "renderedSha256": "ad106d6adf5ed031d5261bc95b183ea4eceb5d3bfe970c2168842ec9fdd34616",
+      "sourceSha256": "b2a543c04d6bac44450d3d58767ca8d2ea73043e8418b365972e46a739ff00ef",
+      "paths": {
+        "harnessRoot": "coding-agent-harness",
+        "planningRoot": "coding-agent-harness/planning",
+        "tasksRoot": "coding-agent-harness/planning/tasks",
+        "modulesRoot": "coding-agent-harness/planning/modules",
+        "externalRoot": "coding-agent-harness/planning/external",
+        "governanceRoot": "coding-agent-harness/governance",
+        "generatedRoot": "coding-agent-harness/governance/generated",
+        "regressionRoot": "coding-agent-harness/governance/regression",
+        "ledgerPath": "coding-agent-harness/governance/generated/Harness-Ledger.md",
+        "closeoutIndexPath": "coding-agent-harness/governance/generated/Closeout-Index.md"
+      },
+      "updatedAt": "2026-07-14T01:43:59.842Z"
+    },
+    {
+      "destination": "coding-agent-harness/context/architecture/system-map.md",
+      "source": "templates-zh-CN/architecture/system-map.md",
+      "ownership": "package-template-pristine",
+      "renderedSha256": "aec884e3b51cdac6ca25bd741b489b75fcd92c98ac14c716444bf66f7f8aaa71",
+      "sourceSha256": "aec884e3b51cdac6ca25bd741b489b75fcd92c98ac14c716444bf66f7f8aaa71",
+      "paths": {
+        "harnessRoot": "coding-agent-harness",
+        "planningRoot": "coding-agent-harness/planning",
+        "tasksRoot": "coding-agent-harness/planning/tasks",
+        "modulesRoot": "coding-agent-harness/planning/modules",
+        "externalRoot": "coding-agent-harness/planning/external",
+        "governanceRoot": "coding-agent-harness/governance",
+        "generatedRoot": "coding-agent-harness/governance/generated",
+        "regressionRoot": "coding-agent-harness/governance/regression",
+        "ledgerPath": "coding-agent-harness/governance/generated/Harness-Ledger.md",
+        "closeoutIndexPath": "coding-agent-harness/governance/generated/Closeout-Index.md"
+      },
+      "updatedAt": "2026-07-14T01:43:59.841Z"
+    },
+    {
+      "destination": "coding-agent-harness/context/development/codebase-map.md",
+      "source": "templates-zh-CN/development/codebase-map.md",
+      "ownership": "package-template-pristine",
+      "renderedSha256": "07b9e4ef0add1a6f8d3a8385bf4b262b23f2e9eb07706924095a395ff66ef9cb",
+      "sourceSha256": "07b9e4ef0add1a6f8d3a8385bf4b262b23f2e9eb07706924095a395ff66ef9cb",
+      "paths": {
+        "harnessRoot": "coding-agent-harness",
+        "planningRoot": "coding-agent-harness/planning",
+        "tasksRoot": "coding-agent-harness/planning/tasks",
+        "modulesRoot": "coding-agent-harness/planning/modules",
+        "externalRoot": "coding-agent-harness/planning/external",
+        "governanceRoot": "coding-agent-harness/governance",
+        "generatedRoot": "coding-agent-harness/governance/generated",
+        "regressionRoot": "coding-agent-harness/governance/regression",
+        "ledgerPath": "coding-agent-harness/governance/generated/Harness-Ledger.md",
+        "closeoutIndexPath": "coding-agent-harness/governance/generated/Closeout-Index.md"
+      },
+      "updatedAt": "2026-07-14T01:43:59.843Z"
+    },
+    {
+      "destination": "coding-agent-harness/context/development/cross-repo-debugging.md",
+      "source": "templates-zh-CN/development/cross-repo-debugging.md",
+      "ownership": "package-template-pristine",
+      "renderedSha256": "c58e671db3280d4b2c11eab95bf39849b34796dcb4fdc3e9a8fbf6660a30404d",
+      "sourceSha256": "af700a57f744ef7b59e8701efe9cef2e09fb593d212c47708f4200d38249076d",
+      "paths": {
+        "harnessRoot": "coding-agent-harness",
+        "planningRoot": "coding-agent-harness/planning",
+        "tasksRoot": "coding-agent-harness/planning/tasks",
+        "modulesRoot": "coding-agent-harness/planning/modules",
+        "externalRoot": "coding-agent-harness/planning/external",
+        "governanceRoot": "coding-agent-harness/governance",
+        "generatedRoot": "coding-agent-harness/governance/generated",
+        "regressionRoot": "coding-agent-harness/governance/regression",
+        "ledgerPath": "coding-agent-harness/governance/generated/Harness-Ledger.md",
+        "closeoutIndexPath": "coding-agent-harness/governance/generated/Closeout-Index.md"
+      },
+      "updatedAt": "2026-07-14T01:43:59.844Z"
+    },
+    {
+      "destination": "coding-agent-harness/context/development/external-context/_service-template.md",
+      "source": "templates-zh-CN/development/external-context/service-template.md",
+      "ownership": "package-template-pristine",
+      "renderedSha256": "b18b2dd835fa8b07b6604407ca0ae4d685355cebca0120006a4fe372fb67f3ed",
+      "sourceSha256": "b85bffcad0a014b881e407d9d6f38aa146264f2fb014d3dd6416d09be4fc06e6",
+      "paths": {
+        "harnessRoot": "coding-agent-harness",
+        "planningRoot": "coding-agent-harness/planning",
+        "tasksRoot": "coding-agent-harness/planning/tasks",
+        "modulesRoot": "coding-agent-harness/planning/modules",
+        "externalRoot": "coding-agent-harness/planning/external",
+        "governanceRoot": "coding-agent-harness/governance",
+        "generatedRoot": "coding-agent-harness/governance/generated",
+        "regressionRoot": "coding-agent-harness/governance/regression",
+        "ledgerPath": "coding-agent-harness/governance/generated/Harness-Ledger.md",
+        "closeoutIndexPath": "coding-agent-harness/governance/generated/Closeout-Index.md"
+      },
+      "updatedAt": "2026-07-14T01:43:59.843Z"
+    },
+    {
+      "destination": "coding-agent-harness/context/development/external-source-packs/_digest-template.md",
+      "source": "templates-zh-CN/development/external-source-packs/digest-template.md",
+      "ownership": "package-template-pristine",
+      "renderedSha256": "84d0c4dc8392d79e54cac1f33292d37aa19a767061f7363097538f0a01181607",
+      "sourceSha256": "84d0c4dc8392d79e54cac1f33292d37aa19a767061f7363097538f0a01181607",
+      "paths": {
+        "harnessRoot": "coding-agent-harness",
+        "planningRoot": "coding-agent-harness/planning",
+        "tasksRoot": "coding-agent-harness/planning/tasks",
+        "modulesRoot": "coding-agent-harness/planning/modules",
+        "externalRoot": "coding-agent-harness/planning/external",
+        "governanceRoot": "coding-agent-harness/governance",
+        "generatedRoot": "coding-agent-harness/governance/generated",
+        "regressionRoot": "coding-agent-harness/governance/regression",
+        "ledgerPath": "coding-agent-harness/governance/generated/Harness-Ledger.md",
+        "closeoutIndexPath": "coding-agent-harness/governance/generated/Closeout-Index.md"
+      },
+      "updatedAt": "2026-07-14T01:43:59.844Z"
+    },
+    {
+      "destination": "coding-agent-harness/context/development/external-source-packs/README.md",
+      "source": "templates-zh-CN/development/external-source-packs/README.md",
+      "ownership": "package-template-pristine",
+      "renderedSha256": "0ac3198c03732bbc9ffc72815e2ab8042ca72ed7ac0bf4d8dccbf98728e4244f",
+      "sourceSha256": "c515758eb0a9eb4a9c092809cad6d8217aaebf9e582336f822b1e1e8101b3ed7",
+      "paths": {
+        "harnessRoot": "coding-agent-harness",
+        "planningRoot": "coding-agent-harness/planning",
+        "tasksRoot": "coding-agent-harness/planning/tasks",
+        "modulesRoot": "coding-agent-harness/planning/modules",
+        "externalRoot": "coding-agent-harness/planning/external",
+        "governanceRoot": "coding-agent-harness/governance",
+        "generatedRoot": "coding-agent-harness/governance/generated",
+        "regressionRoot": "coding-agent-harness/governance/regression",
+        "ledgerPath": "coding-agent-harness/governance/generated/Harness-Ledger.md",
+        "closeoutIndexPath": "coding-agent-harness/governance/generated/Closeout-Index.md"
+      },
+      "updatedAt": "2026-07-14T01:43:59.843Z"
+    },
+    {
+      "destination": "coding-agent-harness/context/development/local-setup.md",
+      "source": "templates-zh-CN/development/local-setup.md",
+      "ownership": "package-template-pristine",
+      "renderedSha256": "5d4d32f811831512b1b65865935c92c527a36f48ca0d11f471b3d44577d50a5c",
+      "sourceSha256": "5d4d32f811831512b1b65865935c92c527a36f48ca0d11f471b3d44577d50a5c",
+      "paths": {
+        "harnessRoot": "coding-agent-harness",
+        "planningRoot": "coding-agent-harness/planning",
+        "tasksRoot": "coding-agent-harness/planning/tasks",
+        "modulesRoot": "coding-agent-harness/planning/modules",
+        "externalRoot": "coding-agent-harness/planning/external",
+        "governanceRoot": "coding-agent-harness/governance",
+        "generatedRoot": "coding-agent-harness/governance/generated",
+        "regressionRoot": "coding-agent-harness/governance/regression",
+        "ledgerPath": "coding-agent-harness/governance/generated/Harness-Ledger.md",
+        "closeoutIndexPath": "coding-agent-harness/governance/generated/Closeout-Index.md"
+      },
+      "updatedAt": "2026-07-14T01:43:59.843Z"
+    },
+    {
+      "destination": "coding-agent-harness/context/development/README.md",
+      "source": "templates-zh-CN/development/README.md",
+      "ownership": "package-template-pristine",
+      "renderedSha256": "1c46d311f019a473330b1fde6173937e059a83f325cdb83a742c4ec3eb5fdbb4",
+      "sourceSha256": "939d83d6621df285b50be5bad8adf65b40bdab15c512296e42421a6ca73f8677",
+      "paths": {
+        "harnessRoot": "coding-agent-harness",
+        "planningRoot": "coding-agent-harness/planning",
+        "tasksRoot": "coding-agent-harness/planning/tasks",
+        "modulesRoot": "coding-agent-harness/planning/modules",
+        "externalRoot": "coding-agent-harness/planning/external",
+        "governanceRoot": "coding-agent-harness/governance",
+        "generatedRoot": "coding-agent-harness/governance/generated",
+        "regressionRoot": "coding-agent-harness/governance/regression",
+        "ledgerPath": "coding-agent-harness/governance/generated/Harness-Ledger.md",
+        "closeoutIndexPath": "coding-agent-harness/governance/generated/Closeout-Index.md"
+      },
+      "updatedAt": "2026-07-14T01:43:59.842Z"
+    },
+    {
+      "destination": "coding-agent-harness/context/development/stubs-and-mocks.md",
+      "source": "templates-zh-CN/development/stubs-and-mocks.md",
+      "ownership": "package-template-pristine",
+      "renderedSha256": "6ca8e22911a7f5c194f06bad2d8d3fb9d98372773a2e755048f10ce9ce5fa3ab",
+      "sourceSha256": "6ca8e22911a7f5c194f06bad2d8d3fb9d98372773a2e755048f10ce9ce5fa3ab",
+      "paths": {
+        "harnessRoot": "coding-agent-harness",
+        "planningRoot": "coding-agent-harness/planning",
+        "tasksRoot": "coding-agent-harness/planning/tasks",
+        "modulesRoot": "coding-agent-harness/planning/modules",
+        "externalRoot": "coding-agent-harness/planning/external",
+        "governanceRoot": "coding-agent-harness/governance",
+        "generatedRoot": "coding-agent-harness/governance/generated",
+        "regressionRoot": "coding-agent-harness/governance/regression",
+        "ledgerPath": "coding-agent-harness/governance/generated/Harness-Ledger.md",
+        "closeoutIndexPath": "coding-agent-harness/governance/generated/Closeout-Index.md"
+      },
+      "updatedAt": "2026-07-14T01:43:59.844Z"
+    },
+    {
+      "destination": "coding-agent-harness/context/integrations/_api-contract-template.md",
+      "source": "templates-zh-CN/integrations/api-contract.md",
+      "ownership": "package-template-pristine",
+      "renderedSha256": "21bd5a2567721ce78683f5e855a28e5b748e31d858a7a251c09115c5bde5bea1",
+      "sourceSha256": "4d709f8cf2a8292b3eea4ce86d9368c5396563363fe2d75eae0ac78a54f7bae9",
+      "paths": {
+        "harnessRoot": "coding-agent-harness",
+        "planningRoot": "coding-agent-harness/planning",
+        "tasksRoot": "coding-agent-harness/planning/tasks",
+        "modulesRoot": "coding-agent-harness/planning/modules",
+        "externalRoot": "coding-agent-harness/planning/external",
+        "governanceRoot": "coding-agent-harness/governance",
+        "generatedRoot": "coding-agent-harness/governance/generated",
+        "regressionRoot": "coding-agent-harness/governance/regression",
+        "ledgerPath": "coding-agent-harness/governance/generated/Harness-Ledger.md",
+        "closeoutIndexPath": "coding-agent-harness/governance/generated/Closeout-Index.md"
+      },
+      "updatedAt": "2026-07-14T01:43:59.845Z"
+    },
+    {
+      "destination": "coding-agent-harness/context/integrations/_event-contract-template.md",
+      "source": "templates-zh-CN/integrations/event-contract.md",
+      "ownership": "package-template-pristine",
+      "renderedSha256": "6bbca528e22f35f9b3f94451ab16e860b0a54fb498d6260c0cc170fc75d7d62d",
+      "sourceSha256": "02586f4e1b461897da08ee6d68a71f2105bc463417c72b215431f351fcdf46a5",
+      "paths": {
+        "harnessRoot": "coding-agent-harness",
+        "planningRoot": "coding-agent-harness/planning",
+        "tasksRoot": "coding-agent-harness/planning/tasks",
+        "modulesRoot": "coding-agent-harness/planning/modules",
+        "externalRoot": "coding-agent-harness/planning/external",
+        "governanceRoot": "coding-agent-harness/governance",
+        "generatedRoot": "coding-agent-harness/governance/generated",
+        "regressionRoot": "coding-agent-harness/governance/regression",
+        "ledgerPath": "coding-agent-harness/governance/generated/Harness-Ledger.md",
+        "closeoutIndexPath": "coding-agent-harness/governance/generated/Closeout-Index.md"
+      },
+      "updatedAt": "2026-07-14T01:43:59.845Z"
+    },
+    {
+      "destination": "coding-agent-harness/context/integrations/_webhook-contract-template.md",
+      "source": "templates-zh-CN/integrations/webhook-contract.md",
+      "ownership": "package-template-pristine",
+      "renderedSha256": "d5be6368ce35d464d4866146e9cdeddd07bc1687efaf04e3a886badffa2d3665",
+      "sourceSha256": "9f18d5563e811f454837f5d3264667fba40e0a887fc5d10e495241c8ad861a77",
+      "paths": {
+        "harnessRoot": "coding-agent-harness",
+        "planningRoot": "coding-agent-harness/planning",
+        "tasksRoot": "coding-agent-harness/planning/tasks",
+        "modulesRoot": "coding-agent-harness/planning/modules",
+        "externalRoot": "coding-agent-harness/planning/external",
+        "governanceRoot": "coding-agent-harness/governance",
+        "generatedRoot": "coding-agent-harness/governance/generated",
+        "regressionRoot": "coding-agent-harness/governance/regression",
+        "ledgerPath": "coding-agent-harness/governance/generated/Harness-Ledger.md",
+        "closeoutIndexPath": "coding-agent-harness/governance/generated/Closeout-Index.md"
+      },
+      "updatedAt": "2026-07-14T01:43:59.845Z"
+    },
+    {
+      "destination": "coding-agent-harness/context/integrations/README.md",
+      "source": "templates-zh-CN/integrations/README.md",
+      "ownership": "package-template-pristine",
+      "renderedSha256": "614b0942141acd2f1866d36c3c6f2d735dc57a1075630cd58f7d712569aa2ffc",
+      "sourceSha256": "4e8f282ada918566856bab98804019a30f42f3f8ef88a9d1b3c3d9de00ee3824",
+      "paths": {
+        "harnessRoot": "coding-agent-harness",
+        "planningRoot": "coding-agent-harness/planning",
+        "tasksRoot": "coding-agent-harness/planning/tasks",
+        "modulesRoot": "coding-agent-harness/planning/modules",
+        "externalRoot": "coding-agent-harness/planning/external",
+        "governanceRoot": "coding-agent-harness/governance",
+        "generatedRoot": "coding-agent-harness/governance/generated",
+        "regressionRoot": "coding-agent-harness/governance/regression",
+        "ledgerPath": "coding-agent-harness/governance/generated/Harness-Ledger.md",
+        "closeoutIndexPath": "coding-agent-harness/governance/generated/Closeout-Index.md"
+      },
+      "updatedAt": "2026-07-14T01:43:59.844Z"
+    },
+    {
+      "destination": "coding-agent-harness/context/integrations/third-party/_vendor-template.md",
+      "source": "templates-zh-CN/integrations/third-party/vendor-template.md",
+      "ownership": "package-template-pristine",
+      "renderedSha256": "12474353f19f71ffbd1646c2bff61ab2b464def335d3a35491a0a3660e5ebf75",
+      "sourceSha256": "ae2cb067bade35d002ae3449b3fa6c3806edafd234abbac37ef3002bd322e566",
+      "paths": {
+        "harnessRoot": "coding-agent-harness",
+        "planningRoot": "coding-agent-harness/planning",
+        "tasksRoot": "coding-agent-harness/planning/tasks",
+        "modulesRoot": "coding-agent-harness/planning/modules",
+        "externalRoot": "coding-agent-harness/planning/external",
+        "governanceRoot": "coding-agent-harness/governance",
+        "generatedRoot": "coding-agent-harness/governance/generated",
+        "regressionRoot": "coding-agent-harness/governance/regression",
+        "ledgerPath": "coding-agent-harness/governance/generated/Harness-Ledger.md",
+        "closeoutIndexPath": "coding-agent-harness/governance/generated/Closeout-Index.md"
+      },
+      "updatedAt": "2026-07-14T01:43:59.845Z"
+    },
+    {
+      "destination": "coding-agent-harness/governance/regression/Cadence-Ledger.md",
+      "source": "templates-zh-CN/regression/Cadence-Ledger.md",
+      "ownership": "package-template-pristine",
+      "renderedSha256": "dc37d0eb82401087ebd8deeb913a7ebdbb90885ce9e05ca482334d70092020e0",
+      "sourceSha256": "de75679a2980958c5ce7071a2ee8dd3d6c9487664ac8952e601e848b091f1c64",
+      "paths": {
+        "harnessRoot": "coding-agent-harness",
+        "planningRoot": "coding-agent-harness/planning",
+        "tasksRoot": "coding-agent-harness/planning/tasks",
+        "modulesRoot": "coding-agent-harness/planning/modules",
+        "externalRoot": "coding-agent-harness/planning/external",
+        "governanceRoot": "coding-agent-harness/governance",
+        "generatedRoot": "coding-agent-harness/governance/generated",
+        "regressionRoot": "coding-agent-harness/governance/regression",
+        "ledgerPath": "coding-agent-harness/governance/generated/Harness-Ledger.md",
+        "closeoutIndexPath": "coding-agent-harness/governance/generated/Closeout-Index.md"
+      },
+      "updatedAt": "2026-07-14T01:43:59.846Z"
+    },
+    {
+      "destination": "coding-agent-harness/governance/regression/Regression-SSoT.md",
+      "source": "templates-zh-CN/ssot/Regression-SSoT.md",
+      "ownership": "package-template-pristine",
+      "renderedSha256": "7b27f348c74c4f1bf4e461ecb709a9636385dc32875a8494e06b9db628e82ed9",
+      "sourceSha256": "b7eccbd918978f72f013dd073a420462cea0e5aa2658ffa460c799a5ebfffca5",
+      "paths": {
+        "harnessRoot": "coding-agent-harness",
+        "planningRoot": "coding-agent-harness/planning",
+        "tasksRoot": "coding-agent-harness/planning/tasks",
+        "modulesRoot": "coding-agent-harness/planning/modules",
+        "externalRoot": "coding-agent-harness/planning/external",
+        "governanceRoot": "coding-agent-harness/governance",
+        "generatedRoot": "coding-agent-harness/governance/generated",
+        "regressionRoot": "coding-agent-harness/governance/regression",
+        "ledgerPath": "coding-agent-harness/governance/generated/Harness-Ledger.md",
+        "closeoutIndexPath": "coding-agent-harness/governance/generated/Closeout-Index.md"
+      },
+      "updatedAt": "2026-07-14T01:43:59.846Z"
+    },
+    {
+      "destination": "coding-agent-harness/governance/standards/external-source-intake-standard.md",
+      "source": "templates-zh-CN/reference/external-source-intake-standard.md",
+      "ownership": "package-template-pristine",
+      "renderedSha256": "a0a8b041e28ba9e5ecc1e9a0a990102b02512fa82423c2aca76ce64f7ec15065",
+      "sourceSha256": "756fdaf0fbcf26dd544f4f288f54103c9735b8c5934e622088ac9d20743bbc94",
+      "paths": {
+        "harnessRoot": "coding-agent-harness",
+        "planningRoot": "coding-agent-harness/planning",
+        "tasksRoot": "coding-agent-harness/planning/tasks",
+        "modulesRoot": "coding-agent-harness/planning/modules",
+        "externalRoot": "coding-agent-harness/planning/external",
+        "governanceRoot": "coding-agent-harness/governance",
+        "generatedRoot": "coding-agent-harness/governance/generated",
+        "regressionRoot": "coding-agent-harness/governance/regression",
+        "ledgerPath": "coding-agent-harness/governance/generated/Harness-Ledger.md",
+        "closeoutIndexPath": "coding-agent-harness/governance/generated/Closeout-Index.md"
+      },
+      "updatedAt": "2026-07-14T01:43:59.847Z"
+    },
+    {
+      "destination": "coding-agent-harness/governance/standards/walkthrough-template.md",
+      "source": "templates-zh-CN/walkthrough/walkthrough-template.md",
+      "ownership": "package-template-pristine",
+      "renderedSha256": "5d361b306c27d134cc21a7c98fa630e9a86e756dddae6a6d03d49a2bd8cab302",
+      "sourceSha256": "7bd1dac62028b80ffdc22c018bf911ebdf5feae05943c2c04c3cd0aa9d975a43",
+      "paths": {
+        "harnessRoot": "coding-agent-harness",
+        "planningRoot": "coding-agent-harness/planning",
+        "tasksRoot": "coding-agent-harness/planning/tasks",
+        "modulesRoot": "coding-agent-harness/planning/modules",
+        "externalRoot": "coding-agent-harness/planning/external",
+        "governanceRoot": "coding-agent-harness/governance",
+        "generatedRoot": "coding-agent-harness/governance/generated",
+        "regressionRoot": "coding-agent-harness/governance/regression",
+        "ledgerPath": "coding-agent-harness/governance/generated/Harness-Ledger.md",
+        "closeoutIndexPath": "coding-agent-harness/governance/generated/Closeout-Index.md"
+      },
+      "updatedAt": "2026-07-14T01:43:59.846Z"
+    }
+  ]
+}

@@ -2,117 +2,90 @@
 
 ## 目标
 
-[一句话说明本轮要完整收掉的主问题。只保留一个主目标。]
+完整建立并验证安全、可恢复的公众号阅读链路，或在真实人工/时间门禁处保留可恢复状态。
 
 ## 范围
 
 ### 范围内
 
-- [允许修改的目录、模块、能力面]
+- 本仓部署、脚本、文档、Harness。
+- `/Users/summer/Obsidian/SummerOS/02_Archive/02_DailyProcessed/reading` 新路径。
+- Docker/Folo App 安装准备与 Tailscale/微信/Folo 用户门禁协作。
 
 ### 范围外
 
-- [本轮明确不做的事项]
+- 自动接受法律协议、代办账号登录/付费。
+- 修改上游源码、自动公开管理端、Webhook、全量附件下载。
+- 处理 SummerOS 既有大量 dirty 状态。
 
 ### 共享文件 / 冲突风险
 
-- [可能与其他任务冲突的共享文件；如无写“无”]
+- 本仓共享配置由 coordinator 独占。
+- SummerOS 只新增 reading 路径；不提交或整理其他 dirty 文件。
 
-## 主调用入口（Primary Caller / Entry）
+## 主调用入口
 
-- 主调用方（Primary caller）：[CLI / 本地 agent / UI / API / automation / integration / 其他]
-- 本任务必须支持的入口：[列出]
-- 明确不要求的入口：[列出]
+- 主调用方：本机用户 + coordinator。
+- 必须支持：Shell、Docker Compose、Chrome/WeRSS UI、Tailscale CLI、Folo UI、Obsidian UI。
+- 不要求：公网管理 UI、自动化付费、外部 Webhook。
 
-## 执行授权（Execution Permission）
+## 执行授权
 
-- 是否允许连续执行（Continuous execution）：[allowed / not allowed]
-- 是否允许每轮后不再询问直接继续：[yes / no]
-- 是否允许启动审查 agent / 子代理：[yes / no]
-- 是否需要审查报告：[yes / no；如 yes，必须写 `review.md`]
-- 仍需人工批准的动作：
-  - [高风险操作，例如 destructive migration / production deploy / secret change]
+- Continuous execution：allowed within requested plan。
+- 每轮后直接继续：yes，直到人工/时间/高风险门禁。
+- reviewer subagent：yes，read-only。
+- 审查报告：yes，`review.md`。
+- 仍需人工批准：Docker 协议/权限、微信扫码、Tailscale 首次 Funnel、Folo 登录/付费、人工 review confirmation。
 
 ## 必需循环
 
-每一轮至少包含：
+1. 实现或配置。
+2. 静态检查。
+3. 可用时运行本机/live smoke。
+4. Confidence Challenge。
+5. 吸收 reviewer finding。
+6. 重跑证据。
+7. 更新 progress、findings、Regression。
 
-1. 实现、编辑或配置。
-2. 本地运行。
-3. 测试、冒烟或检查。
-4. 执行 Confidence Challenge。
-5. 如合同要求审查者或子代理，更新 `review.md`。
-6. 修复 findings。
-7. 重新收集证据。
-8. 重跑 Confidence Challenge，直到没有 open 重要发现。
-9. 更新 `progress.md`。
+最低要求：实现期 reviewer 无开放重要 finding；live gate 逐个有真实证据。
 
-最低循环次数或无重要发现要求：
+## 审查者合同
 
-- [例如：至少 2 轮；或自审 + 审查者均无重要发现]
-
-## 审查者 / 子代理合同（Reviewer / Subagent）
-
-- 审查者角色（Reviewer role）：[只读审查 / 改代码 worker / 测试验证者]
-- 审查范围（Reviewer scope）：[文件 / 模块 / 问题域]
-- 如果是 code-change worker：
-  - Worktree path：[路径 / 不适用]
-  - Branch：[分支 / 不适用]
-  - 任务目录：[路径 / 不适用]
-  - 交接前提交（Commit before handoff）：[yes / no / 不适用]
-  - 交接必须包含：[worktree path / branch / commit SHA / checks / residual risks]
-- Reviewer 必须报告：
-  - [缺陷]
-  - [回归]
-  - [缺失测试]
-  - [未验证假设]
-  - [`review.md` 中的重要发现或无重要发现声明]
-- Reviewer 不得：
-  - [越权改动 / 重写不相关模块 / 擅自扩大 scope]
+- 角色：只读安全/运行时/Obsidian reviewer。
+- 范围：任务文件、官方来源与本机只读状态。
+- 必须报告：缺陷、回归、缺失验证、未验证假设、material/no-finding。
+- 不得：改文件、扩大 scope、公开秘密。
 
 ## 证据
 
-完成前必需证据：
+- [x] Shell/YAML/Base 静态检查。
+- [x] 镜像摘要 ARM64 核验。
+- [x] reviewer 实现设计无开放重要发现。
+- [ ] Docker 本机 smoke。
+- [ ] Funnel live smoke。
+- [ ] 微信 3 源/36 周期。
+- [ ] Folo 72 小时/7 天。
+- [ ] Obsidian 五类样本与同名保护。
+- [ ] 真实备份恢复。
+- [ ] final review/walkthrough。
 
-- [ ] [lint / typecheck / build command]
-- [ ] [unit / integration / e2e test command]
-- [ ] [本地冒烟命令]
-- [ ] [浏览器 / UI / 人工检查]
-- [ ] [线上环境冒烟]
-- [ ] [审查者无重要发现]
-- [ ] [如要求审查，`review.md` 已完成]
-- [ ] [walkthrough / PR / 发布说明]
+## 完成条件
 
-## 完成条件（Stop Condition）
+- [ ] RG-001..RG-008 满足通过或按用户确认的降级方案关闭。
+- [ ] open P0/P1 为 0。
+- [ ] 所有人工/时间 gate 有真实 evidence。
+- [ ] walkthrough、lesson decision、Harness closeout 完成。
 
-任务只有在以下条件满足后才可停止并声明完成：
+## 暂停条件
 
-- [ ] [关键路径通过]
-- [ ] [必需测试或回归门禁通过]
-- [ ] [runtime / console / request 错误已清除，或已记录为非阻塞残余]
-- [ ] [如要求审查者，审查者无 open 重要发现]
-- [ ] [如要求审查，`review.md` 无 open P0/P1 发现]
-- [ ] [残余风险已记录，且不阻塞本轮目标]
+- [x] 人工协议、登录、扫码、批准或时间门禁出现时可暂停。
+- [ ] 目标/范围失效。
+- [ ] 无关 dirty 与目标路径冲突。
+- [ ] reviewer 发现改变方向的问题。
 
-## 暂停条件（Pause Conditions）
+## 交付物
 
-遇到以下情况必须暂停并汇报：
-
-- [ ] 目标或范围已经失效。
-- [ ] 需要高风险的产品、架构、安全或数据决策。
-- [ ] 未知的无关改动与本任务冲突。
-- [ ] 环境阻断了所有有用证据的收集。
-- [ ] 审查者发现改变了任务方向。
-
-## 交付物（Deliverables）
-
-- [ ] 代码 / 配置改动
-- [ ] 测试 / 回归证据
-- [ ] 文档更新
-- [ ] 如要求审查，`review.md` 报告
-- [ ] `progress.md` / `findings.md` 更新
-- [ ] Harness Ledger 更新
-- [ ] 收口记录
-- [ ] Lessons 反思与检查：`lesson_candidates.md` 已进入 `no-candidate-accepted` / `needs-promotion` / `promoted` / `rejected`
-- [ ] PR / commit / 发布说明
-- [ ] 残余风险摘要
+- [x] 配置、脚本、文档和 Obsidian 结构。
+- [x] L1 evidence 和 reviewer 结论。
+- [ ] L2/L3 运行证据。
+- [ ] 最终 review、walkthrough、lesson 与 closeout。

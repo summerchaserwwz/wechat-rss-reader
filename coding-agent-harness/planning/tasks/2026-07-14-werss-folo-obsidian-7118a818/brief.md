@@ -10,42 +10,46 @@
 
 ## 一句话结果
 
-用一句话说明这个任务完成后会产生什么具体结果。
+建立一个管理端仅本机可见、Atom 只读公网暴露、可在 Folo 筛选并把精选文章安全落入 SummerOS Archive 的公众号阅读系统。
 
 ## 完成后能得到什么
 
-用 100-300 字说明这个任务完成后，用户、项目或下一轮 agent 能直接拿到什么结果。
-说明这个结果能用于什么决策、交付、验证或继续开发。聚焦可用结果，不要展开实现过程，
-除非实现方式本身就是交付物。
+仓库提供固定镜像摘要的 Compose、Caddy 白名单、密钥初始化、安全验证、备份恢复、Funnel 配置和 Folo 观察脚本；本机安装 Docker/Folo，SummerOS 建立收件箱、Base 与批注模板。用户完成公众号运营者扫码、Funnel 首次批准和 Folo 时间门禁后，可在 Folo 干净浏览，在 Obsidian 高亮批注并创建 Knowledge/Output 衍生条目。
 
 ## 交付物
 
-- 可见产物：
-- 修改位置：
-- 验证证据：
+- 可见产物：根部署包、中文 README、验收文档、SummerOS reading 目录。
+- 修改位置：`/Users/summer/Documents/wechat-rss`；SummerOS 新路径 `02_Archive/02_DailyProcessed/reading`。
+- 验证证据：静态 gate、本机/公网 smoke、备份恢复、review、72 小时/7 天观察记录。
 
 ## 第一眼应该看什么
 
-写明人或下一轮 agent 打开任务后，应该先读哪些文件、证据或生成产物。
+1. `task_plan.md`
+2. `progress.md`
+3. `findings.md`
+4. 根 `README.md`
+5. `governance/regression/Regression-SSoT.md`
 
 ## 边界
 
-- 范围内：本任务允许修改的文件、行为、文档或验证内容。
-- 范围外：不能顺手塞进来的工作。
-- 停止条件：遇到不确定性、风险或缺少权限时，必须回到 coordinator 或用户确认。
+- 范围内：部署、安装准备、安全代理、运维脚本、Folo 试验流程、Obsidian 收件箱。
+- 范围外：修改 WeRSS/Folo 源码、自动下载全部图片、Webhook、公开管理端、自动付费、绕过微信/Tailscale 权限。
+- 停止条件：需要用户接受协议、扫码、登录/付费或等待时间性证据时暂停在对应门禁。
 
 ## 完成判断
 
-列出 3-5 条能证明目标结果已经达成的具体条件。完整执行计划保留在 `task_plan.md`。
+- 本机 Compose/Atom/代理安全与恢复通过。
+- 公众号运营者授权、3 个源与 36 周期有证据。
+- Funnel 公网只有随机 Atom 路径可用。
+- Folo 72 小时与 7 天稳定性通过或按规则降级。
+- Obsidian 五类样本、同名保护和提升边界通过。
 
 ## 执行合同
 
 - Owner：coordinator
-- 生命周期状态：未开始
-- 必需文件：`INDEX.md`、`task_plan.md`、`execution_strategy.md`、`visual_map.md`、
-  `progress.md`、`findings.md`、`review.md`
-- 完成条件：验证证据必须记录到 `progress.md`
+- 生命周期状态：进行中
+- 证据：必须进入 `progress.md`、`review.md` 和 Regression SSoT
 
 ## 当前下一步
 
-写明开始实现前的第一个具体动作。
+完成 Docker Desktop 首次协议/权限门禁，启动容器并运行 `scripts/verify.sh --local`。
