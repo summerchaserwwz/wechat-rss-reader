@@ -13,7 +13,7 @@ Repo Governance / CI-CD changes remain routed through their reference standards 
 | ID | Scope | Module | Task | State | Queues | Plan | Review | Lessons Check | Closeout | Residual | Updated |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | HL-YYYY-MM-DD-001 | task | none | Short operational title | planned | none | {{paths.harnessRoot}}/planning/tasks/.../task_plan.md | pending | pending | pending | none | YYYY-MM-DD |
-| HL-2026-07-14-werss-folo-obsidian-7118a818 | task | none | WeRSS Folo Obsidian 阅读系统 | planned | none | coding-agent-harness/planning/tasks/2026-07-14-werss-folo-obsidian-7118a818/task_plan.md | pending | pending | pending | task registered by CLI | 2026-07-14 |
+| HL-2026-07-14-werss-folo-obsidian-7118a818 | task | none | WeRSS Folo Obsidian 阅读系统 | active | none | coding-agent-harness/planning/tasks/2026-07-14-werss-folo-obsidian-7118a818/task_plan.md | pending | pending | pending | 开始实施部署包、本机运行时、Funnel、Folo 与 Obsidian 全链路 | 2026-07-14 |
 
 ## Field Rules
 
