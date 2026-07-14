@@ -27,6 +27,7 @@ Folo 只负责：
 2. 需要按单公众号管理时再导入 WeRSS OPML。
 3. 开启 Folo Basic 试用/订阅和桌面端 Obsidian 集成。
 4. 目标目录选 `02_Archive/02_DailyProcessed/reading/folo_inbox`。
+5. 保存后由本机后台任务自动运行 `./scripts/prepare-obsidian-inbox.py --min-age 30`，把文章整理成“日期-标题 + 我的笔记 + 原文”的同页结构；后台任务每分钟检查一次。
 
 ## 元数据约定
 
@@ -50,6 +51,7 @@ rating:
 topics: []
 promote_to: 无
 reviewed_at:
+saved_at:
 ```
 
 取值：
@@ -59,6 +61,7 @@ reviewed_at:
 - `topics`：YAML 列表。
 - `promote_to`：`无`、`Knowledge`、`Output`。
 - `reviewed_at`：完成批注时填写日期时间。
+- `saved_at`：进入收件箱的日期，由整理脚本填写。
 
 `已提升` 只能在衍生笔记真实建立并引用原文后填写。
 
@@ -68,8 +71,13 @@ reviewed_at:
 2. Starred 表示准备入库。
 3. 点击“保存到 Obsidian”，确认文件出现。
 4. 保存成功后取消 Starred、标记已读。
-5. 在 Obsidian 使用 `==高亮==` 和批注 callout。
-6. 更新人工字段。
+5. 在仓库运行 `./scripts/prepare-obsidian-inbox.py`；脚本不会覆盖同名文件，也不会重复插入笔记区。
+6. 在 Obsidian 原文中用 `==关键句==` 高亮，在顶部“我的笔记”记录判断。
+7. 更新人工字段。
+
+## Folo 中文界面
+
+Folo 的“设置 → 通用 → 语言”已是“简体中文”。首页的 `AI`、`Science`、`Developer` 和英文文章是未登录状态自带的演示订阅及其原文，不是语言设置失效，也不是 WeRSS 导入内容。登录并订阅中文公众号 Feed 后，阅读列表的标题和正文会来自公众号原文；第三方英文原文不会被界面语言自动翻译。
 
 ## Archive 与提升边界
 

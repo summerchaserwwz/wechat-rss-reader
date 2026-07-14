@@ -77,3 +77,10 @@
 - 验证结果：SQLite 有 12 个 feed、45 篇文章、1 个启用任务；已有 5 个公众号成功入库文章，聚合 Atom 输出 20 条合法 entry。其余来源等待定时任务和风控间隔继续抓取。
 - 下一步：用户明确批准 Tailscale Funnel 公网权限；批准后写入公开 `RSS_BASE_URL`、执行 RG-003，并在已登录的 Folo 中添加聚合源。
 - 证据：command:sqlite3 -readonly data/we_mp_rss.db:12 feeds、45 articles、任务已启用；command:xmllint /tmp/wechat-rss-all.atom:20 entries；screenshot:WeRSS UI:公众号列表、授权有效与自动任务配置
+
+### [2026-07-14 17:38] - 中文界面、补抓与 Obsidian 批注流
+
+- 做了什么：确认 Folo 通用设置的界面语言已经是“简体中文”，识别首页英文目录为未登录演示订阅；触发全部公众号抓取并通过任务队列跟踪实际进度；为 SummerOS 收件箱实现日期命名、同页“我的笔记 + 划线与摘录 + 原文”、人工字段补齐和不覆盖保护，并安装每 60 秒运行的本机 LaunchAgent。
+- 验证结果：Folo 设置页中文字段可见；抓取期间文章由 45 增至 83，12/12 个公众号均已有文章，队列无待处理项且最后一个公众号仍在完成正文抓取；整理器 3 个 unittest 全通过，覆盖日期重命名、幂等和同名不覆盖；LaunchAgent 运行副本位于用户本地数据目录，最近退出码为 0，规避 macOS 对 Documents 目录的后台访问限制。
+- 下一步：等待最后一个正文抓取任务自然结束；用户解锁 Mac、登录 Folo 并明确批准 Funnel 后配置公网 Feed；得到首个真实 Folo 导出样本后执行 RG-008 五类样本。
+- 证据：command:python3 -m unittest discover -s tests -v:3 tests pass；command:launchctl print gui/$UID/com.summer.wechat-rss-obsidian-inbox:last exit code 0；command:task-queue/main/status + sqlite3:83 articles/12 sources，0 pending；diff:scripts/prepare-obsidian-inbox.py:日期/批注/高亮布局和不覆盖保护

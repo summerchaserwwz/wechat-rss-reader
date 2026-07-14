@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.summer.wechat-rss-obsidian-inbox</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/python3</string>
+    <string>/Users/summer/.local/share/wechat-rss/prepare-obsidian-inbox.py</string>
+    <string>--min-age</string>
+    <string>30</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StartInterval</key>
+  <integer>60</integer>
+  <key>StandardOutPath</key>
+  <string>/tmp/wechat-rss-obsidian-inbox.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/wechat-rss-obsidian-inbox.err</string>
+</dict>
+</plist>

@@ -164,6 +164,8 @@ http://127.0.0.1:8001/feed/<公众号ID>.atom
 
 先使用免费账户，不要立即购买 Basic。
 
+Folo 当前已设置为“设置 → 通用 → 语言 → 简体中文”。未登录首页里的 `AI`、`Science`、`Developer` 和英文文章是 Folo 自带演示订阅，不是 WeRSS 内容，也不是汉化失败；登录并加入公众号 Feed 后，实际阅读内容取决于公众号原文语言。
+
 从 `.env` 读取基地址，然后在 Folo 添加：
 
 ```text
@@ -213,9 +215,10 @@ http://127.0.0.1:8001/feed/<公众号ID>.atom
 Folo 正式订阅标记为“私密关注”。保存到 Obsidian 后：
 
 1. 确认 Markdown 文件出现。
-2. 在 Folo 取消 Starred、标记已读。
-3. 在 Obsidian 补充 `reading_status`、`rating`、`topics`、`promote_to`、`reviewed_at`。
-4. 使用 `==高亮==`，并加入“我的批注”callout。
+2. 本机后台每分钟执行一次整理任务（可用 `./scripts/install-obsidian-watcher.sh` 重装）。它会按发布日期重命名，补齐人工字段，并在同一文件的原文上方加入“我的笔记”和“划线与摘录”；重复执行不会重复插入，同名目标存在时不会覆盖。需要立刻整理时也可手工运行 `./scripts/prepare-obsidian-inbox.py`。
+3. 在 Folo 取消 Starred、标记已读。
+4. 在 Obsidian 原文中使用 `==关键句==` 高亮，在顶部记录自己的判断。
+5. 补充 `reading_status`、`rating`、`topics`、`promote_to`、`reviewed_at`。
 
 原文始终留在 Archive。值得提升时，新建综合后的 Knowledge 条目或脱敏 Output 草稿，并引用原文；不要把整篇公众号文章直接移动到 Knowledge。
 

@@ -24,11 +24,18 @@
 - 发现：2026-07-13 最新稳定桌面版为 `1.11.0`，有官方 ARM64 DMG 与 SHA512；Obsidian 集成需要桌面版/Basic。Folo 不是持久批注工具。
 - 影响：先免费 72 小时/7 天观察，再决定 Basic；批注留在 Obsidian。
 - 运行时确认：未登录的新安装会展示 `AI`、`Developer`、`Games`、`News`、`Podcasts`、`Science` 等英文示例目录和公开 Feed；它们不是用户订阅，也不是 WeRSS 生成。Folo 导航与登录流程已随系统显示中文，英文标题来自示例 Feed 内容。
+- 设置确认：`设置 → 通用 → 语言` 当前值为“简体中文”；界面语言不会翻译第三方英文 Feed 原文。Folo 有收藏/Starred，但当前链路不把它当作持久文本划线或批注系统，永久高亮继续使用 Obsidian Markdown `==...==`。
 
 ### Obsidian Base 与 Folo 字段
 
 - 发现：Obsidian 1.12.7 支持 `file.inFolder`、`file.hasTag`、`properties.displayName`、`views.order/sort`；Folo 导出包含 `tags: [folo]`、`feedTitle`、`feedUrl`、`publishedAt`。
-- 影响：Base 可稳定过滤 Inbox + `folo` 标签；批注模板不能插入第二份 frontmatter。
+- 影响：Base 改为稳定过滤整个 Inbox，不再依赖 Folo/Web Clipper 是否写入 `folo` 标签；批注模板不能插入第二份 frontmatter。
+- 实现：收件箱整理器保留原 frontmatter 和原文，追加人工字段，在同页原文上方加入笔记区，使用发布日期前缀命名并拒绝覆盖已存在的同名目标；LaunchAgent 等文件稳定 30 秒后再处理，避免与导出写入竞争。
+
+### WeRSS 全部来源任务的返回计数不可信
+
+- 发现：消息任务将 `mps_id` 保存为 `[]` 时，后端实际会回退到全部公众号并正常入队，但 `/message_tasks/<id>/run` 的响应按显式选择列表长度计算，错误显示“共执行更新 0 个订阅号”。
+- 影响：不能用该响应判断是否抓取；应使用 `/task-queue/main/status`、队列历史和 SQLite 文章数量验证。当前补抓已把文章从 45 增至 83，12/12 个公众号均已有文章；最后一个任务仍在完成正文抓取，但没有待处理来源。
 
 ### SummerOS 仓库 dirty
 
