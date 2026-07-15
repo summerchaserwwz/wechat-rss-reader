@@ -35,11 +35,12 @@ WeRSS -> Readeck -> reading-sync -> SummerOS Archive
 - [x] 精选文章自动生成 Obsidian 原文笔记。
 - [x] 人工笔记和人工字段经重复同步不覆盖。
 - [x] WeRSS Cron 调整为 `17 * * * *`。
-- [x] Reader Caddy 仅绑定 `127.0.0.1:8082`，匿名 API 为 `401`。
+- [x] Reader Caddy 仅绑定 `127.0.0.1:8082`；本机匿名 API 为 `401`，公网 Host 缺 Access 身份为 `403`。
 - [ ] Cloudflare Tunnel/DNS 通过用户授权并完成公网安全验收。
 - [x] Obsidian UI 真实文章截图完成。
 - [ ] Obsidian Base 列验证完成。
-- [x] 扩展备份恢复真实通过，含 API Token、用户、90 篇文章、收藏和批注。
+- [x] 扩展备份恢复真实通过，含 API Token、用户、95 篇文章、收藏、批注、Reader 主题和模拟 Access 身份映射。
+- [x] 三次连续小时任务完整处理 12/12 个公众号，真实新增文章 2.16 分钟进入 Readeck且零重复。
 - [ ] 72 小时/7 天近实时观察完成。
 - [ ] 最终 review/walkthrough/人工确认完成。
 

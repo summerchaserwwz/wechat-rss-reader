@@ -100,6 +100,13 @@
 - 下一步：继续等待并记录三个不受维护停机影响的连续小时抓取周期；出现更新时由同一字段持续验证 5 分钟内加载和零重复。
 - 证据：command:cross-SQLite ready/load timestamps:2.16 minutes；command:record-observation.sh:22 columns、95 eligible、0 duplicate、0 missing
 
+### [2026-07-15 12:52] - 三次连续小时抓取结果完成
+
+- 做了什么：读取上游任务追踪器源码确认其“失败”计数实际包含“成功抓取但本轮 0 篇新文章”，不能作为网络/抓取异常；随后只对容器日志做时间与结果聚合，不保存或输出原始日志、公众号名称和环境变量。
+- 验证结果：09:17、10:17、11:17 三个连续计划周期均完成 12/12 个公众号，`获取文章失败` 与 `任务执行异常` 均为 0；本轮有新增内容的来源数分别为 3、1、0。10:17 周期产生的最新合格文章已由前一条证据证明在 2.16 分钟内进入 Readeck且零重复。12:17 周期因维护备份中断仍保留为无效样本，不影响此前三次连续完整证据。
+- 下一步：三周期与 5 分钟同步门禁已满足；小时/每日自动化继续积累 72 小时和第 7 天证据，任何后续异常仍按回归处理。
+- 证据：command:safe completion-block aggregation:09:17/10:17/11:17 each total=12, fetch_errors=0, task_exceptions=0；report:/app/jobs/mps.py tracker semantics inspected
+
 ## 协调者交接（Coordinator，启用模块并行时填写）
 
 - Global sync status：pending-coordinator-pass / synced / n/a
