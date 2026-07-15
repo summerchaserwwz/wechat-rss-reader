@@ -6,7 +6,7 @@
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | RG-001 | Shell、YAML、镜像摘要、Caddy/Base 静态契约 | shell lint；Compose/Base parse | 任意配置/脚本/Base 变更 | L1-tests | 2026-07-15 | pass | coordinator | none |
 | RG-002 | 本机 Compose、回环端口、代理与网络隔离 | `./scripts/verify.sh --local`; network inspect | 镜像、端口、Caddy、WeRSS/Readeck 变更 | L2-local-smoke | 2026-07-15 | partial；安全/隔离/Readeck pass，WeRSS 架构 residual | coordinator | R-002 |
-| RG-003 | Cloudflare Access + Readeck 公网身份边界 | `./scripts/verify.sh --reader-public`; 无痕/授权浏览器 | Access、Tunnel、DNS、Reader Caddy 变更 | L3-live | 2026-07-15 | local fail-closed pass；Zero Trust 金融授权待确认 | user + coordinator | R-003 |
+| RG-003 | Cloudflare Access + Readeck 公网身份边界 | `./scripts/verify.sh --reader-public`; 无痕/授权浏览器 | Access、Tunnel、DNS、Reader Caddy 变更 | L3-live | 2026-07-15 | local 403/403 fail-closed 与模拟 Access 200/200 pass；Zero Trust 金融授权待确认 | user + coordinator | R-003 |
 | RG-004 | WeRSS/Readeck/同步状态/Reader 主题备份恢复 | `backup.sh`; `restore-test.sh` | 数据、密钥、镜像、主题升级前后 | L2-local-smoke | 2026-07-15 | pass；backup 20260715-121728、restore 20260715-121812 | coordinator | none |
 | RG-005 | Obsidian Base 与真实笔记结构 | Base parse；Obsidian UI；真实样本 | Base/字段/目录变更 | L3-live | 2026-07-15 | partial；真实 UI screenshot pass，Base 列待验 | user + coordinator | R-005 |
 | RG-006 | 微信抓取与每小时调度 | 12 源 + `17 * * * *` + SQLite/任务队列 | 授权、抓取配置、镜像升级 | L3-live | 2026-07-15 | partial；12 源/99 篇，长期周期待观察 | user + coordinator | R-006 |
@@ -20,7 +20,7 @@
 | R-002 | RG-002 | 上游 arm64 manifest 实际包含 AMD64 layers；固定摘要只能通过 Rosetta 运行 | P1 | user + coordinator | 2026-07-14 | 接受模拟运行或维护自建 ARM64 镜像 | open |
 | R-003 | RG-003 | Cloudflare 账号授权已完成；Zero Trust Free 激活要求未来超额用量收费授权，Access/Tunnel/DNS 尚未创建 | P1 | user | 2026-07-15 | 用户明确允许或拒绝激活；允许后先 Access 再 Tunnel | open |
 | R-005 | RG-005 | Obsidian UI 截图已完成；Base 实机列验证仍待收口 | P2 | user + coordinator | 2026-07-15 | 在现有 Base 验证字段和过滤 | open |
-| R-006 | RG-006 | 12 源和每小时 Cron 已完成；72 小时/7 天时间性证据尚未达到 | P1 | user + automation | 2026-07-15 | `wechat-rss-stability-watch` + observation TSV | open |
+| R-006 | RG-006 | 12 源和每小时 Cron 已完成；12:17 周期被一致性备份中断，不计连续成功；72 小时/7 天时间性证据尚未达到 | P1 | user + automation | 2026-07-15 | 73 次 `wechat-rss-hourly-observation` + 8 天 `wechat-rss-stability-watch` + observation TSV | open |
 | R-008 | RG-008 | 真实长文/高亮/批注/人工保护通过；表格/代码、复杂排版等额外样本待自然出现或构造 | P2 | coordinator | 2026-07-15 | 补充样本 | open |
 
 ## 证据深度

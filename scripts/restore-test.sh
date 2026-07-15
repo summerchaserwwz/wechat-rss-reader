@@ -101,6 +101,7 @@ while [[ "$caddy_port" == "$werss_port" || "$readeck_port" == "$werss_port" || "
 done
 
 project="wechat-rss-restore-${stamp}"
+access_test_email="access-test@example.invalid"
 cleanup_stack() {
   COMPOSE_PROJECT_NAME="$project" \
   WERSS_HOST_PORT="$werss_port" \
@@ -108,6 +109,8 @@ cleanup_stack() {
   READECK_HOST_PORT="$readeck_port" \
   READER_CADDY_HOST_PORT="$reader_caddy_port" \
   READECK_BASE_URL="http://127.0.0.1:${readeck_port}/" \
+  READECK_AUTH_FORWARDED_ENABLED="true" \
+  CF_ACCESS_EMAIL="$access_test_email" \
     docker compose --project-directory "$restore_dir" --env-file "$restore_dir/.env" -f "$restore_dir/compose.yaml" down >/dev/null 2>&1 || true
 }
 trap cleanup_stack EXIT INT TERM
@@ -118,6 +121,8 @@ CADDY_HOST_PORT="$caddy_port" \
 READECK_HOST_PORT="$readeck_port" \
 READER_CADDY_HOST_PORT="$reader_caddy_port" \
 READECK_BASE_URL="http://127.0.0.1:${readeck_port}/" \
+READECK_AUTH_FORWARDED_ENABLED="true" \
+CF_ACCESS_EMAIL="$access_test_email" \
   docker compose --project-directory "$restore_dir" --env-file "$restore_dir/.env" -f "$restore_dir/compose.yaml" up -d >/dev/null
 
 ready=0
@@ -182,6 +187,18 @@ reader_public_status="$(curl -sS -o /dev/null -w '%{http_code}' -H 'Host: reader
 reader_public_api_status="$(curl -sS -o /dev/null -w '%{http_code}' -H 'Host: reader.sumerchaser.top' "http://127.0.0.1:${reader_caddy_port}/api/bookmarks")"
 [[ "$reader_public_status" == "403" ]] || die "恢复实例缺少 Access 身份时 Reader 公网 Host 根路径不是 403"
 [[ "$reader_public_api_status" == "403" ]] || die "恢复实例缺少 Access 身份时 Reader 公网 Host API 不是 403"
+reader_authorized_status="$(curl -sS -L -o /dev/null -w '%{http_code}' --max-redirs 5 \
+  -H 'Host: reader.sumerchaser.top' \
+  -H "Cf-Access-Authenticated-User-Email: $access_test_email" \
+  -H 'Cf-Access-Jwt-Assertion: restore-test-jwt' \
+  "http://127.0.0.1:${reader_caddy_port}/")"
+reader_authorized_api_status="$(curl -sS -o /dev/null -w '%{http_code}' \
+  -H 'Host: reader.sumerchaser.top' \
+  -H "Cf-Access-Authenticated-User-Email: $access_test_email" \
+  -H 'Cf-Access-Jwt-Assertion: restore-test-jwt' \
+  "http://127.0.0.1:${reader_caddy_port}/api/bookmarks?limit=1")"
+[[ "$reader_authorized_status" == "200" ]] || die "恢复实例模拟 Access 身份未直接进入 Reader"
+[[ "$reader_authorized_api_status" == "200" ]] || die "恢复实例模拟 Access 身份无法读取 Reader API"
 
 actual_users="$(sqlite3 "$readeck_db" 'select count(*) from user;')"
 actual_bookmarks="$(sqlite3 "$readeck_db" 'select count(*) from bookmark;')"
@@ -192,4 +209,4 @@ actual_annotated="$(sqlite3 "$readeck_db" "select count(*) from bookmark where a
 
 cleanup_stack
 trap - EXIT INT TERM
-printf '独立容器恢复演练通过：WeRSS Feed、Readeck 登录、文章、收藏、批注与同步状态均已验证；测试实例已关闭，恢复目录保留在：%s\n' "$restore_dir"
+printf '独立容器恢复演练通过：WeRSS Feed、Readeck 登录、文章、收藏、批注与同步状态均已验证；Reader 公网 Host 无身份 403/403、模拟 Access 身份 200/200；测试实例已关闭，恢复目录保留在：%s\n' "$restore_dir"

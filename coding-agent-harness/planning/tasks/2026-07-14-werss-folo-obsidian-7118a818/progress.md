@@ -72,6 +72,20 @@
 - 下一步：完成 Base 列验证；等待用户明确选择是否激活 Zero Trust Free，允许后才创建 Access、Tunnel/DNS 和执行公网 smoke；自动化继续积累 72 小时/第 7 天证据。
 - 证据：command:backup 20260715-121728 + restore 20260715-121812:pass；command:bash/unittest/compose/harness/diff:pass；command:verify --local:security pass, R-002 fail
 
+### [2026-07-15 12:34] - 小时抓取证据审计与采样加密
+
+- 做了什么：提交检查点后复核四个容器、12 个启用来源、WeRSS/Readeck 计数和 observation TSV；逐源聚合确认 12/12 均至少有 5 篇文章。审计小时调度时间戳时发现 12:17 周期与一致性备份停机重叠，只处理 1 个来源，因此明确不把该轮计为连续成功周期。新增 `wechat-rss-hourly-observation` 自动化，以每小时第 25 分钟连续采样 73 次，保留原有 8 天每日最终判断。
+- 验证结果：工作区在提交 `a749531` 后干净；WeRSS/Readeck healthy，12 个来源、99/98 篇 WeRSS、95 篇 Readeck、1 收藏、1 含批注、95 映射；观察 TSV 现有 2 条，均为 sync ok。日志时间戳证明 10:17、11:17、12:17 均触发，但 12:17 被备份中断，下一次完整候选为 13:17。
+- 下一步：从 13:25 自动采样验证完整周期，累计三次连续成功结果；观察到新增文章时核对其在下一次 5 分钟同步周期进入 Readeck且无重复。
+- 证据：command:SQLite aggregate:12/12 sources have articles、counts stable；command:safe log timestamp aggregation:10:17/11:17/12:17 triggered；report:wechat-rss-hourly-observation:ACTIVE, 73 hourly runs
+
+### [2026-07-15 12:38] - 免 Readeck 密码的本机身份映射演练
+
+- 做了什么：扩展独立恢复演练，在不改 live `.env`、不使用真实邮箱或 Cloudflare 凭据的前提下，临时启用 Readeck forwarded auth，并向 Reader Caddy 注入假的已验证 Access 身份头。
+- 验证结果：模拟公网 Host 无身份时根路径/API 仍为 403/403；精确测试邮箱加 JWT 头时根路径跟随跳转后为 200、`/api/bookmarks` 为 200，直接进入既有 `summer` 用户且不需要 Readeck 登录表单。恢复目录 `20260715-123743` 同时保持三个 SQLite、95 文章、收藏、批注、API Token、Feed 和主题验证通过。
+- 下一步：真实公网仍必须由 `cloudflared` 的 team/AUD 校验和 Cloudflare Access 精确邮箱策略保护；获得金融授权后再做无痕与已授权 Chrome 实机验收。
+- 证据：command:./scripts/restore-test.sh:403/403 anonymous and 200/200 simulated Access identity, restore pass
+
 ## 协调者交接（Coordinator，启用模块并行时填写）
 
 - Global sync status：pending-coordinator-pass / synced / n/a

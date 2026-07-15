@@ -87,7 +87,7 @@ Scanner 会根据必需文件、章节、证据和这个严格提交块派生 `m
 | E-009 | screenshot | TARGET:docs/images/04-reader-移动端正文.png | 390×844 中文长文阅读，无横向溢出 |
 | E-010 | screenshot | TARGET:docs/images/05-reader-划线批注.png | 选区、持久下划线和可编辑批注 |
 | E-011 | screenshot | TARGET:docs/images/06-obsidian-高亮批注笔记.png | 我的笔记、摘录、批注和原文同页 |
-| E-012 | command | TARGET:Caddyfile.reader | 本机 Host 303/401，公网 Host 无 Access 身份 403/403 |
+| E-012 | command | TARGET:scripts/restore-test.sh | 本机 Host 303/401；公网 Host 无 Access 身份 403/403；模拟精确 Access 身份 200/200 |
 
 ## 无重要发现声明
 
