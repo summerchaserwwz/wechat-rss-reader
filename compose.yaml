@@ -98,7 +98,9 @@ services:
       READECK_SECRET_KEY: ${READECK_SECRET_KEY:?请先运行 scripts/ensure-readeck-secrets.sh}
       READECK_SERVER_BASE_URL: ${READECK_BASE_URL:-http://127.0.0.1:8002/}
       READECK_ALLOWED_HOSTS: ${READECK_ALLOWED_HOSTS:-127.0.0.1,localhost,readeck,reader.sumerchaser.top}
-      READECK_TRUSTED_PROXIES: 172.16.0.0/12
+      READECK_TRUSTED_PROXIES: ${READECK_TRUSTED_PROXIES:-172.16.0.0/12}
+      READECK_AUTH_FORWARDED_ENABLED: ${READECK_AUTH_FORWARDED_ENABLED:-false}
+      READECK_AUTH_FORWARDED_PROVISIONING: "false"
       READECK_LOG_LEVEL: info
     ports:
       - "127.0.0.1:${READECK_HOST_PORT:-8002}:8000"
@@ -134,13 +136,24 @@ services:
   reader-caddy:
     image: caddy:2.11.4-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
     restart: unless-stopped
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        wget -q -O /tmp/readeck.css http://readeck:8000/assets/bundle.1cd17fd7.css
+        cat /tmp/readeck.css /srv/reader-theme/reader.css > /tmp/bundle.css
+        exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
     depends_on:
       readeck:
         condition: service_healthy
     ports:
       - "127.0.0.1:${READER_CADDY_HOST_PORT:-8082}:8080"
+    environment:
+      READER_PUBLIC_HOST: ${READECK_PUBLIC_HOSTNAME:-reader.sumerchaser.top}
+      CF_ACCESS_EMAIL: ${CF_ACCESS_EMAIL:-disabled@example.invalid}
     volumes:
       - ./Caddyfile.reader:/etc/caddy/Caddyfile:ro
+      - ./reader-theme:/srv/reader-theme:ro
     networks:
       - host-ingress
       - reading
@@ -152,6 +165,7 @@ services:
     tmpfs:
       - /config
       - /data
+      - /tmp
     security_opt:
       - no-new-privileges:true
     logging:

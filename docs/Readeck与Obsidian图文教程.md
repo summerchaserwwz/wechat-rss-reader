@@ -10,23 +10,25 @@
 | 阅读层 | Readeck | 所有完整文章、阅读进度、收藏、高亮、批注 | 浏览、筛选、划线 |
 | 知识层 | Obsidian | 人工选中的原文、高亮、批注和长期笔记 | 双链、评分、综合、提升 |
 
-这样既不会把 90 多篇全文全部塞进 Obsidian，也不会把重要划线锁在某个付费云服务里。
+这样既不会把 90 多篇全文全部塞进 Obsidian，也不会把重要划线锁在某个付费云服务里。当前实测为 12 个公众号、99 篇 WeRSS 文章、95 篇 Readeck 完整文章。
 
 ## 二、日常阅读
 
-打开：
+本机维护入口是：
 
 ```text
 http://127.0.0.1:8002
 ```
 
-外网 Tunnel 配好后也可以打开：
+日常阅读入口完成 Cloudflare Access 后使用：
 
 ```text
 https://reader.sumerchaser.top
 ```
 
-登录用户名是 `summer`。密码只在本机 `.env` 的 `READECK_ADMIN_PASSWORD` 中，不要粘贴到聊天或截图。
+日常阅读不输入 Readeck 用户名或密码。新设备首次打开时只完成一次邮件验证码授权，之后凭短期设备会话直接进入文章库；新的无痕会话仍然读不到私人文章。本机 Readeck 管理账号只用于故障恢复，密码只在 `.env` 中，不要粘贴到聊天或截图。
+
+> 当前公网入口尚未开放：Cloudflare Zero Trust Free 虽显示 `$0/月`，激活页仍要求授权未来超额用量收费，需用户明确确认后才能继续。
 
 左侧常用入口：
 
@@ -36,7 +38,11 @@ https://reader.sumerchaser.top
 - “高亮”：所有摘录和批注汇总。
 - “标签”：可按 `公众号/<公众号名>` 过滤。
 
-![Readeck 公众号文章库](images/01-readeck-公众号文章库.png)
+![新版中文 Readeck 公众号文章库](images/03-reader-桌面文章库.png)
+
+正文采用 macOS 中文系统字体栈，桌面内容宽度控制在 680–760 px、行高 1.8。移动端会自动变成单栏布局：
+
+![Readeck 移动端正文](images/04-reader-移动端正文.png)
 
 每篇文章都会带三个自动标签：`微信公众号`、`WeRSS`、`公众号/<名称>`。标题下方显示公众号名称，便于筛选来源。
 
@@ -50,7 +56,7 @@ https://reader.sumerchaser.top
 
 ### 划线
 
-在文章正文中拖动选择文字，点击高亮颜色。同步到 Obsidian 后会变成：
+在文章正文中拖动选择文字，工具条出现后点击高亮颜色。保存后选中文字下方会显示持久下划线；刷新页面仍然存在。同步到 Obsidian 后会变成：
 
 ```markdown
 ==给弱模型写步骤，给强模型写责任。==
@@ -66,9 +72,9 @@ https://reader.sumerchaser.top
 
 只要存在高亮，即使整篇文章没有点收藏，也会进入 Obsidian。
 
-![Readeck 高亮和批注汇总](images/02-readeck-划线批注.png)
+![Readeck 选中文字、下划线与批注](images/05-reader-划线批注.png)
 
-左侧“高亮”会把所有公众号的摘录集中展示。你可以从这里回到原文，继续修改批注。
+再次选中已经划线的文字即可重新打开批注编辑器。左侧“高亮”会把所有公众号的摘录集中展示，也可以从那里回到原文继续修改。
 
 ## 四、什么时候进入 Obsidian
 
@@ -114,7 +120,9 @@ com.summer.wechat-rss-reading-sync
 3. 划线与批注：从 Readeck 自动同步的摘录。
 4. 原文：公众号完整正文，高亮位置同时带批注脚注。
 
-> Obsidian 实机截图将在 Mac 解锁后补入；当前真实笔记文件、同步 hash 和内容结构已经验证。
+![Obsidian 中的我的笔记、划线、批注和原文](images/06-obsidian-高亮批注笔记.png)
+
+图中同一屏可以看到人工“我的笔记”的末尾、Readeck 同步状态、下划线摘录、批注和原文中的对应高亮。真实样本连续同步两次后 SHA-256 与 mtime 均保持不变。
 
 推荐在顶部补齐：
 
@@ -195,12 +203,13 @@ tail -n 30 /tmp/wechat-rss-reading-sync.err
 
 ## 九、手机和外网阅读
 
-Cloudflare Tunnel 配置后，用手机浏览器访问 `https://reader.sumerchaser.top`，登录同一个 Readeck 账号即可。
+Cloudflare Tunnel 与 Access 配置后，用手机浏览器访问 `https://reader.sumerchaser.top`。新设备输入一次邮件验证码，授权会话有效期内不会再看到 Readeck 登录表单。
 
-外网访问仍有两层边界：
+外网访问有三层边界：
 
-- Cloudflare 只连接 Readeck 专用本机反代 `127.0.0.1:8082`。
-- Readeck 未登录首页只跳转登录页，未登录 API 返回 `401`。
+- Cloudflare Access 默认拒绝未授权会话，并由 `cloudflared` 校验身份令牌。
+- Cloudflare Tunnel 只连接 Readeck 专用本机反代 `127.0.0.1:8082`。
+- Reader Caddy 只把允许的身份映射到固定本机 Readeck 用户，不接受 URL Token 或前端硬编码凭据。
 
 WeRSS 管理后台 `127.0.0.1:8001` 不会暴露到公网。
 

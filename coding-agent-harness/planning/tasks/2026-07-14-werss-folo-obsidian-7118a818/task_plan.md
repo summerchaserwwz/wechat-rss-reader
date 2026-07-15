@@ -30,14 +30,15 @@ WeRSS -> Readeck -> reading-sync -> SummerOS Archive
 ## 验收标准
 
 - [x] 公众号运营者授权和 12 个来源完成。
-- [x] 90 篇完整正文进入 Readeck，容器原生 aarch64。
+- [x] 当前 95 篇完整正文进入 Readeck，容器原生 aarch64。
 - [x] Readeck 收藏、高亮和批注真实可用。
 - [x] 精选文章自动生成 Obsidian 原文笔记。
 - [x] 人工笔记和人工字段经重复同步不覆盖。
 - [x] WeRSS Cron 调整为 `17 * * * *`。
 - [x] Reader Caddy 仅绑定 `127.0.0.1:8082`，匿名 API 为 `401`。
 - [ ] Cloudflare Tunnel/DNS 通过用户授权并完成公网安全验收。
-- [ ] Obsidian UI 截图和 Base 列验证完成。
+- [x] Obsidian UI 真实文章截图完成。
+- [ ] Obsidian Base 列验证完成。
 - [x] 扩展备份恢复真实通过，含 API Token、用户、90 篇文章、收藏和批注。
 - [ ] 72 小时/7 天近实时观察完成。
 - [ ] 最终 review/walkthrough/人工确认完成。
@@ -51,8 +52,7 @@ WeRSS -> Readeck -> reading-sync -> SummerOS Archive
 
 ## 人工/外部门禁
 
-- Cloudflare `cloudflared tunnel login`、创建 Tunnel 和 DNS 属于持久账号权限变更，执行前需要 action-time 确认。
-- Mac 锁屏时不能完成 Obsidian UI 截图。
+- Cloudflare 账号授权已完成；Zero Trust Free 激活仍需用户明确同意其未来超额用量收费授权。
 - 72 小时/7 天证据必须真实等待，不能提前声称。
 
 ## 关联

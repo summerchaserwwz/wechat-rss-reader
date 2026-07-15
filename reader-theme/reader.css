@@ -1,0 +1,421 @@
+/* WeChat RSS Reader theme. Appended to the pinned Readeck 0.22.3 bundle at startup. */
+
+:root {
+  color-scheme: light;
+  --reader-canvas: #f5f5f7;
+  --reader-surface: #ffffff;
+  --reader-surface-muted: #fafafc;
+  --reader-border: #e0e0e0;
+  --reader-ink: #1d1d1f;
+  --reader-muted: #6e6e73;
+  --reader-accent: #0066cc;
+  --reader-accent-soft: #eef6ff;
+
+  --color-app-bg: 245 245 247;
+  --color-app-fg: 29 29 31;
+  --color-primary: 0 102 204;
+  --color-primary-light: 0 113 227;
+  --color-primary-dark: 0 88 179;
+}
+
+:root.dark {
+  color-scheme: dark;
+  --reader-canvas: #1c1c1e;
+  --reader-surface: #242426;
+  --reader-surface-muted: #2c2c2e;
+  --reader-border: #3a3a3c;
+  --reader-ink: #f5f5f7;
+  --reader-muted: #a1a1a6;
+  --reader-accent: #2997ff;
+  --reader-accent-soft: #102a43;
+
+  --color-app-bg: 28 28 30;
+  --color-app-fg: 245 245 247;
+  --color-primary: 41 151 255;
+  --color-primary-light: 100 181 255;
+  --color-primary-dark: 10 132 255;
+}
+
+html,
+body {
+  background: var(--reader-canvas);
+}
+
+body {
+  color: var(--reader-ink);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  letter-spacing: 0;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+body.font-sans {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+}
+
+.layout {
+  max-width: none;
+  grid-template-columns: 3.5rem 15rem minmax(0, 1fr);
+}
+
+.layout-topnav {
+  background: var(--reader-surface);
+  color: var(--reader-muted);
+  border-right: 1px solid var(--reader-border);
+}
+
+.layout-topnav menu a,
+.layout-topnav menu button,
+.layout-topnav button.sidemenu--button {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+
+.layout-topnav menu a[data-current="true"],
+.layout-topnav menu button[data-current="true"] {
+  color: var(--reader-accent);
+  background: var(--reader-accent-soft);
+  border-color: color-mix(in srgb, var(--reader-accent) 28%, transparent);
+}
+
+.sidemenu {
+  background: var(--reader-surface);
+  box-shadow: none;
+  border-right: 1px solid var(--reader-border);
+}
+
+.sidemenu menu a {
+  min-height: 36px;
+  border-left: 2px solid transparent;
+  border-radius: 0 6px 6px 0;
+  color: var(--reader-muted);
+}
+
+.sidemenu menu a[data-current="true"] {
+  color: var(--reader-accent);
+  border-color: var(--reader-accent);
+  background: var(--reader-accent-soft);
+}
+
+.layout-content {
+  width: min(100%, 86rem);
+  margin: 0;
+  padding: 2rem 2.5rem 4rem;
+}
+
+#bookmark-list > .group:first-of-type {
+  display: none;
+}
+
+.title,
+.bookmark-card--title,
+.bookmark-header h1 {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", system-ui, sans-serif;
+  letter-spacing: 0;
+}
+
+.bookmark-list--grid,
+.bookmark-list--mosaic {
+  display: flex !important;
+  flex-direction: column;
+  gap: 0 !important;
+}
+
+.bookmark-list--grid .bookmark-card,
+.bookmark-list--mosaic .bookmark-card {
+  display: grid;
+  grid-template-areas:
+    "title actions"
+    "meta actions"
+    "labels actions";
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto;
+  min-height: 112px;
+  padding: 1rem 0.75rem;
+  border-bottom: 1px solid var(--reader-border);
+  border-radius: 0;
+  overflow: visible;
+  transition: background-color 160ms ease;
+}
+
+.bookmark-list--grid .bookmark-card:hover,
+.bookmark-list--grid .bookmark-card:focus-within,
+.bookmark-list--mosaic .bookmark-card:hover,
+.bookmark-list--mosaic .bookmark-card:focus-within {
+  background: var(--reader-surface-muted);
+  box-shadow: none;
+}
+
+.bookmark-list--grid .bookmark-card--img,
+.bookmark-list--grid .bookmark-card--ico,
+.bookmark-list--grid .bookmark-card--progress,
+.bookmark-list--mosaic .bookmark-card--img,
+.bookmark-list--mosaic .bookmark-card--ico,
+.bookmark-list--mosaic .bookmark-card--progress {
+  display: none;
+}
+
+.bookmark-list--grid .bookmark-card--title,
+.bookmark-list--mosaic .bookmark-card--title {
+  padding: 0;
+  align-self: end;
+}
+
+.bookmark-list--grid .bookmark-card--title a,
+.bookmark-list--mosaic .bookmark-card--title a {
+  color: var(--reader-ink);
+  font-size: 1.05rem;
+  line-height: 1.55;
+  font-weight: 600;
+}
+
+.bookmark-list--grid .bookmark-card--meta,
+.bookmark-list--mosaic .bookmark-card--meta {
+  align-self: start;
+  padding: 0.35rem 0 0;
+  color: var(--reader-muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.bookmark-list--grid .bookmark-card--labels,
+.bookmark-list--mosaic .bookmark-card--labels {
+  padding: 0.5rem 0 0;
+}
+
+.bookmark-card--labels > ul > li > a {
+  color: var(--reader-muted);
+  background: transparent;
+  border-color: var(--reader-border);
+  border-radius: 4px;
+}
+
+.bookmark-list--grid .bookmark-card--actions,
+.bookmark-list--mosaic .bookmark-card--actions {
+  align-self: center;
+  padding: 0.5rem;
+}
+
+.bookmark-content {
+  padding: 0 2rem 5rem;
+}
+
+.bookmark-topbar {
+  height: 3.5rem;
+  color: var(--reader-muted);
+  background: color-mix(in srgb, var(--reader-canvas) 88%, transparent);
+  border-color: var(--reader-border);
+  backdrop-filter: saturate(140%) blur(16px);
+}
+
+.bookmark-topbar > div {
+  max-width: 50rem;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.bookmark-header,
+.bookmark-display--width-regular {
+  max-width: 46rem;
+}
+
+.bookmark-display--width-wide {
+  max-width: 56rem;
+}
+
+.bookmark-header {
+  margin-top: 3rem;
+  margin-bottom: 2.5rem;
+}
+
+.bookmark-header h1 {
+  color: var(--reader-ink);
+  font-size: 2.125rem;
+  line-height: 1.3;
+  font-weight: 600;
+}
+
+.bookmark-header :is(p, span, time, a) {
+  color: var(--reader-muted);
+}
+
+.bookmark-article .prose,
+.bookmark-display--font-lora,
+.bookmark-display--font-merriweather,
+.bookmark-display--font-plex-serif,
+.bookmark-display--font-literata {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+}
+
+.bookmark-display--font-public-sans,
+.bookmark-display--font-inter,
+.bookmark-display--font-atkinson-hyperlegible,
+.bookmark-display--font-luciole {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+}
+
+.bookmark-display--font-jetbrains-mono {
+  font-family: "SFMono-Regular", "JetBrains Mono", "PingFang SC", monospace;
+}
+
+.bookmark-display--leading-1 { --reader-leading: 1.45; }
+.bookmark-display--leading-2 { --reader-leading: 1.6; }
+.bookmark-display--leading-3 { --reader-leading: 1.8; }
+.bookmark-display--leading-4 { --reader-leading: 1.9; }
+.bookmark-display--leading-5 { --reader-leading: 2.05; }
+.bookmark-display--leading-6 { --reader-leading: 2.2; }
+
+.bookmark-article .prose {
+  color: var(--reader-ink);
+  font-size: 1.0625rem;
+  font-weight: 400;
+  line-height: var(--reader-leading, 1.9);
+  letter-spacing: 0;
+}
+
+.bookmark-article .prose :is(p, li, dd) {
+  line-height: inherit;
+}
+
+.bookmark-article .prose :is(h1, h2, h3, h4) {
+  color: var(--reader-ink);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.45;
+}
+
+.bookmark-article .prose :is(img, video, iframe) {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  margin-inline: auto;
+  border-radius: 6px;
+}
+
+.bookmark-article .prose :is(span.inline-block, figure) {
+  max-width: 100%;
+}
+
+.bookmark-article .prose :is(table, pre) {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: 6px;
+}
+
+.bookmark-article .prose blockquote {
+  color: var(--reader-muted);
+  border-color: var(--reader-accent);
+  background: var(--reader-surface-muted);
+  border-radius: 0 6px 6px 0;
+}
+
+.rd-annotation,
+rd-annotation {
+  background: transparent !important;
+  border: 0;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  text-decoration-line: underline;
+  text-decoration-color: var(--reader-accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.2em;
+  text-decoration-skip-ink: auto;
+}
+
+.rd-annotation[data-annotation-color="none"],
+rd-annotation[data-annotation-color="none"] {
+  background: transparent !important;
+  text-decoration-color: var(--reader-accent);
+}
+
+.bookmark-article .prose ::selection {
+  color: var(--reader-ink);
+  background: #cce6ff;
+}
+
+.annotator {
+  width: min(28rem, calc(100vw - 2rem));
+  filter: none;
+}
+
+.annotator--content {
+  color: var(--reader-ink);
+  background: var(--reader-surface);
+  border: 1px solid var(--reader-border);
+  border-radius: 8px;
+  padding: 0.75rem;
+  box-shadow: none;
+}
+
+.annotator--arrow {
+  --arrow-color: var(--reader-surface);
+}
+
+.annotator textarea {
+  color: var(--reader-ink);
+  background: var(--reader-canvas);
+  border-color: var(--reader-border);
+  border-radius: 6px;
+  line-height: 1.6;
+}
+
+.annotator .btn-primary {
+  background: var(--reader-accent);
+  border-radius: 6px;
+}
+
+.bookmark-sidebar {
+  background: var(--reader-surface);
+  border-color: var(--reader-border);
+}
+
+@media (max-width: 1024px) {
+  .layout-content {
+    padding: 1.5rem 1.25rem 3rem;
+  }
+
+  .bookmark-content {
+    padding-inline: 1.25rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .layout {
+    display: flex;
+  }
+
+  .layout-content {
+    padding: 1rem 1rem 3rem;
+  }
+
+  .bookmark-list--grid .bookmark-card,
+  .bookmark-list--mosaic .bookmark-card {
+    min-height: 100px;
+    padding-inline: 0.25rem;
+  }
+
+  .bookmark-content {
+    padding-inline: 0.75rem;
+  }
+
+  .bookmark-header {
+    margin-top: 2rem;
+  }
+
+  .bookmark-header h1 {
+    font-size: 1.75rem;
+  }
+
+  .bookmark-article .prose {
+    font-size: 1.0625rem;
+  }
+
+  .annotator--content {
+    border-radius: 8px 8px 0 0;
+    padding: 1rem;
+  }
+}

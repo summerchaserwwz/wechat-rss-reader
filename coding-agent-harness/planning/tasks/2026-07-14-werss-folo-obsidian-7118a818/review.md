@@ -10,7 +10,7 @@
 
 - 审查类型：adversarial + security + regression
 - 范围内：本任务所有部署、脚本、文档、真实 Readeck/Obsidian 样本和恢复证据
-- 范围外：尚未获得用户授权的 Cloudflare live 对象；锁屏中的 Obsidian UI
+- 范围外：尚未获得 Zero Trust Free 金融授权的 Cloudflare live 对象；72 小时/7 天真实时间门禁
 - 来源材料：task plan、完整 working-tree diff、8 个单测、本机容器、网络 inspect、备份恢复、真实笔记 hash
 
 ## Agent Review Submission（Agent 提交审查）
@@ -48,8 +48,8 @@ Scanner 会根据必需文件、章节、证据和这个严格提交块派生 `m
 
 - Verdict：no
 - 如果不是 100%，剩余漏洞或证据缺口：
-  - Cloudflare 账号授权、DNS 和公网 smoke 尚未执行。
-  - Mac 锁屏，Obsidian UI screenshot/Base 列验证尚未执行。
+  - Cloudflare 账号登录授权已完成；Zero Trust Free 激活、Access、DNS、Tunnel 和公网 smoke 尚未执行。
+  - Obsidian 真实 UI screenshot 已完成；Base 列验证尚未执行。
   - 72 小时/7 天时间性证据尚未达到。
 - Fix loop count：3（同步幂等；恢复/API Token；Docker 出网网络隔离）
 - 当前结论：本机实现和可恢复性可提交；整体任务不能 closeout，等待明确人工/live gate。
@@ -78,11 +78,16 @@ Scanner 会根据必需文件、章节、证据和这个严格提交块派生 `m
 | --- | --- | --- | --- |
 | E-001 | command | TARGET:tests | 8 unittest pass |
 | E-002 | command | TARGET:scripts/verify.sh | 回环端口、Feed、安全、Readeck 303/401 通过；仅 R-002 架构失败 |
-| E-003 | command | PRIVATE:backups/wechat-rss-20260715-012116.tar.gz | 独立恢复三个 SQLite、用户、90 篇、收藏、批注、API Token 通过 |
+| E-003 | command | PRIVATE:backups/wechat-rss-20260715-121728.tar.gz | 独立恢复三个 SQLite、主题、用户、95 篇、收藏、批注、API Token 通过；restore 20260715-121812 |
 | E-004 | fixture | EXTERNAL:SummerOS/readeck_inbox/真实文章 | 高亮、批注、原文和人工笔记存在，重复同步 hash 稳定 |
 | E-005 | command | TARGET:compose.yaml | WeRSS/Readeck 出网网络隔离，WeRSS 无法解析 Readeck |
 | E-006 | screenshot | TARGET:docs/images/01-readeck-公众号文章库.png | 90 篇中文公众号阅读库 |
 | E-007 | screenshot | TARGET:docs/images/02-readeck-划线批注.png | 真实高亮和批注汇总 |
+| E-008 | screenshot | TARGET:docs/images/03-reader-桌面文章库.png | 新版中文桌面文章库 |
+| E-009 | screenshot | TARGET:docs/images/04-reader-移动端正文.png | 390×844 中文长文阅读，无横向溢出 |
+| E-010 | screenshot | TARGET:docs/images/05-reader-划线批注.png | 选区、持久下划线和可编辑批注 |
+| E-011 | screenshot | TARGET:docs/images/06-obsidian-高亮批注笔记.png | 我的笔记、摘录、批注和原文同页 |
+| E-012 | command | TARGET:Caddyfile.reader | 本机 Host 303/401，公网 Host 无 Access 身份 403/403 |
 
 ## 无重要发现声明
 
@@ -92,8 +97,8 @@ Scanner 会根据必需文件、章节、证据和这个严格提交块派生 `m
 
 | Risk | Owner | Accepted? | Follow-up |
 | --- | --- | --- | --- |
-| Cloudflare live 未验证 | user + coordinator | no | 用户确认后 `configure-cloudflare-tunnel.sh` + `verify --reader-public` |
-| Obsidian UI screenshot/Base 未验证 | user + coordinator | no | 用户解锁 Mac 后 Computer Use |
+| Cloudflare live 未验证 | user + coordinator | no | 用户确认 Zero Trust Free 金融授权后，先建 Access 再执行 `configure-cloudflare-tunnel.sh` + `verify --reader-public` |
+| Obsidian Base 未验证 | user + coordinator | no | 在现有 Base 验证过滤和列；真实笔记 UI screenshot 已完成 |
 | WeRSS x86_64 Rosetta | user + coordinator | no | R-002 |
 | 72h/7d 稳定性 | user | no | 稳定性观察模板 |
 
@@ -101,8 +106,8 @@ Scanner 会根据必需文件、章节、证据和这个严格提交块派生 `m
 
 | Queue | Applies? | Reason | Exit condition |
 | --- | --- | --- | --- |
-| Review | no | live evidence 未齐，尚未提交最终审查。 | Cloudflare/UI/时间证据满足。 |
-| Missing Materials | yes | 缺 Obsidian screenshot、Cloudflare live、时间性证据。 | 补齐材料。 |
+| Review | no | live evidence 未齐，尚未提交最终审查。 | Cloudflare Access/Base/时间证据满足。 |
+| Missing Materials | yes | 缺 Obsidian Base 列验证、Cloudflare live、时间性证据。 | 补齐材料。 |
 | Blocked | no | 当前是明确人工/时间门禁，不是代码 impasse。 | n/a |
 | Lessons | yes | 候选仍待人工决定。 | 人工决定候选路由。 |
 | Confirmed / Finalized | no | 未人工确认。 | 最终 review-confirm/closeout。 |
@@ -119,4 +124,4 @@ Scanner 会根据必需文件、章节、证据和这个严格提交块派生 `m
 
 ## 最终信心依据（Final Confidence Basis）
 
-当前信心来自真实容器、真实公众号文章、真实高亮/批注、幂等 hash、独立恢复和网络隔离证据。尚未形成最终发布信心；Cloudflare/UI/时间 gate 后仍需最终复审。
+当前信心来自真实容器、真实公众号文章、真实高亮/批注、真实 Reader/Obsidian 截图、幂等 hash、独立恢复和网络隔离证据。尚未形成最终发布信心；Cloudflare Access、Base 与时间 gate 后仍需最终复审。

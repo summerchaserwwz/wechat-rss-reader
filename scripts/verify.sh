@@ -80,10 +80,16 @@ xmllint --noout "$tmp_feed"
 printf '检查 Readeck 本机登录边界与专用反代...\n'
 expect_status 303 GET "${readeck_url}/"
 expect_status 401 GET "${readeck_url}/api/bookmarks"
-reader_root_status="$(curl -sS -o /dev/null -w '%{http_code}' -H "Host: ${reader_host}" "${reader_proxy_url}/")"
-reader_api_status="$(curl -sS -o /dev/null -w '%{http_code}' -H "Host: ${reader_host}" "${reader_proxy_url}/api/bookmarks")"
+reader_root_status="$(curl -sS -o /dev/null -w '%{http_code}' "${reader_proxy_url}/")"
+reader_api_status="$(curl -sS -o /dev/null -w '%{http_code}' "${reader_proxy_url}/api/bookmarks")"
 [[ "$reader_root_status" == "303" ]] || die "Readeck 反代根路径未跳转到登录页"
 [[ "$reader_api_status" == "401" ]] || die "Readeck 未登录 API 不是 401"
+reader_theme="$(curl -fsS "${reader_proxy_url}/assets/bundle.1cd17fd7.css")"
+grep -q 'WeChat RSS Reader theme' <<<"$reader_theme" || die "Reader 自定义阅读主题未生效"
+reader_public_root_status="$(curl -sS -o /dev/null -w '%{http_code}' -H "Host: ${reader_host}" "${reader_proxy_url}/")"
+reader_public_api_status="$(curl -sS -o /dev/null -w '%{http_code}' -H "Host: ${reader_host}" "${reader_proxy_url}/api/bookmarks")"
+[[ "$reader_public_root_status" == "403" ]] || die "缺少 Access 身份时 Reader 公网 Host 根路径不是 403"
+[[ "$reader_public_api_status" == "403" ]] || die "缺少 Access 身份时 Reader 公网 Host API 不是 403"
 
 if [[ "$mode" == "--public" ]]; then
   rss_base_url="$(env_value RSS_BASE_URL)"
@@ -108,16 +114,22 @@ if [[ "$mode" == "--reader-public" ]]; then
   readeck_base_url="$(env_value READECK_BASE_URL)"
   [[ "$readeck_base_url" == "https://${reader_host}/" ]] || die "READECK_BASE_URL 不是预期公网地址"
 
-  printf '检查公网 Readeck 登录与 API 边界...\n'
+  printf '检查公网 Cloudflare Access 与 API 拒绝边界...\n'
   headers="$(mktemp /tmp/wechat-rss-reader-headers.XXXXXX)"
   trap 'rm -f "$tmp_feed" "$headers"' EXIT
   public_root_status="$(curl -sS -D "$headers" -o /dev/null -w '%{http_code}' --max-time 60 "$readeck_base_url")"
-  [[ "$public_root_status" == "303" ]] || die "公网 Readeck 根路径未跳转到登录页"
-  grep -qiE '^location: https://reader\.sumerchaser\.top/login' "$headers" \
-    || die "公网 Readeck 登录跳转没有保持 HTTPS 域名"
-  grep -qiE '^x-content-type-options: nosniff' "$headers" || die "公网缺少 nosniff 安全头"
-  expect_status 401 GET "${readeck_base_url}api/bookmarks"
-  expect_status 404 GET "${readeck_base_url}feed/all.atom"
+  [[ "$public_root_status" == "302" || "$public_root_status" == "401" || "$public_root_status" == "403" ]] \
+    || die "未授权公网根路径不是 Access 拒绝/认证响应（实际：${public_root_status}）"
+  if [[ "$public_root_status" == "302" ]]; then
+    grep -qiE '^location: https://[^[:space:]]*cloudflareaccess\.com/' "$headers" \
+      || die "公网根路径跳转目标不是 Cloudflare Access"
+  fi
+  public_api_status="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 60 "${readeck_base_url}api/bookmarks")"
+  [[ "$public_api_status" == "401" || "$public_api_status" == "403" ]] \
+    || die "未授权公网 API 不是 401/403（实际：${public_api_status}）"
+  public_feed_status="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 60 "${readeck_base_url}feed/all.atom")"
+  [[ "$public_feed_status" == "302" || "$public_feed_status" == "401" || "$public_feed_status" == "403" ]] \
+    || die "未授权公网 Feed 路径没有被 Access 拦截（实际：${public_feed_status}）"
 fi
 
 [[ "$container_arch" == "aarch64" ]] || die "安全与 Feed 检查已完成，但 WeRSS 容器不是原生 aarch64（实际：${container_arch}）"

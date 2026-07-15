@@ -26,6 +26,7 @@ tar -xzf "$archive" -C "$restore_dir"
 [[ -f "$restore_dir/compose.yaml" ]] || die "备份缺少 compose.yaml"
 [[ -f "$restore_dir/Caddyfile" ]] || die "备份缺少 Caddyfile"
 [[ -f "$restore_dir/Caddyfile.reader" ]] || die "备份缺少 Caddyfile.reader"
+[[ -f "$restore_dir/reader-theme/reader.css" ]] || die "备份缺少 Reader 自定义主题"
 db_file="$restore_dir/data/we_mp_rss.db"
 [[ -f "$db_file" ]] || die "备份缺少 data/we_mp_rss.db"
 readeck_db="$restore_dir/readeck-data/data/db.sqlite3"
@@ -139,6 +140,29 @@ for _ in $(seq 1 60); do
 done
 (( readeck_ready == 1 )) || die "恢复 Readeck 在 120 秒内未就绪"
 
+caddy_ready=0
+for _ in $(seq 1 30); do
+  caddy_probe="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 3 "http://127.0.0.1:${caddy_port}/" 2>/dev/null || true)"
+  if [[ "$caddy_probe" == "404" ]]; then
+    caddy_ready=1
+    break
+  fi
+  sleep 1
+done
+(( caddy_ready == 1 )) || die "恢复 Feed Caddy 在 30 秒内未就绪"
+
+reader_caddy_ready=0
+for _ in $(seq 1 30); do
+  reader_probe="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 3 \
+    "http://127.0.0.1:${reader_caddy_port}/" 2>/dev/null || true)"
+  if [[ "$reader_probe" == "303" ]]; then
+    reader_caddy_ready=1
+    break
+  fi
+  sleep 1
+done
+(( reader_caddy_ready == 1 )) || die "恢复 Reader Caddy 在 30 秒内未就绪"
+
 api_token="$(tr -d '\r\n' <"$restore_dir/runtime/readeck_api_token")"
 api_status="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 \
   -H "Authorization: Bearer $api_token" \
@@ -150,10 +174,14 @@ root_status="$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:${caddy
 feed_status="$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:${caddy_port}/${prefix}/feed/all.atom")"
 [[ "$root_status" == "404" ]] || die "恢复实例 Caddy 根路径不是 404"
 [[ "$feed_status" == "200" ]] || die "恢复实例 Feed 不是 200"
-reader_status="$(curl -sS -o /dev/null -w '%{http_code}' -H 'Host: reader.sumerchaser.top' "http://127.0.0.1:${reader_caddy_port}/")"
-reader_api_status="$(curl -sS -o /dev/null -w '%{http_code}' -H 'Host: reader.sumerchaser.top' "http://127.0.0.1:${reader_caddy_port}/api/bookmarks")"
+reader_status="$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:${reader_caddy_port}/")"
+reader_api_status="$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:${reader_caddy_port}/api/bookmarks")"
 [[ "$reader_status" == "303" ]] || die "恢复实例 Readeck 反代没有跳转到登录页"
 [[ "$reader_api_status" == "401" ]] || die "恢复实例 Readeck 未登录 API 不是 401"
+reader_public_status="$(curl -sS -o /dev/null -w '%{http_code}' -H 'Host: reader.sumerchaser.top' "http://127.0.0.1:${reader_caddy_port}/")"
+reader_public_api_status="$(curl -sS -o /dev/null -w '%{http_code}' -H 'Host: reader.sumerchaser.top' "http://127.0.0.1:${reader_caddy_port}/api/bookmarks")"
+[[ "$reader_public_status" == "403" ]] || die "恢复实例缺少 Access 身份时 Reader 公网 Host 根路径不是 403"
+[[ "$reader_public_api_status" == "403" ]] || die "恢复实例缺少 Access 身份时 Reader 公网 Host API 不是 403"
 
 actual_users="$(sqlite3 "$readeck_db" 'select count(*) from user;')"
 actual_bookmarks="$(sqlite3 "$readeck_db" 'select count(*) from bookmark;')"

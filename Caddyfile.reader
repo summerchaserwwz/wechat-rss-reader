@@ -6,9 +6,53 @@
 :8080 {
 	encode zstd gzip
 
-	reverse_proxy readeck:8000 {
-		header_up Host {http.request.host}
-		header_up X-Forwarded-Proto https
+	@public_theme {
+		host {$READER_PUBLIC_HOST:reader.sumerchaser.top}
+		path /assets/bundle.1cd17fd7.css
+		header Cf-Access-Authenticated-User-Email {$CF_ACCESS_EMAIL:disabled@example.invalid}
+		header Cf-Access-Jwt-Assertion *
+	}
+	handle @public_theme {
+		root * /tmp
+		rewrite * /bundle.css
+		header Content-Type "text/css; charset=utf-8"
+		file_server
+	}
+
+	@public_authorized {
+		host {$READER_PUBLIC_HOST:reader.sumerchaser.top}
+		header Cf-Access-Authenticated-User-Email {$CF_ACCESS_EMAIL:disabled@example.invalid}
+		header Cf-Access-Jwt-Assertion *
+	}
+	handle @public_authorized {
+		reverse_proxy readeck:8000 {
+			header_up Host {http.request.host}
+			header_up X-Forwarded-Proto https
+			header_up Remote-User summer
+			header_up Remote-Email summer@localhost
+			header_up -Remote-Groups
+		}
+	}
+
+	@public host {$READER_PUBLIC_HOST:reader.sumerchaser.top}
+	handle @public {
+		respond "Forbidden" 403
+	}
+
+	handle /assets/bundle.1cd17fd7.css {
+		root * /tmp
+		rewrite * /bundle.css
+		header Content-Type "text/css; charset=utf-8"
+		file_server
+	}
+
+	handle {
+		reverse_proxy readeck:8000 {
+			header_up Host {http.request.host}
+			header_up -Remote-User
+			header_up -Remote-Email
+			header_up -Remote-Groups
+		}
 	}
 
 	header {

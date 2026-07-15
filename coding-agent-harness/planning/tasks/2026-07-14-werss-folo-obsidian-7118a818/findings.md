@@ -92,6 +92,30 @@
 - 两者都需要出网，但没有业务理由互相访问；最终改为 `werss-internet` 与 `readeck-internet` 两条独立 bridge。
 - WeRSS 只通过 `feed-proxy` 被 RSS Caddy 访问；Readeck 只通过 `reading` 被 Reader Caddy 访问。
 
+### Reader 裸 HTML 根因是 CSP 阻止 CSS import
+
+- 初版自定义 CSS 用 `@import /_readeck/assets/...` 引入 Readeck 基础样式；浏览器受 Readeck CSP 约束后没有把 imported stylesheet 放进 CSSOM，导致 `.layout`、`.hidden`、标注浮层等核心规则全部缺失。
+- 表现为正文横向溢出、隐藏控件常驻、导航退化成无样式 HTML；单独修改配色和字体无法修复。
+- 最终由 Reader Caddy 容器启动时从固定 Readeck 0.22.3 实例读取固定 CSS，再和 `reader-theme/reader.css` 拼接成一个同源响应。运行时实测 `.layout=grid`、`.hidden=none`、标注器为 absolute，桌面正文 736 px、移动正文 351 px，两个视口都无横向溢出。
+
+### URL Token 不是可接受的免密码设备授权
+
+- 未提交草案曾通过 URL 携带静态 Token 写一年期 Cookie，并把固定管理员身份转发给 Readeck。
+- 该方案会让秘密进入浏览器历史、代理日志和截图；Cookie 也不绑定用户、设备或短期会话，违背“不在 URL/前端放凭据”的 Goal 约束。
+- 草案已完全撤销并重建容器；当前未认证 Reader Caddy 恢复 Readeck 默认 303/401 边界。公网发布只能在真正的设备身份层完成后进行。
+
+### Cloudflare Access 可实现免 Readeck 密码，但激活存在金融门禁
+
+- 官方 Access 自托管应用默认拒绝；正确顺序是先创建 Access application/policy，再创建 Tunnel route，并由 `cloudflared` 校验 Access token/AUD。
+- 邮件 OTP 可让允许的邮箱在新设备上完成一次性授权，会话期间无需输入 Readeck 用户名和密码；Reader Caddy 只应把允许身份映射到固定本机用户，不转发外部管理员组。
+- 当前 Cloudflare Zero Trust Free 结账页为 `$0/月`，但必须勾选“允许未来超额用量收费”才能激活。该动作属于金融授权，未获用户明确确认前不能执行；Tunnel/DNS 因此保持未创建，避免裸 Readeck 短暂暴露。
+
+### Obsidian 实机与同步幂等证据完成
+
+- 真实笔记在 Obsidian 阅读视图同屏显示“我的笔记”、收藏状态、划线摘录、批注、原文对应高亮和原图。
+- 连续运行同步两次均为 `Obsidian 更新 0 篇`，样本 SHA-256 与 mtime 在前/中/后三次读数完全一致。
+- 真实截图为 `docs/images/06-obsidian-高亮批注笔记.png`；未修改 `readeck_inbox` 之外的业务笔记内容。
+
 ## 技术决策
 
 | 决策 | 选择 | 原因 | 替代方案 | 状态 |
@@ -102,7 +126,7 @@
 | SECRET_KEY | 由 WeRSS 生成到 `data/.secret_key` | 减少日志中的环境秘密 | 注入 `.env` | accepted |
 | 阅读器 | 自托管 Readeck | 免费开源，支持收藏、高亮、批注和全文库 | Folo Basic | accepted |
 | 入库 | 自有 reading-sync API/Markdown 桥接 | 可测试、幂等、保护人工区，不依赖付费集成 | Folo/Clipper | accepted |
-| Readeck 公网 | 独立 Cloudflare Tunnel + Reader Caddy | 手机可用且不暴露 WeRSS；匿名 API 仍 401 | Tailscale Funnel / 直接公网端口 | accepted-pending-live |
+| Readeck 公网 | Cloudflare Access OTP + 独立 Tunnel + Reader Caddy | 授权设备免 Readeck 密码，匿名会话不能读取私人内容，且不暴露 WeRSS | 自建设备配对运行时 / 仅本机 | pending-user-financial-approval |
 | Vault 层级 | Archive processed source inbox | 符合 SummerOS 晋升链路 | 直接 Knowledge | accepted |
 | 图片 | v1 不自动本地化 | 避免附件污染 | 全量下载 | accepted |
 
@@ -112,5 +136,5 @@
 | --- | --- | --- | --- |
 | 是否拥有公众号运营权限？ | 已确认；WeRSS 显示已授权且 Token 有效 | user | done |
 | Docker 协议/权限是否完成？ | App 安装后需用户操作 | user | 本机 smoke 前 |
-| Cloudflare Tunnel 是否完成？ | 本机代理与脚本完成；账号授权/DNS 待 action-time 确认 | user + coordinator | 公网 smoke 前 |
-| Readeck 是否稳定？ | 本机 90 篇和真实高亮样本通过；72 小时/7 天待观察 | user + coordinator | 完成判断前 |
+| Cloudflare Tunnel 是否完成？ | 账号授权完成；Zero Trust Free 超额收费授权待用户确认，Access/Tunnel/DNS 尚未创建 | user + coordinator | 公网 smoke 前 |
+| Readeck 是否稳定？ | 本机 95 篇、真实高亮和 Obsidian 幂等样本通过；72 小时/7 天待观察 | user + coordinator | 完成判断前 |

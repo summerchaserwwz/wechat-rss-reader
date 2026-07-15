@@ -11,7 +11,7 @@
   -> Obsidian 保留原文、高亮、批注、我的笔记和双链
 ```
 
-当前实测状态：12 个公众号、94 篇文章；90 篇完整正文已经进入 Readeck，4 篇等待 WeRSS 正文抓取。已经用真实文章验证收藏、划线、批注、Obsidian 入库和人工笔记不覆盖。
+当前实测状态：12 个公众号、99 篇文章；95 篇完整正文已经进入 Readeck，4 篇正文尚未达到导入条件。已经用真实文章验证收藏、选中文字后下划线高亮、批注、Obsidian 入库和人工笔记不覆盖。
 
 ## 你最终怎么用
 
@@ -28,22 +28,26 @@
 5. Readeck 高亮会变成 Obsidian 的 `==高亮==`，批注会出现在摘录区和原文脚注中。
 6. 你在顶部“我的笔记”里写的内容，以及 `rating`、`topics` 等人工字段，后续同步永远不会覆盖。
 
-![Readeck 公众号文章库](docs/images/01-readeck-公众号文章库.png)
+![新版中文 Readeck 公众号文章库](docs/images/03-reader-桌面文章库.png)
 
-![Readeck 划线和批注](docs/images/02-readeck-划线批注.png)
+![Readeck 选中文字后划线和批注](docs/images/05-reader-划线批注.png)
+
+![Obsidian 保留我的笔记、划线、批注和原文](docs/images/06-obsidian-高亮批注笔记.png)
 
 完整阅读教程见 [Readeck 与 Obsidian 图文教程](docs/Readeck与Obsidian图文教程.md)。
 
-## 服务地址和账号
+## 服务地址和访问方式
 
 | 服务 | 本机地址 | 用途 |
 | --- | --- | --- |
 | WeRSS | `http://127.0.0.1:8001` | 微信授权、公众号管理、抓取任务 |
-| Readeck | `http://127.0.0.1:8002` | 全文阅读、收藏、划线、批注 |
+| Readeck 管理入口 | `http://127.0.0.1:8002` | 本机维护和故障恢复 |
 | 只读 RSS 代理 | `http://127.0.0.1:8080` | 兼容其他 RSS 阅读器，可选 |
 | Readeck 专用反代 | `http://127.0.0.1:8082` | 只供 Cloudflare Tunnel 使用 |
 
-WeRSS 用户名固定为 `werss_admin`；Readeck 用户名固定为 `summer`。密码只保存在本机 `.env`，查看时不要截图或发送给别人：
+日常阅读不使用 Readeck 用户名和密码。目标公网入口由 Cloudflare Access 做一次性设备授权：首次在新设备输入邮件验证码，之后凭短期会话直接进入文章库，不再出现 Readeck 登录表单。当前仍在等待 Zero Trust Free 的费用授权确认，因此公网入口尚未启用。
+
+WeRSS 和 Readeck 的本机管理员账号只用于维护与恢复。密码只保存在本机 `.env`，不要截图或发送给别人：
 
 ```bash
 awk -F= '$1 == "WERSS_BOOTSTRAP_PASSWORD" { print $2 }' .env
@@ -87,6 +91,7 @@ docker compose ps
 - Feed 代理的根路径、API、非 Atom、写方法和路径穿越均被拒绝。
 - Readeck 未登录首页跳转到登录页，未登录 API 返回 `401`。
 - Readeck 专用代理没有绕过登录边界。
+- 自定义阅读主题使用 macOS 中文系统字体栈，桌面正文宽度 736 px、行高 1.8；390×844 移动视口无横向溢出。
 
 由于 WeRSS 上游镜像问题，脚本最后仍会对非原生 ARM64 返回非零；前面的安全、Feed 与 Readeck 检查仍会完整执行。
 
@@ -182,19 +187,25 @@ reviewed_at:
 
 “我的笔记”和人工 frontmatter 是人工区；“划线与批注”和“原文”是机器管理区。重复同步只刷新机器区。
 
+真实样本连续运行同步两次后，文件 SHA-256 和 mtime 都保持不变；没有新增内容时不会重写笔记。
+
+![Obsidian 中的我的笔记、划线、批注和原文](docs/images/06-obsidian-高亮批注笔记.png)
+
 原文始终留在 Archive。值得进入 `03_Knowledge` 或 `04_Output` 时，创建新的综合条目并引用原文，不移动或公开整篇公众号文章。
 
 v1 不把全部图片复制进 Vault；Markdown 图片仍引用 Readeck 资源地址。Cloudflare 配好后跨设备可加载这些图片，但资源 URL 本身相当于不可猜测链接。只有评级 4–5 或准备输出的文章，再单独做附件本地化。
 
 ## 6. Cloudflare 外网阅读
 
-Cloudflare Tunnel 免费，适合在手机或外网打开 Readeck。目标地址为：
+Cloudflare Tunnel 与 Zero Trust Free 计划适合在手机或外网打开 Readeck。目标地址为：
 
 ```text
 https://reader.sumerchaser.top/
 ```
 
-准备完成后运行：
+安全顺序固定为：先启用 Zero Trust、创建 Access 应用和允许策略，再创建 Tunnel/DNS，最后运行公网验收。不能先把裸 Readeck 发布到公网。
+
+当前 Cloudflare 结账页显示 `$0/月`，但要求授权未来超额用量收费；在用户明确确认前不会勾选或激活。确认后再运行：
 
 ```bash
 ./scripts/configure-cloudflare-tunnel.sh
@@ -215,7 +226,7 @@ https://reader.sumerchaser.top/
 ./scripts/verify.sh --reader-public
 ```
 
-公网首页只会跳转到 Readeck 登录页，未登录 API 必须返回 `401`。WeRSS 管理端不会通过这个 Tunnel 暴露。
+完成后的访问契约是：已授权设备无需 Readeck 用户名和密码；新无痕会话只能看到 Cloudflare Access 验证页，不能读取文章；未授权 `/api/bookmarks` 返回 `401/403`，未授权 `/feed/all.atom` 会被 Access 拦截；授权会话中的 `/feed/all.atom` 与 WeRSS 管理/API 路径仍返回 `404`。WeRSS 管理端不会通过这个 Tunnel 暴露。
 
 停止本机 Tunnel，但不删除 Cloudflare 端对象：
 

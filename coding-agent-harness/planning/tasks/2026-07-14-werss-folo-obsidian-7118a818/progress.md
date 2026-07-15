@@ -32,10 +32,45 @@
 ## 残余
 
 - P1：固定 WeRSS 摘要的 arm64 manifest 实际为 AMD64 文件系统；本机功能可通过 Rosetta 运行，但 RG-002 原生 ARM64 硬门禁失败。需要用户选择接受模拟运行或授权维护自建原生镜像。
-- P1：Cloudflare Tunnel/DNS 需要用户对持久账号授权进行 action-time 确认；本机 Reader Caddy 与配置脚本已完成。
+- P1：Cloudflare 账号授权已完成，但 Zero Trust Free 激活页要求勾选未来超额用量收费授权；等待用户对该金融授权作明确选择。Tunnel/DNS 和公网入口在 Access 建立前保持未发布。
 - P1：公众号资格/授权、12 个来源和每小时任务已完成；72 小时/7 天近实时观察仍是时间门禁。
-- P2：Mac 当前锁屏，Obsidian UI screenshot 和 Base 实机列验证等待用户解锁。
+- P2：Obsidian UI 截图已完成；Base 实机列验证仍待最终收口。
 - P2：Docker Desktop 为 Caddy 发布回环端口需要非 internal bridge，因此 Caddy 具备出站能力；已用只读根、`no-new-privileges`、仅保留 `NET_BIND_SERVICE` 和固定无动态上游的 Caddyfile 降低风险。
+
+### [2026-07-15 11:00] - 新 Goal 启动基线
+
+- 做了什么：按新目标重新读取项目规则、当前 Harness 任务与 `awesome-design-md`；以只读查询枚举启用来源、文章、Readeck 状态、同步映射和测试数量；保护现有 9 个与 Reader 改造相关的 dirty 路径。
+- 验证结果：12 个公众号均启用；WeRSS 共 99 篇、其中 98 篇有正文；Readeck 95 篇均 loaded，1 篇收藏、1 篇含高亮/批注；同步映射 90 条；现有 unittest 8 个。未完成门禁为 Cloudflare Tunnel/DNS 与免密码设备授权、公网安全冒烟、桌面/移动阅读 UI、稳定性 observation TSV、Obsidian UI 截图和 72 小时/第 7 天时间证据。
+- 下一步：审查当前 Reader/Caddy/Cloudflare dirty 改动，确定不公开私人内容的免密码设备授权方案，并完成本机 UI 静态与实机验证。
+- 证据：command:sqlite3 -readonly:12 feeds、99/98 WeRSS articles、95 Readeck bookmarks、1 marked、1 annotated、90 sync mappings；command:rg tests:8 unittest；command:harness status --json .:active task、9 dirty paths
+
+### [2026-07-15 11:59] - 阅读器 UI、批注持久化与 Obsidian 实机闭环
+
+- 做了什么：按 Apple 编辑型产品设计约束重构 Reader Caddy 主题；定位并修复 CSP 阻止 CSS `@import` 导致 Readeck 基础样式完全失效的问题，改为容器启动时拼接固定 Readeck CSS 与本地主题；真实文章中重新打开已有划线批注；在 Obsidian 阅读视图打开真实同步文章并保存实机截图。撤销未提交的 URL Token/一年 Cookie 解锁草案，恢复默认拒绝未认证访问。
+- 验证结果：桌面正文 736 px、17 px 字号、1.8 行高、macOS 中文系统字体优先；1440×900 与 390×844 均无横向溢出；持久划线为 2 px 下划线，刷新后批注仍在。真实 Obsidian 笔记同时显示“我的笔记”、收藏状态、摘录、批注和原文对应高亮。双重运行同步均为 WeRSS 99、Readeck 新增 0、Obsidian 更新 0；样本 SHA-256 与 mtime 三次读数完全一致。
+- 下一步：取得 Cloudflare Zero Trust Free 金融授权决策；若允许则建立 Access OTP、Tunnel/DNS 和公网安全验收，若不允许则停在本机并与用户选择新的免密码设备授权运行时。继续真实时间稳定性观察。
+- 证据：screenshot:docs/images/03-reader-桌面文章库.png:新版桌面文章库；screenshot:docs/images/04-reader-移动端正文.png:390×844 正文；screenshot:docs/images/05-reader-划线批注.png:选区、下划线与批注；screenshot:docs/images/06-obsidian-高亮批注笔记.png:人工笔记、摘录、批注、原文；command:reading-sync twice + shasum/stat:hash/mtime stable
+
+### [2026-07-15 11:59] - 稳定性观察首条记录
+
+- 做了什么：将旧 Folo 观察脚本改为只读 Readeck 链路快照，不读取密钥；创建权限 600 的 ignored `observations/readeck-stability.tsv` 首条记录。
+- 验证结果：12 个启用公众号、99 篇 WeRSS/98 篇标记有正文、95 篇 Readeck、1 收藏、1 含批注、95 条同步映射；WeRSS/Readeck healthy，Reader Caddy running，同步状态 ok，Cron `17 * * * *` 启用。
+- 下一步：自动化继续记录；满 72 小时验证至少三次连续周期，第 7 天形成最终判断，不提前关闭门禁。
+- 证据：command:./scripts/record-observation.sh:首条 snapshot 写入 ignored TSV；report:wechat-rss-stability-watch:8 天自动化 active
+
+### [2026-07-15 12:16] - Access 本机拒绝态与主题恢复修复
+
+- 做了什么：移除不安全的 URL Token/长期 Cookie 草案；将公网 Reader 改为只接受 Cloudflare Access 注入的精确邮箱与 JWT，且 Access 未就绪时保持 403；Tunnel 配置脚本新增“先建 Access、再建 Tunnel/DNS”的硬门禁。发现恢复包漏掉 `reader-theme/` 会导致 Reader Caddy 无法启动后，扩展备份与恢复契约并增加主题文件和 Caddy 就绪断言。
+- 验证结果：本机 Host 保持 Readeck 原生 303/401；模拟公网 Host 在无 Access 身份时为 403/403；配置脚本在 `CF_ACCESS_READY` 未启用时于任何外部写入前退出。包含主题的备份 `20260715-120731` 在独立目录恢复成功：三个 SQLite integrity check、1 用户、95 文章、1 收藏、1 含批注、API Token 和两个 Caddy 均通过。
+- 下一步：对最终 Access/Caddy matcher 重新创建备份并完成独立恢复；重跑全部静态、本机、Harness 与秘密扫描。金融授权获得前不创建 Cloudflare Access/Tunnel/DNS。
+- 证据：command:curl Reader local/public Host:303/401 与 403/403；command:configure-cloudflare-tunnel.sh:pre-write fail-closed；command:backup 20260715-120731 + restore 20260715-120824:pass
+
+### [2026-07-15 12:18] - 最终本机配置回归
+
+- 做了什么：针对最终 Access matcher 和恢复断言重新创建一致性备份，并在独立 Compose project、独立网络和端口恢复；重跑 Shell、8 个 unittest、Compose、Harness、diff 和本机安全 smoke。
+- 验证结果：备份 `20260715-121728` 与恢复目录 `20260715-121812` 通过；三个 SQLite integrity check、1 用户、95 文章、1 收藏、1 含批注、API Token、Reader 主题、Feed Caddy、本机 303/401 和公网 Host 无身份 403/403 均通过。静态/单测/Harness/diff 全部通过；`verify --local` 只在已知 WeRSS `x86_64` 原生架构硬门禁返回 1。
+- 下一步：完成 Base 列验证；等待用户明确选择是否激活 Zero Trust Free，允许后才创建 Access、Tunnel/DNS 和执行公网 smoke；自动化继续积累 72 小时/第 7 天证据。
+- 证据：command:backup 20260715-121728 + restore 20260715-121812:pass；command:bash/unittest/compose/harness/diff:pass；command:verify --local:security pass, R-002 fail
 
 ## 协调者交接（Coordinator，启用模块并行时填写）
 

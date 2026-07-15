@@ -80,6 +80,7 @@ tar -C "$ROOT_DIR" -czf "$tmp_archive" \
   compose.yaml \
   Caddyfile \
   Caddyfile.reader \
+  reader-theme \
   .env.example \
   README.md \
   -C "$stage" \

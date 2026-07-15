@@ -20,8 +20,17 @@ require_command jq
 require_command curl
 require_env_file
 
+access_ready="$(env_value CF_ACCESS_READY false)"
+access_team_name="$(env_value CF_ACCESS_TEAM_NAME)"
+access_aud="$(env_value CF_ACCESS_AUD)"
+access_email="$(env_value CF_ACCESS_EMAIL)"
+[[ "$access_ready" == "true" ]] || die "必须先创建 Cloudflare Access 应用与精确邮箱 Allow 策略，再把 CF_ACCESS_READY 设为 true"
+[[ "$access_team_name" =~ ^[a-z0-9-]+$ ]] || die "CF_ACCESS_TEAM_NAME 格式异常"
+[[ "$access_aud" =~ ^[A-Za-z0-9_-]{32,128}$ ]] || die "CF_ACCESS_AUD 格式异常"
+[[ "$access_email" =~ ^[^[:space:]@]+@[^[:space:]@]+$ ]] || die "CF_ACCESS_EMAIL 格式异常"
+
 docker_compose up -d readeck reader-caddy >/dev/null
-curl -fsS --max-time 10 -H "Host: $HOSTNAME" http://127.0.0.1:8082/ >/dev/null \
+curl -fsS --max-time 10 http://127.0.0.1:8082/login >/dev/null \
   || die "本机 Readeck 反代尚未就绪"
 
 mkdir -p "$CONFIG_DIR" "$PLIST_DIR"
@@ -67,6 +76,11 @@ chmod 600 "$tmp"
   printf '    originRequest:\n'
   printf '      httpHostHeader: %s\n' "$HOSTNAME"
   printf '      connectTimeout: 10s\n'
+  printf '      access:\n'
+  printf '        required: true\n'
+  printf '        teamName: %s\n' "$access_team_name"
+  printf '        audTag:\n'
+  printf '          - %s\n' "$access_aud"
   printf '  - service: http_status:404\n'
 } >"$tmp"
 mv "$tmp" "$CONFIG_FILE"
@@ -84,6 +98,7 @@ launchctl kickstart -k "$DOMAIN/$LABEL"
 
 set_env_value READECK_BASE_URL "https://$HOSTNAME/"
 set_env_value READECK_ALLOWED_HOSTS "127.0.0.1,localhost,readeck,$HOSTNAME"
+set_env_value READECK_AUTH_FORWARDED_ENABLED "true"
 docker_compose up -d readeck reader-caddy >/dev/null
 
 printf 'Cloudflare Tunnel 已配置：%s -> 127.0.0.1:8082\n' "$HOSTNAME"
