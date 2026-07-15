@@ -3,7 +3,7 @@
 Context Doc Type: architecture-ssot
 Owner: coordinator
 Last Verified: 2026-07-15
-Confidence: high for local design; Cloudflare live gate pending
+Confidence: high for local and live Cloudflare design
 
 ## System Summary
 
@@ -21,8 +21,8 @@ Confidence: high for local design; Cloudflare live gate pending
 | ARCH-006 | SummerOS 目标是 Archive processed source inbox；原文不直接晋升 Knowledge/Output | SummerOS reading README | 2026-07-15 | high | Vault 写入 |
 | ARCH-007 | 人工 frontmatter 与“我的笔记”受保护；机器区刷新，高亮为 `==...==`、批注为摘录和脚注 | 实际样本；hash/mtime；tests | 2026-07-15 | high | Markdown 渲染修改 |
 | ARCH-008 | WeRSS 定时任务为 `17 * * * *`；微信无 webhook，只能近实时 | live SQLite | 2026-07-15 | high | 调度修改 |
-| ARCH-009 | Cloudflare 必须先建 Access OTP 精确邮箱 Allow 应用，再建独立 `wechat-rss` Tunnel；`cloudflared` 按 team/AUD 校验 JWT 后才转发 `reader.sumerchaser.top -> 127.0.0.1:8082` | official docs; scripts/config pending live activation | 2026-07-15 | medium | 公网部署 |
-| ARCH-010 | 备份必须同时停止 WeRSS/Readeck，覆盖三个 SQLite、API Token、Reader 主题、资源和可选 Tunnel 作用域凭据 | `scripts/backup.sh`; `restore-test.sh`; restore 20260715-121812 | 2026-07-15 | high | 备份/恢复 |
+| ARCH-009 | Cloudflare 先建 Access OTP 精确邮箱 Allow 应用，再建独立 `wechat-rss` Tunnel；`cloudflared` 按 team/AUD 校验 JWT 后转发 `reader.sumerchaser.top -> 127.0.0.1:8082`；当前 live 公网验收通过 | official docs; live Access/Tunnel/DNS; `verify --reader-public` | 2026-07-15 | high | 公网部署 |
+| ARCH-010 | 备份必须同时停止 WeRSS/Readeck，覆盖三个 SQLite、API Token、Reader 主题、资源和 Tunnel 作用域凭据，排除账户 `cert.pem` | `scripts/backup.sh`; `restore-test.sh`; restore 20260715-140113 | 2026-07-15 | high | 备份/恢复 |
 | ARCH-011 | 固定 WeRSS manifest 实际仍是 AMD64 filesystem，通过 Rosetta 运行；不得伪装原生通过 | runtime root-cause evidence | 2026-07-14 | high | 镜像修改 |
 | ARCH-012 | WeRSS 与 Readeck 使用独立出网网络，彼此不能通过共享 bridge 直连 | `compose.yaml`; network inspect | 2026-07-15 | high | 网络修改 |
 | ARCH-013 | Reader 主题由固定 Readeck CSS 与本地主题在 Caddy 启动时拼接；桌面正文 736 px/1.8 行高，390×844 移动视口无横向溢出 | browser runtime; screenshots 03-05 | 2026-07-15 | high | UI/主题修改 |

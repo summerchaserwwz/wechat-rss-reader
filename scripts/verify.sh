@@ -159,6 +159,13 @@ if [[ "$mode" == "--reader-public" ]]; then
     || die "未授权公网 Feed 路径没有被 Access 拦截（实际：${public_feed_status}）"
 fi
 
-[[ "$container_arch" == "aarch64" ]] || die "安全与 Feed 检查已完成，但 WeRSS 容器不是原生 aarch64（实际：${container_arch}）"
+if [[ "$mode" != "--reader-public" ]]; then
+  [[ "$container_arch" == "aarch64" ]] \
+    || die "安全与 Feed 检查已完成，但 WeRSS 容器不是原生 aarch64（实际：${container_arch}）"
+fi
 
-printf '验证通过：管理后台仅本机可见，随机前缀下的只读 Atom Feed 可用。\n'
+if [[ "$mode" == "--reader-public" ]]; then
+  printf '验证通过：Cloudflare Access 已拦截未授权 Reader、API 与 Feed 请求。\n'
+else
+  printf '验证通过：管理后台仅本机可见，随机前缀下的只读 Atom Feed 可用。\n'
+fi

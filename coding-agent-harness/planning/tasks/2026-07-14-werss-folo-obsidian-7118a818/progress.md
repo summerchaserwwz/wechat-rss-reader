@@ -32,10 +32,15 @@
 ## 残余
 
 - P1：固定 WeRSS 摘要的 arm64 manifest 实际为 AMD64 文件系统；本机功能可通过 Rosetta 运行，但 RG-002 原生 ARM64 硬门禁失败。需要用户选择接受模拟运行或授权维护自建原生镜像。
-- P1：Cloudflare 账号授权已完成，但 Zero Trust Free 激活页要求勾选未来超额用量收费授权；等待用户对该金融授权作明确选择。Tunnel/DNS 和公网入口在 Access 建立前保持未发布。
 - P1：公众号资格/授权、12 个来源和每小时任务已完成；72 小时/7 天近实时观察仍是时间门禁。
-- P2：Obsidian UI 截图已完成；Base 实机列验证仍待最终收口。
 - P2：Docker Desktop 为 Caddy 发布回环端口需要非 internal bridge，因此 Caddy 具备出站能力；已用只读根、`no-new-privileges`、仅保留 `NET_BIND_SERVICE` 和固定无动态上游的 Caddyfile 降低风险。
+
+### [2026-07-15 14:04] - Cloudflare 公网与 Obsidian Base 实机验收
+
+- 做了什么：经用户明确授权启用 Zero Trust Free；创建精确邮箱 Allow、OTP 与一周会话的 self-hosted Access 应用；启用 Managed OAuth；授权 `cloudflared` 后创建独立 `wechat-rss` Tunnel、`reader.sumerchaser.top` DNS 和 LaunchAgent。修复 `cloudflared tunnel list` 在首次无 Tunnel 时返回 JSON `null` 导致脚本退出的问题。已授权 Chrome 直接进入 Reader，并在 Obsidian 实机横向检查 Base 全部九列。
+- 验证结果：`verify.sh --reader-public` 退出 0；无 Access 请求的 Reader/API/Feed 全部被边缘拦截，授权页面无需 Readeck 用户名密码，授权后的 `/feed/all.atom` 为 Readeck 404。Tunnel 4 条活动连接，LaunchAgent running。WeRSS 12 源、105 篇文章、101 篇合格正文均唯一映射到 101 篇 Readeck。Cloudflare 后备份和独立恢复通过：三个 SQLite、1 用户、101 文章、1 收藏、1 含批注、作用域 Tunnel 凭据通过，账户 `cert.pem` 未进入备份。Obsidian Base 显示文章、作者、公众号、时间、收纳日期、状态、评分、主题和提升去向。
+- 下一步：运行最终静态/单测/Harness/秘密扫描并提交本切片；小时与每日自动化继续真实等待 72 小时和第 7 天，不能提前关闭任务。
+- 证据：command:./scripts/verify.sh --reader-public:exit 0；command:cloudflared/launchctl:4 active connections、running；screenshot:docs/images/07-cloudflare-公网阅读器.png:公网免 Readeck 密码文章库；screenshot:docs/images/08-obsidian-Base.png:人工处理字段；command:backup 20260715-140025 + restore 20260715-140113:pass
 
 ### [2026-07-15 11:00] - 新 Goal 启动基线
 

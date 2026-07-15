@@ -10,7 +10,7 @@
 | 阅读层 | Readeck | 所有完整文章、阅读进度、收藏、高亮、批注 | 浏览、筛选、划线 |
 | 知识层 | Obsidian | 人工选中的原文、高亮、批注和长期笔记 | 双链、评分、综合、提升 |
 
-这样既不会把 90 多篇全文全部塞进 Obsidian，也不会把重要划线锁在某个付费云服务里。当前实测为 12 个公众号、99 篇 WeRSS 文章、95 篇 Readeck 完整文章。
+这样既不会把 100 多篇全文全部塞进 Obsidian，也不会把重要划线锁在某个付费云服务里。当前实测为 12 个公众号、105 篇 WeRSS 文章、101 篇达到正文门槛的 Readeck 完整文章。
 
 ## 二、日常阅读
 
@@ -20,15 +20,15 @@
 http://127.0.0.1:8002
 ```
 
-日常阅读入口完成 Cloudflare Access 后使用：
+日常阅读入口已经启用：
 
 ```text
 https://reader.sumerchaser.top
 ```
 
-日常阅读不输入 Readeck 用户名或密码。新设备首次打开时只完成一次邮件验证码授权，之后凭短期设备会话直接进入文章库；新的无痕会话仍然读不到私人文章。本机 Readeck 管理账号只用于故障恢复，密码只在 `.env` 中，不要粘贴到聊天或截图。
+日常阅读不输入 Readeck 用户名或密码。新设备首次打开时只完成一次邮件验证码授权，之后一周内直接进入文章库；没有 Access 会话的请求读不到私人文章。本机 Readeck 管理账号只用于故障恢复，密码只在 `.env` 中，不要粘贴到聊天或截图。
 
-> 当前公网入口尚未开放：Cloudflare Zero Trust Free 虽显示 `$0/月`，激活页仍要求授权未来超额用量收费，需用户明确确认后才能继续。
+![Cloudflare 公网免 Readeck 密码文章库](images/07-cloudflare-公网阅读器.png)
 
 左侧常用入口：
 
@@ -148,6 +148,8 @@ reviewed_at: 2026-07-15
 
 `公众号精选.base` 会集中显示这些字段，可以按发布时间、状态、评分和主题排序。
 
+![Obsidian 公众号精选 Base 的人工处理字段](images/08-obsidian-Base.png)
+
 当前图片默认引用 Readeck 资源，不会把所有公众号图片复制进 Vault。这样能控制附件体积；评级 4–5 或准备进入 Knowledge/Output 时，再单独本地化关键图片。
 
 ## 六、哪些内容不会被覆盖
@@ -203,7 +205,7 @@ tail -n 30 /tmp/wechat-rss-reading-sync.err
 
 ## 九、手机和外网阅读
 
-Cloudflare Tunnel 与 Access 配置后，用手机浏览器访问 `https://reader.sumerchaser.top`。新设备输入一次邮件验证码，授权会话有效期内不会再看到 Readeck 登录表单。
+用手机浏览器访问 `https://reader.sumerchaser.top`。新设备输入一次邮件验证码，一周授权会话有效期内不会再看到 Readeck 登录表单。
 
 外网访问有三层边界：
 

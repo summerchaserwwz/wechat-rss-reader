@@ -10,7 +10,7 @@
 
 - 审查类型：adversarial + security + regression
 - 范围内：本任务所有部署、脚本、文档、真实 Readeck/Obsidian 样本和恢复证据
-- 范围外：尚未获得 Zero Trust Free 金融授权的 Cloudflare live 对象；72 小时/7 天真实时间门禁
+- 范围外：72 小时/7 天真实时间门禁
 - 来源材料：task plan、完整 working-tree diff、8 个单测、本机容器、网络 inspect、备份恢复、真实笔记 hash
 
 ## Agent Review Submission（Agent 提交审查）
@@ -48,11 +48,9 @@ Scanner 会根据必需文件、章节、证据和这个严格提交块派生 `m
 
 - Verdict：no
 - 如果不是 100%，剩余漏洞或证据缺口：
-  - Cloudflare 账号登录授权已完成；Zero Trust Free 激活、Access、DNS、Tunnel 和公网 smoke 尚未执行。
-  - Obsidian 真实 UI screenshot 已完成；Base 列验证尚未执行。
   - 72 小时/7 天时间性证据尚未达到。
-- Fix loop count：3（同步幂等；恢复/API Token；Docker 出网网络隔离）
-- 当前结论：本机实现和可恢复性可提交；整体任务不能 closeout，等待明确人工/live gate。
+- Fix loop count：5（同步幂等；恢复/API Token；Docker 出网网络隔离；Cloudflare 首次 null 返回；公网 verify 模式隔离架构 residual）
+- 当前结论：本机、公网和可恢复性切片可提交；整体任务不能 closeout，等待真实时间门禁。
 
 ## 重要发现（Material Findings，表头供 checker 解析）
 
@@ -88,6 +86,10 @@ Scanner 会根据必需文件、章节、证据和这个严格提交块派生 `m
 | E-010 | screenshot | TARGET:docs/images/05-reader-划线批注.png | 选区、持久下划线和可编辑批注 |
 | E-011 | screenshot | TARGET:docs/images/06-obsidian-高亮批注笔记.png | 我的笔记、摘录、批注和原文同页 |
 | E-012 | command | TARGET:scripts/restore-test.sh | 本机 Host 303/401；公网 Host 无 Access 身份 403/403；模拟精确 Access 身份 200/200 |
+| E-013 | command | TARGET:scripts/verify.sh --reader-public | 真实 Access/Tunnel/DNS 下未授权 Reader、API、Feed 全部拦截，退出 0 |
+| E-014 | screenshot | TARGET:docs/images/07-cloudflare-公网阅读器.png | 已授权 Chrome 无 Readeck 用户名密码直接进入公网文章库 |
+| E-015 | screenshot | TARGET:docs/images/08-obsidian-Base.png | Base 九列横向实机验证，含状态、评分、主题和提升去向 |
+| E-016 | command | PRIVATE:backups/wechat-rss-20260715-140025.tar.gz | 101 篇文章、三个 SQLite、Tunnel 作用域凭据恢复通过；账户 cert.pem 排除 |
 
 ## 无重要发现声明
 
@@ -97,8 +99,6 @@ Scanner 会根据必需文件、章节、证据和这个严格提交块派生 `m
 
 | Risk | Owner | Accepted? | Follow-up |
 | --- | --- | --- | --- |
-| Cloudflare live 未验证 | user + coordinator | no | 用户确认 Zero Trust Free 金融授权后，先建 Access 再执行 `configure-cloudflare-tunnel.sh` + `verify --reader-public` |
-| Obsidian Base 未验证 | user + coordinator | no | 在现有 Base 验证过滤和列；真实笔记 UI screenshot 已完成 |
 | WeRSS x86_64 Rosetta | user + coordinator | no | R-002 |
 | 72h/7d 稳定性 | user | no | 稳定性观察模板 |
 
@@ -106,8 +106,8 @@ Scanner 会根据必需文件、章节、证据和这个严格提交块派生 `m
 
 | Queue | Applies? | Reason | Exit condition |
 | --- | --- | --- | --- |
-| Review | no | live evidence 未齐，尚未提交最终审查。 | Cloudflare Access/Base/时间证据满足。 |
-| Missing Materials | yes | 缺 Obsidian Base 列验证、Cloudflare live、时间性证据。 | 补齐材料。 |
+| Review | no | 时间证据未齐，尚未提交最终审查。 | 72 小时/7 天时间证据满足。 |
+| Missing Materials | yes | 仅缺时间性证据。 | 满 72 小时并完成第 7 天判断。 |
 | Blocked | no | 当前是明确人工/时间门禁，不是代码 impasse。 | n/a |
 | Lessons | yes | 候选仍待人工决定。 | 人工决定候选路由。 |
 | Confirmed / Finalized | no | 未人工确认。 | 最终 review-confirm/closeout。 |
@@ -124,4 +124,4 @@ Scanner 会根据必需文件、章节、证据和这个严格提交块派生 `m
 
 ## 最终信心依据（Final Confidence Basis）
 
-当前信心来自真实容器、真实公众号文章、真实高亮/批注、真实 Reader/Obsidian 截图、幂等 hash、独立恢复和网络隔离证据。尚未形成最终发布信心；Cloudflare Access、Base 与时间 gate 后仍需最终复审。
+当前信心来自真实容器、真实公众号文章、真实高亮/批注、真实公网 Reader/Obsidian Base 截图、幂等 hash、独立恢复和网络隔离证据。尚未形成最终发布信心；时间 gate 后仍需最终复审。

@@ -43,7 +43,7 @@ fi
 
 tunnel_id="$(
   "$CLOUDFLARED" tunnel list --name "$TUNNEL_NAME" --output json \
-    | jq -r 'map(select(.name == "'"$TUNNEL_NAME"'" and (.deletedAt == null or .deletedAt == ""))) | first | .id // empty'
+    | jq -r '(. // []) | map(select(.name == "'"$TUNNEL_NAME"'" and (.deletedAt == null or .deletedAt == ""))) | first | .id // empty'
 )"
 
 if [[ -z "$tunnel_id" ]]; then

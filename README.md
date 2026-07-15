@@ -11,7 +11,7 @@
   -> Obsidian 保留原文、高亮、批注、我的笔记和双链
 ```
 
-当前实测状态：12 个公众号、99 篇文章；95 篇完整正文已经进入 Readeck，4 篇正文尚未达到导入条件。已经用真实文章验证收藏、选中文字后下划线高亮、批注、Obsidian 入库和人工笔记不覆盖。
+当前实测状态：12 个公众号、105 篇文章；101 篇达到正文门槛的文章已经全部且唯一进入 Readeck。已经用真实文章验证收藏、选中文字后下划线高亮、批注、Obsidian 入库和人工笔记不覆盖。
 
 ## 你最终怎么用
 
@@ -34,18 +34,21 @@
 
 ![Obsidian 保留我的笔记、划线、批注和原文](docs/images/06-obsidian-高亮批注笔记.png)
 
+![Cloudflare 公网免 Readeck 密码文章库](docs/images/07-cloudflare-公网阅读器.png)
+
 完整阅读教程见 [Readeck 与 Obsidian 图文教程](docs/Readeck与Obsidian图文教程.md)。
 
 ## 服务地址和访问方式
 
-| 服务 | 本机地址 | 用途 |
+| 服务 | 地址 | 用途 |
 | --- | --- | --- |
 | WeRSS | `http://127.0.0.1:8001` | 微信授权、公众号管理、抓取任务 |
 | Readeck 管理入口 | `http://127.0.0.1:8002` | 本机维护和故障恢复 |
 | 只读 RSS 代理 | `http://127.0.0.1:8080` | 兼容其他 RSS 阅读器，可选 |
 | Readeck 专用反代 | `http://127.0.0.1:8082` | 只供 Cloudflare Tunnel 使用 |
+| 公网阅读器 | `https://reader.sumerchaser.top/` | 日常桌面/手机阅读，Cloudflare Access 保护 |
 
-日常阅读不使用 Readeck 用户名和密码。目标公网入口由 Cloudflare Access 做一次性设备授权：首次在新设备输入邮件验证码，之后凭短期会话直接进入文章库，不再出现 Readeck 登录表单。当前仍在等待 Zero Trust Free 的费用授权确认，因此公网入口尚未启用。
+日常阅读不使用 Readeck 用户名和密码。公网入口已经启用 Cloudflare Access：新设备首次输入允许邮箱收到的一次性验证码，之后一周内直接进入文章库，不再出现 Readeck 登录表单。当前已登录 Chrome 已实测直接打开 `https://reader.sumerchaser.top/`。
 
 WeRSS 和 Readeck 的本机管理员账号只用于维护与恢复。密码只保存在本机 `.env`，不要截图或发送给别人：
 
@@ -191,6 +194,10 @@ reviewed_at:
 
 ![Obsidian 中的我的笔记、划线、批注和原文](docs/images/06-obsidian-高亮批注笔记.png)
 
+`公众号精选.base` 已在 Obsidian 1.12.7 实机验证；横向表格包含文章、公众号、作者、发布时间、收纳日期、阅读状态、评分、主题和提升去向。
+
+![Obsidian 公众号精选 Base](docs/images/08-obsidian-Base.png)
+
 原文始终留在 Archive。值得进入 `03_Knowledge` 或 `04_Output` 时，创建新的综合条目并引用原文，不移动或公开整篇公众号文章。
 
 v1 不把全部图片复制进 Vault；Markdown 图片仍引用 Readeck 资源地址。Cloudflare 配好后跨设备可加载这些图片，但资源 URL 本身相当于不可猜测链接。只有评级 4–5 或准备输出的文章，再单独做附件本地化。
@@ -205,7 +212,7 @@ https://reader.sumerchaser.top/
 
 安全顺序固定为：先启用 Zero Trust、创建 Access 应用和允许策略，再创建 Tunnel/DNS，最后运行公网验收。不能先把裸 Readeck 发布到公网。
 
-当前 Cloudflare 结账页显示 `$0/月`，但要求授权未来超额用量收费；在用户明确确认前不会勾选或激活。确认后再运行：
+当前已经按该顺序启用 Zero Trust Free、精确邮箱 Access 策略、独立 Tunnel、DNS 和 LaunchAgent。需要重新生成本机 Tunnel 配置时运行：
 
 ```bash
 ./scripts/configure-cloudflare-tunnel.sh
@@ -226,7 +233,9 @@ https://reader.sumerchaser.top/
 ./scripts/verify.sh --reader-public
 ```
 
-完成后的访问契约是：已授权设备无需 Readeck 用户名和密码；新无痕会话只能看到 Cloudflare Access 验证页，不能读取文章；未授权 `/api/bookmarks` 返回 `401/403`，未授权 `/feed/all.atom` 会被 Access 拦截；授权会话中的 `/feed/all.atom` 与 WeRSS 管理/API 路径仍返回 `404`。WeRSS 管理端不会通过这个 Tunnel 暴露。
+当前实测访问契约是：已授权设备无需 Readeck 用户名和密码；无 Cookie 的请求不能读取文章；未授权 `/api/bookmarks` 返回 `401/403`，未授权 `/feed/all.atom` 被 Access 拦截；授权会话中的 `/feed/all.atom` 由 Readeck 返回 `404`。WeRSS 管理端不会通过这个 Tunnel 暴露。
+
+![Cloudflare 公网 Reader 实机](docs/images/07-cloudflare-公网阅读器.png)
 
 停止本机 Tunnel，但不删除 Cloudflare 端对象：
 

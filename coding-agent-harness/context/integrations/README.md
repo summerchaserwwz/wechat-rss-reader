@@ -3,7 +3,7 @@
 Context Doc Type: integrations-index
 Owner: coordinator
 Last Verified: 2026-07-15
-Confidence: high locally; Cloudflare live pending
+Confidence: high locally and on live Cloudflare
 
 ## 微信公众平台
 
@@ -31,6 +31,7 @@ Confidence: high locally; Cloudflare live pending
 - `CF_ACCESS_READY=false` 时配置脚本在任何 Tunnel/DNS 写操作前失败关闭；禁止 URL Token、静态一年 Cookie 或前端硬编码凭据。
 - 本机 config 与 Tunnel 作用域凭据权限 `600`；账户 `cert.pem` 不进入项目备份。
 - 回滚只停止 LaunchAgent，不自动删除 DNS/Tunnel。
+- 当前 live：Access 精确邮箱 + OTP + 一周会话；已授权设备无需 Readeck 密码，未授权 Reader/API/Feed 被边缘拦截；Tunnel 有活动连接。
 
 ## Obsidian/SummerOS
 

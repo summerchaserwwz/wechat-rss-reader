@@ -13,7 +13,7 @@ Task Contract: harness-task/v1
 ```text
 WeRSS -> Readeck -> reading-sync -> SummerOS Archive
                      |
-                     +-> Cloudflare Tunnel（可选外网）
+                     +-> Cloudflare Access + Tunnel（已启用外网）
 ```
 
 ## 步骤
@@ -30,16 +30,16 @@ WeRSS -> Readeck -> reading-sync -> SummerOS Archive
 ## 验收标准
 
 - [x] 公众号运营者授权和 12 个来源完成。
-- [x] 当前 95 篇完整正文进入 Readeck，容器原生 aarch64。
+- [x] 当前 101 篇达到正文门槛的文章全部且唯一进入 Readeck，容器原生 aarch64。
 - [x] Readeck 收藏、高亮和批注真实可用。
 - [x] 精选文章自动生成 Obsidian 原文笔记。
 - [x] 人工笔记和人工字段经重复同步不覆盖。
 - [x] WeRSS Cron 调整为 `17 * * * *`。
 - [x] Reader Caddy 仅绑定 `127.0.0.1:8082`；本机匿名 API 为 `401`，公网 Host 缺 Access 身份为 `403`。
-- [ ] Cloudflare Tunnel/DNS 通过用户授权并完成公网安全验收。
+- [x] Cloudflare Access/Tunnel/DNS 通过用户授权并完成公网安全验收。
 - [x] Obsidian UI 真实文章截图完成。
-- [ ] Obsidian Base 列验证完成。
-- [x] 扩展备份恢复真实通过，含 API Token、用户、95 篇文章、收藏、批注、Reader 主题和模拟 Access 身份映射。
+- [x] Obsidian Base 九列实机验证完成。
+- [x] 扩展备份恢复真实通过，含 API Token、用户、101 篇文章、收藏、批注、Reader 主题、Tunnel 作用域凭据和 Access 身份映射。
 - [x] 三次连续小时任务完整处理 12/12 个公众号，真实新增文章 2.16 分钟进入 Readeck且零重复。
 - [ ] 72 小时/7 天近实时观察完成。
 - [ ] 最终 review/walkthrough/人工确认完成。
@@ -53,7 +53,7 @@ WeRSS -> Readeck -> reading-sync -> SummerOS Archive
 
 ## 人工/外部门禁
 
-- Cloudflare 账号授权已完成；Zero Trust Free 激活仍需用户明确同意其未来超额用量收费授权。
+- Cloudflare Zero Trust、Access、Tunnel 与 DNS 已由用户明确授权并完成。
 - 72 小时/7 天证据必须真实等待，不能提前声称。
 
 ## 关联

@@ -104,17 +104,20 @@
 - 该方案会让秘密进入浏览器历史、代理日志和截图；Cookie 也不绑定用户、设备或短期会话，违背“不在 URL/前端放凭据”的 Goal 约束。
 - 草案已完全撤销并重建容器；当前未认证 Reader Caddy 恢复 Readeck 默认 303/401 边界。公网发布只能在真正的设备身份层完成后进行。
 
-### Cloudflare Access 可实现免 Readeck 密码，但激活存在金融门禁
+### Cloudflare Access 公网免 Readeck 密码已完成实测
 
 - 官方 Access 自托管应用默认拒绝；正确顺序是先创建 Access application/policy，再创建 Tunnel route，并由 `cloudflared` 校验 Access token/AUD。
 - 邮件 OTP 可让允许的邮箱在新设备上完成一次性授权，会话期间无需输入 Readeck 用户名和密码；Reader Caddy 只应把允许身份映射到固定本机用户，不转发外部管理员组。
-- 当前 Cloudflare Zero Trust Free 结账页为 `$0/月`，但必须勾选“允许未来超额用量收费”才能激活。该动作属于金融授权，未获用户明确确认前不能执行；Tunnel/DNS 因此保持未创建，避免裸 Readeck 短暂暴露。
+- 用户明确授权后已按“Access 先于 Tunnel”完成：Zero Trust Free、精确邮箱 Allow、OTP、一周会话、Managed OAuth、独立 `wechat-rss` Tunnel、DNS 和 LaunchAgent。
+- 无 Cookie 的 `curl` 对 Reader/API/Feed 得到 Access `401/403`；已授权 Chrome 直接进入 101 篇文章库，无 Readeck 登录表单；授权后的 `/feed/all.atom` 由 Readeck 返回 404。
+- 首次部署发现 `cloudflared tunnel list --output json` 在无结果时返回 `null`，不是空数组；脚本已用 `(. // [])` 兼容并完成真实创建。
 
 ### Obsidian 实机与同步幂等证据完成
 
 - 真实笔记在 Obsidian 阅读视图同屏显示“我的笔记”、收藏状态、划线摘录、批注、原文对应高亮和原图。
 - 连续运行同步两次均为 `Obsidian 更新 0 篇`，样本 SHA-256 与 mtime 在前/中/后三次读数完全一致。
 - 真实截图为 `docs/images/06-obsidian-高亮批注笔记.png`；未修改 `readeck_inbox` 之外的业务笔记内容。
+- `公众号精选.base` 已在 Obsidian 1.12.7 实机横向验证九列；截图为 `docs/images/08-obsidian-Base.png`。
 
 ## 技术决策
 
@@ -126,7 +129,7 @@
 | SECRET_KEY | 由 WeRSS 生成到 `data/.secret_key` | 减少日志中的环境秘密 | 注入 `.env` | accepted |
 | 阅读器 | 自托管 Readeck | 免费开源，支持收藏、高亮、批注和全文库 | Folo Basic | accepted |
 | 入库 | 自有 reading-sync API/Markdown 桥接 | 可测试、幂等、保护人工区，不依赖付费集成 | Folo/Clipper | accepted |
-| Readeck 公网 | Cloudflare Access OTP + 独立 Tunnel + Reader Caddy | 授权设备免 Readeck 密码，匿名会话不能读取私人内容，且不暴露 WeRSS | 自建设备配对运行时 / 仅本机 | pending-user-financial-approval |
+| Readeck 公网 | Cloudflare Access OTP + 独立 Tunnel + Reader Caddy | 授权设备免 Readeck 密码，匿名会话不能读取私人内容，且不暴露 WeRSS | 自建设备配对运行时 / 仅本机 | accepted-live |
 | Vault 层级 | Archive processed source inbox | 符合 SummerOS 晋升链路 | 直接 Knowledge | accepted |
 | 图片 | v1 不自动本地化 | 避免附件污染 | 全量下载 | accepted |
 
@@ -136,5 +139,5 @@
 | --- | --- | --- | --- |
 | 是否拥有公众号运营权限？ | 已确认；WeRSS 显示已授权且 Token 有效 | user | done |
 | Docker 协议/权限是否完成？ | App 安装后需用户操作 | user | 本机 smoke 前 |
-| Cloudflare Tunnel 是否完成？ | 账号授权完成；Zero Trust Free 超额收费授权待用户确认，Access/Tunnel/DNS 尚未创建 | user + coordinator | 公网 smoke 前 |
-| Readeck 是否稳定？ | 本机 95 篇、真实高亮和 Obsidian 幂等样本通过；72 小时/7 天待观察 | user + coordinator | 完成判断前 |
+| Cloudflare Tunnel 是否完成？ | 已完成 Access、独立 Tunnel、DNS、LaunchAgent、授权/匿名浏览器边界和公网 smoke | user + coordinator | done |
+| Readeck 是否稳定？ | 101 篇、真实高亮和 Obsidian 幂等样本通过；72 小时/7 天待观察 | user + coordinator | 完成判断前 |
