@@ -56,8 +56,40 @@ IFS=$'\t' read -r readeck_bookmarks readeck_marked readeck_annotated readeck_lat
 
 sync_db="$HOME/.local/share/wechat-rss/reading-sync.sqlite3"
 sync_mappings="0"
+eligible_articles="unknown"
+mapping_duplicates="unknown"
+mapping_missing="unknown"
+latest_ready="none"
+latest_loaded="none"
+latest_latency_minutes="unknown"
 if [[ -f "$sync_db" ]]; then
   sync_mappings="$(sqlite3 -readonly "$sync_db" "select count(*) from article_map;" 2>/dev/null || printf 'unknown')"
+  mapping_snapshot="$(sqlite3 -readonly -separator $'\t' "$sync_db" "
+    attach database '$ROOT_DIR/data/we_mp_rss.db' as w;
+    attach database '$readeck_db' as r;
+    with eligible as (
+      select id, created_at
+      from w.articles
+      where has_content=1 and length(trim(coalesce(content_html,content,'')))>=80
+    ), latest as (
+      select e.created_at ready_at, b.updated loaded_at
+      from eligible e
+      left join article_map m on m.article_id=e.id
+      left join r.bookmark b on b.uid=m.bookmark_id
+      order by datetime(e.created_at) desc
+      limit 1
+    )
+    select
+      (select count(*) from eligible),
+      ((select count(*)-count(distinct article_id) from article_map) +
+       (select count(*)-count(distinct bookmark_id) from article_map)),
+      ((select count(*) from eligible e left join article_map m on m.article_id=e.id where m.article_id is null) +
+       (select count(*) from article_map m left join r.bookmark b on b.uid=m.bookmark_id where b.uid is null)),
+      coalesce((select ready_at from latest), 'none'),
+      coalesce((select strftime('%Y-%m-%d %H:%M:%S', loaded_at, '+8 hours') from latest), 'none'),
+      coalesce((select round((julianday(loaded_at,'+8 hours')-julianday(ready_at))*24*60,2) from latest), 'unknown');
+  ")"
+  IFS=$'\t' read -r eligible_articles mapping_duplicates mapping_missing latest_ready latest_loaded latest_latency_minutes <<<"$mapping_snapshot"
 fi
 
 sync_state="unknown"
@@ -68,19 +100,36 @@ elif [[ -s /tmp/wechat-rss-reading-sync.err ]]; then
 fi
 
 timestamp="$(date '+%Y-%m-%dT%H:%M:%S%z')"
+old_header=$'timestamp\twerss_service\treadeck_service\treader_caddy_service\tenabled_feeds\twerss_articles\twerss_complete\twerss_latest\tcron_exp\tcron_status\treadeck_bookmarks\treadeck_marked\treadeck_annotated\treadeck_latest\tsync_mappings\tsync_state'
+new_header="${old_header}"$'\teligible_articles\tmapping_duplicates\tmapping_missing\tlatest_ready\tlatest_loaded\tlatest_latency_minutes'
 if [[ ! -f "$log" ]]; then
-  printf '%s\n' 'timestamp	werss_service	readeck_service	reader_caddy_service	enabled_feeds	werss_articles	werss_complete	werss_latest	cron_exp	cron_status	readeck_bookmarks	readeck_marked	readeck_annotated	readeck_latest	sync_mappings	sync_state' >"$log"
+  printf '%s\n' "$new_header" >"$log"
+else
+  current_header="$(head -n 1 "$log")"
+  if [[ "$current_header" == "$old_header" ]]; then
+    migrated="$(mktemp "$ROOT_DIR/observations/readeck-stability.tsv.tmp.XXXXXX")"
+    chmod 600 "$migrated"
+    printf '%s\n' "$new_header" >"$migrated"
+    tail -n +2 "$log" | awk '{ print $0 "\tunknown\tunknown\tunknown\tunknown\tunknown\tunknown" }' >>"$migrated"
+    mv "$migrated" "$log"
+  elif [[ "$current_header" != "$new_header" ]]; then
+    die "观察文件表头不是已知版本，拒绝覆盖"
+  fi
 fi
 
-printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-  "$timestamp" \
-  "$(service_state we-mp-rss)" \
-  "$(service_state readeck)" \
-  "$(service_state reader-caddy)" \
-  "$enabled_feeds" "$werss_articles" "$werss_complete" "$werss_latest" \
-  "$cron_exp" "$cron_status" \
-  "$readeck_bookmarks" "$readeck_marked" "$readeck_annotated" "$readeck_latest" \
-  "$sync_mappings" "$sync_state" >>"$log"
+row=(
+  "$timestamp"
+  "$(service_state we-mp-rss)"
+  "$(service_state readeck)"
+  "$(service_state reader-caddy)"
+  "$enabled_feeds" "$werss_articles" "$werss_complete" "$werss_latest"
+  "$cron_exp" "$cron_status"
+  "$readeck_bookmarks" "$readeck_marked" "$readeck_annotated" "$readeck_latest"
+  "$sync_mappings" "$sync_state"
+  "$eligible_articles" "$mapping_duplicates" "$mapping_missing"
+  "$latest_ready" "$latest_loaded" "$latest_latency_minutes"
+)
+(IFS=$'\t'; printf '%s\n' "${row[*]}") >>"$log"
 
 chmod 600 "$log"
 printf '已记录一次 Readeck 稳定性观察：%s\n' "$log"

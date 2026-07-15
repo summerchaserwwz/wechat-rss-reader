@@ -93,6 +93,13 @@
 - 下一步：小时采样继续验证新增文章在 5 分钟同步周期后的零遗漏/零重复；不把静态全量一致性替代真实时间门禁。
 - 证据：command:./scripts/verify.sh --local:12 feeds、95 unique mappings pass, R-002 fail only
 
+### [2026-07-15 12:47] - 真实新增文章 5 分钟同步延迟证据
+
+- 做了什么：以最新合格 WeRSS 正文的就绪时间与对应 Readeck 书签 `updated` 时间交叉计算真实加载延迟；扩展 `record-observation.sh`，在保留旧行的同时迁移 TSV 表头，今后自动记录合格正文数、重复/缺失映射、最新就绪/加载时间和延迟。
+- 验证结果：最新真实文章于 10:19:13 在 WeRSS 就绪，10:21:22 在 Readeck 完成加载，延迟 2.16 分钟；对应 95 条映射仍为 0 重复、0 缺失。`observations/readeck-stability.tsv` 已无损迁移为 22 列，前两条历史行保留，第三条包含该延迟证据。
+- 下一步：继续等待并记录三个不受维护停机影响的连续小时抓取周期；出现更新时由同一字段持续验证 5 分钟内加载和零重复。
+- 证据：command:cross-SQLite ready/load timestamps:2.16 minutes；command:record-observation.sh:22 columns、95 eligible、0 duplicate、0 missing
+
 ## 协调者交接（Coordinator，启用模块并行时填写）
 
 - Global sync status：pending-coordinator-pass / synced / n/a
