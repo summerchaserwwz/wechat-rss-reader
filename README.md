@@ -11,7 +11,7 @@
   -> Obsidian 保留原文、高亮、批注、我的笔记和双链
 ```
 
-当前实测状态：12 个公众号、107 篇 WeRSS 文章；103 篇达到正文门槛的文章已经全部且唯一进入 Readeck。已经用真实文章验证收藏、选中文字后下划线高亮、批注、Obsidian 入库和人工笔记不覆盖。
+当前实测状态：12 个公众号、108 篇 WeRSS 文章；104 篇达到正文门槛的文章已经全部且唯一进入 Readeck。已经用真实文章验证收藏、80% 自动已读、选中文字后下划线高亮、批注、价值评分、主题标签、Obsidian 入库和人工笔记不覆盖。
 
 ## 你最终怎么用
 
@@ -35,6 +35,12 @@
 ![Obsidian 保留我的笔记、划线、批注和原文](docs/images/06-obsidian-高亮批注笔记.png)
 
 ![Cloudflare 公网免 Readeck 密码文章库](docs/images/07-cloudflare-公网阅读器.png)
+
+![Folo 三栏与 Petdex 磨砂风 Reader](docs/images/09-reader-folo-inbox.png)
+
+![Reader 价值评分与主题标签](docs/images/13-reader-value-tags.png)
+
+![Reader 390px 移动端正文](docs/images/14-reader-mobile.png)
 
 完整阅读教程见 [Readeck 与 Obsidian 图文教程](docs/Readeck与Obsidian图文教程.md)。
 

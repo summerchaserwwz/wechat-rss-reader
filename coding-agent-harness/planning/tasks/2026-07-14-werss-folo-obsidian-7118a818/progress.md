@@ -33,7 +33,15 @@
 
 - P1：固定 WeRSS 摘要的 arm64 manifest 实际为 AMD64 文件系统；本机功能可通过 Rosetta 运行，但 RG-002 原生 ARM64 硬门禁失败。需要用户选择接受模拟运行或授权维护自建原生镜像。
 - P1：公众号资格/授权、12 个来源和每小时任务已完成；72 小时/7 天近实时观察仍是时间门禁。
+- P1：Reader 的“新增公众号”安全入口与自动出现逻辑已实现，但 Goal 指定的“新增一个用户选定公众号，来源 N→N+1”仍需用户给出目标公众号并在本机 WeRSS 完成受控添加。
 - P2：Docker Desktop 为 Caddy 发布回环端口需要非 internal bridge，因此 Caddy 具备出站能力；已用只读根、`no-new-privileges`、仅保留 `NET_BIND_SERVICE` 和固定无动态上游的 Caddyfile 降低风险。
+
+### [2026-07-15 18:18] - Reader 六图、真实状态闭环与恢复验收
+
+- 做了什么：建立不修改 Cloudflare/DNS 的临时本机 Reader Caddy 与 Playwright 会话，在 1440×900 和 390×844 真实视口生成收件箱、顶部 Tab、一键收藏、订阅页、价值标签、移动端共 6 张无秘密截图。对真实文章《Prompt Engineering 已死，任务合同当立》补齐价值 5、主题“任务合同”和已读状态；复用其既有持久划线与非空批注，完成收藏、标签、已读和 Obsidian 同步闭环。收藏临时测试文章后刷新仍持久，随后在 Readeck 回滚收藏；样本文章重置为未读后滚动 85%，900 ms 防抖后自动回到 100%。
+- 验证结果：Readeck API 确认样本 `is_marked=true`、`read_progress=100`、仅一个 `价值/5`、包含 `主题/任务合同`，并存在 text/note 均非空的 annotation。Obsidian 已写入 `reader_value: 5` 与 `reader_tags: 任务合同`；两次同步中人工字段摘要和“我的笔记”摘要完全不变，第二次全文件 SHA-256 不变。稳定性观察交叉计算出 4 篇、3 个公众号的发布到 Reader 延迟为 29.4、15.5、40.2、24.6 分钟，均不超过 70 分钟。新备份 `20260715-181655` 与独立恢复 `20260715-181736` 通过：104 篇文章、1 收藏、1 篇含批注、三个 SQLite、Reader UI、Access 403/403 与模拟身份 200/200 均恢复成功。
+- 下一步：运行最终全量命令并提交本切片；随后只剩用户选定公众号 N→N+1、72 小时/7 天项目级时间门禁、最终审查和人工确认。
+- 证据：screenshot:docs/images/09-reader-folo-inbox.png:1440×900 三栏正文；screenshot:docs/images/10-reader-top-tabs.png:6 Tab 数量与活动态；screenshot:docs/images/11-reader-one-click-favorite.png:列表/正文双收藏；screenshot:docs/images/12-reader-subscriptions.png:来源与抓取状态；screenshot:docs/images/13-reader-value-tags.png:价值 5 与主题；screenshot:docs/images/14-reader-mobile.png:390×844 单栏正文；command:Playwright API/UI + Readeck API + Obsidian hash:E2E pass；command:backup 20260715-181655 + restore 20260715-181736:pass
 
 ### [2026-07-15 17:11] - Petdex 磨砂 Reader 与沉浸正文
 

@@ -11,8 +11,8 @@
 | 项目 | 当前值 | 证据 |
 | --- | ---: | --- |
 | 启用公众号 | 12 | `data/we_mp_rss.db` 只读查询 |
-| WeRSS 文章 | 107 | `data/we_mp_rss.db` 只读查询 |
-| Readeck 文章 | 103 | `readeck-data/data/db.sqlite3` 只读查询 |
+| WeRSS 文章 | 108 | `data/we_mp_rss.db` 只读查询 |
+| Readeck 文章 | 104 | `readeck-data/data/db.sqlite3` 只读查询 |
 | 自动抓取 | `17 * * * *` | WeRSS `message_tasks` |
 | Reader 同步 | 300 秒 | `com.summer.wechat-rss-reading-sync.plist` |
 | Reader 顶部 Tab | 6 | 公网 Reader 实机 DOM 与 `reader-ui/index.html` |
@@ -23,13 +23,13 @@
 
 | 类别 | 当前证据 | Folo 参考 | 目标行为 | 实现位置 | 验收证据 | 状态 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 布局 | 原公网 Reader 是侧栏加整页列表 | Folo Desktop 使用来源、时间线、内容持续并列的高密度工作区 | 桌面固定为来源栏 220–260px、时间线 360–440px、正文占剩余宽度；移动端逐级进入 | `reader-ui/`、`Caddyfile.reader` | 公网 Chrome 实机、`verify-reader-ui.sh` | 已实现 |
-| 顶部导航 | 原有入口分散在 Readeck 左侧 | Folo 把内容类型和未读筛选放在高可见位置 | 顶部固定“收件箱、未读、收藏、划线、高价值、订阅”，显示数量并支持 1–6 快捷键 | `reader-ui/app.js`、`reader-ui/styles.css` | DOM、快捷键代码与实机页面 | 已实现 |
-| 收藏 | 原收藏动作藏在 Readeck 行尾或正文工具栏 | Folo 时间线保留直接操作 | 每行和正文工具栏都显示星标；单击或 `S` 切换，失败回滚，刷新后保留 | `reader-ui/app.js` | Readeck API 与实机页面 | 已实现 |
-| 已读状态 | 原列表缺少明确未读/阅读中反馈 | Folo 使用橙色未读点和独立未读视图 | `0 / 1–99 / 100` 分别显示未读、阅读中、已读；80% 自动已读，并可手工反转 | `reader-ui/app.js` | API 持久化、计数即时更新 | 已实现 |
+| 布局 | 原公网 Reader 是侧栏加整页列表 | Folo Desktop 使用来源、时间线、内容持续并列的高密度工作区 | 桌面固定为来源栏 220–260px、时间线 360–440px、正文占剩余宽度；移动端逐级进入 | `reader-ui/`、`Caddyfile.reader` | `images/09-reader-folo-inbox.png`、`images/14-reader-mobile.png`、`verify-reader-ui.sh` | 已实现 |
+| 顶部导航 | 原有入口分散在 Readeck 左侧 | Folo 把内容类型和未读筛选放在高可见位置 | 顶部固定“收件箱、未读、收藏、划线、高价值、订阅”，显示数量并支持 1–6 快捷键 | `reader-ui/app.js`、`reader-ui/styles.css` | `images/10-reader-top-tabs.png`、快捷键静态断言 | 已实现 |
+| 收藏 | 原收藏动作藏在 Readeck 行尾或正文工具栏 | Folo 时间线保留直接操作 | 每行和正文工具栏都显示星标；单击或 `S` 切换，失败回滚，刷新后保留 | `reader-ui/app.js` | `images/11-reader-one-click-favorite.png`；收藏 1→2、刷新仍为 2、回滚为 1 | 已实现 |
+| 已读状态 | 原列表缺少明确未读/阅读中反馈 | Folo 使用橙色未读点和独立未读视图 | `0 / 1–99 / 100` 分别显示未读、阅读中、已读；80% 自动已读，并可手工反转 | `reader-ui/app.js` | 真实样本手工 0→100；重置后滚动 85% 自动回到 100；刷新仍显示“标为未读” | 已实现 |
 | 订阅追加 | 新增公众号必须由受保护的本机管理端完成 | Folo 来源栏直接显示订阅与未读计数 | “订阅”页展示来源、文章数、未读、最近抓取和健康；部署 Mac 可打开本机 WeRSS，公网不暴露管理端 | `reader-ui/`、`scripts/reading-sync.py` | 状态 JSON 已通过；N→N+1 仍为人工门禁 | 部分完成 |
-| 抓取反馈 | 原 Reader 不显示计划和最后同步 | Folo 时间线有刷新和即时状态反馈 | 明示每小时抓取、5 分钟同步、最后成功时间、最新文章与异常状态 | `scripts/reading-sync.py`、`reader-ui/app.js` | 2.16 分钟真实样本、三次完整小时周期；72h/7d 待观察 | 部分完成 |
-| 价值标签 | 原价值评分和主题只能进入 Obsidian 后填写 | Folo 的信息流强调筛选和重要性排序 | 正文工具栏设置 1–5 价值与主题；使用 `价值/N`、`主题/名称` Readeck 标签；高价值页显示 4–5 | `reader-ui/app.js`、`scripts/reading-sync.py`、公众号精选 Base | 标签 API、Obsidian `reader_value/reader_tags` | 已实现 |
+| 抓取反馈 | 原 Reader 不显示计划和最后同步 | Folo 时间线有刷新和即时状态反馈 | 明示每小时抓取、5 分钟同步、最后成功时间、最新文章与异常状态 | `scripts/reading-sync.py`、`reader-ui/app.js` | `images/12-reader-subscriptions.png`；4 篇/3 来源发布到 Reader 为 15–41 分钟 | 已实现 |
+| 价值标签 | 原价值评分和主题只能进入 Obsidian 后填写 | Folo 的信息流强调筛选和重要性排序 | 正文工具栏设置 1–5 价值与主题；使用 `价值/N`、`主题/名称` Readeck 标签；高价值页显示 4–5 | `reader-ui/app.js`、`scripts/reading-sync.py`、公众号精选 Base | `images/13-reader-value-tags.png`；刷新后高价值 1；Obsidian 受控字段与人工字段摘要稳定 | 已实现 |
 | 移动端 | 原移动端缺少三栏到单栏的明确导航状态 | Folo 移动端按来源、时间线、正文逐级进入 | 390px 下单栏，显示明确返回按钮；收藏、已读、价值和批注仍可触达 | `reader-ui/styles.css`、`reader-ui/app.js` | 既有 390×844 实机验收、响应式规则 | 已实现 |
 
 ## Petdex 视觉适配
@@ -38,6 +38,19 @@
 - 面板：只对来源栏、顶部导航、时间线和正文外壳使用半透明磨砂，正文纸面保持稳定对比度。
 - 边界：使用低对比冷色细边框、顶部高光和轻阴影，不复制 Petdex 的 Logo、角色卡片或品牌素材。
 - 语义色：靛蓝用于导航与当前选择；橙色只保留给未读、收藏和价值等状态反馈。
+
+## 自动链路延迟样本
+
+以下样本使用 `observations/readeck-stability.tsv` 在当次自动同步后记录的 Reader 加载时间，并与 WeRSS 文章发布时间交叉计算；没有把后续人工收藏、已读或标签修改时间当作首次出现时间。
+
+| 公众号 | 发布时间（Asia/Shanghai） | Reader 出现 | 延迟 |
+| --- | --- | --- | ---: |
+| 卡尔的AI沃茨 | 07-15 09:52 | 07-15 10:21 | 29.4 分钟 |
+| 新智元 | 07-15 13:32 | 07-15 13:47 | 15.5 分钟 |
+| 量子位 | 07-15 14:42 | 07-15 15:22 | 40.2 分钟 |
+| 量子位 | 07-15 16:55 | 07-15 17:19 | 24.6 分钟 |
+
+样本覆盖 4 篇、3 个公众号，全部不超过 70 分钟。微信没有 Webhook，本结果只证明当前每小时抓取加 5 分钟同步的近实时目标，不代表秒级更新。
 
 ## API 可行性结论
 

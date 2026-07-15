@@ -104,6 +104,23 @@
 - 修复：固定主题响应增加浏览器/CDN `no-store`；Reader 外壳在 iframe load 后注入带版本号的同源 `/reader-assets/embed.css`，该文件只负责嵌入布局与 Petdex 深色变量，不复制 Readeck 的标注逻辑。
 - 验证：公网 Chrome 计算样式确认 `.layout-topnav`、`.bookmark-sidebar`、`.bookmark-topbar` 为 `display:none`，`.bookmark-container` 与 `.bookmark-content` 占满 iframe；原生 `.annotator` 未隐藏，划线与批注能力保持由 Readeck 管理。
 
+### Reader 状态已通过同一篇真实文章形成闭环
+
+- 样本《Prompt Engineering 已死，任务合同当立》原有 1 条持久划线和非空批注；Reader API 操作后同时具备收藏、价值 5、主题“任务合同”和已读 100%。
+- 手工已读按钮在当前页面即时从 0 变 100，刷新后仍显示“标为未读”。把样本重置为未读后，Playwright 在同源 iframe 滚动到 85%，Reader 通过 900 ms 防抖自动写回 100%，证明 80% 阈值不是只存在于静态代码。
+- Obsidian 同一文件写入受控 `reader_value/reader_tags`；人工 `rating/topics` 和“我的笔记”分别以独立摘要验证前后相同，第二次同步全文件摘要不变。
+
+### 发布到 Reader 延迟门禁已有四个自动样本
+
+- `observations/readeck-stability.tsv` 在自动同步后保留了当时的 `werss_latest` 与 `latest_loaded`；这比事后读取 Readeck `updated` 更可靠，因为收藏、已读或标签修改也会更新 `updated`。
+- 交叉解析 WeRSS 发布时间与来源后得到 4 个样本、3 个公众号：29.4、15.5、40.2、24.6 分钟，全部小于 70 分钟。
+- 该证据证明每小时抓取加 5 分钟同步在当前样本下满足近实时目标，但不改变“微信无 Webhook、不能宣传秒级”的边界。
+
+### 无秘密截图使用临时本机身份环境
+
+- 为避免把真实 Cloudflare 会话、邮箱或凭据写入截图和自动化配置，验收时创建一次性本机 Reader Caddy：使用固定假邮箱身份，只连接现有内部 Readeck 网络，不创建 DNS、Tunnel 或 Access 对象。
+- Playwright 通过本机回环端口生成 1440×900 与 390×844 截图；会话和临时容器在截图后删除。正式公网 Access 与 live Caddy 配置未改变。
+
 ### URL Token 不是可接受的免密码设备授权
 
 - 未提交草案曾通过 URL 携带静态 Token 写一年期 Cookie，并把固定管理员身份转发给 Readeck。

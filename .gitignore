@@ -4,6 +4,8 @@ data/
 backups/
 downloads/
 observations/
+.playwright-cli/
+output/playwright/
 readeck-data/
 sync-state/
 secrets/
