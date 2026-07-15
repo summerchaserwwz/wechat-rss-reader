@@ -12,6 +12,7 @@ mode="${1:---local}"
 require_command curl
 require_command xmllint
 require_command docker
+require_command sqlite3
 require_env_file
 
 prefix="$(env_value FEED_PREFIX)"
@@ -90,6 +91,32 @@ reader_public_root_status="$(curl -sS -o /dev/null -w '%{http_code}' -H "Host: $
 reader_public_api_status="$(curl -sS -o /dev/null -w '%{http_code}' -H "Host: ${reader_host}" "${reader_proxy_url}/api/bookmarks")"
 [[ "$reader_public_root_status" == "403" ]] || die "缺少 Access 身份时 Reader 公网 Host 根路径不是 403"
 [[ "$reader_public_api_status" == "403" ]] || die "缺少 Access 身份时 Reader 公网 Host API 不是 403"
+
+printf '检查 WeRSS → Readeck 全量同步映射...\n'
+sync_db="$HOME/.local/share/wechat-rss/reading-sync.sqlite3"
+[[ -f "$sync_db" ]] || die "缺少阅读同步状态数据库"
+sync_snapshot="$(sqlite3 -readonly -separator '|' "$sync_db" "
+  attach database '$ROOT_DIR/data/we_mp_rss.db' as w;
+  attach database '$ROOT_DIR/readeck-data/data/db.sqlite3' as r;
+  select
+    (select count(*) from w.feeds where status=1),
+    (select count(*) from w.articles where has_content=1 and length(trim(coalesce(content_html,content,'')))>=80),
+    (select count(*) from article_map),
+    (select count(distinct article_id) from article_map),
+    (select count(distinct bookmark_id) from article_map),
+    (select count(*) from article_map m left join w.articles a on a.id=m.article_id where a.id is null),
+    (select count(*) from article_map m left join r.bookmark b on b.uid=m.bookmark_id where b.uid is null),
+    (select count(*) from article_map m join r.bookmark b on b.uid=m.bookmark_id where b.url<>m.url),
+    (select count(distinct f.id) from w.feeds f join w.articles a on a.mp_id=f.id where f.status=1 and a.has_content=1 and length(trim(coalesce(a.content_html,a.content,'')))>=80),
+    (select count(distinct a.mp_id) from article_map m join w.articles a on a.id=m.article_id join w.feeds f on f.id=a.mp_id where f.status=1);
+")"
+IFS='|' read -r enabled_feeds eligible_articles mapped_articles unique_articles unique_bookmarks missing_werss missing_readeck url_mismatch eligible_feeds mapped_feeds <<<"$sync_snapshot"
+(( enabled_feeds > 0 )) || die "没有启用的公众号"
+[[ "$eligible_articles" == "$mapped_articles" ]] || die "达到正文门槛的 WeRSS 文章尚未全部同步到 Readeck"
+[[ "$mapped_articles" == "$unique_articles" && "$mapped_articles" == "$unique_bookmarks" ]] || die "同步映射存在重复文章或书签"
+[[ "$missing_werss" == "0" && "$missing_readeck" == "0" && "$url_mismatch" == "0" ]] || die "同步映射存在孤儿或 URL 错配"
+[[ "$eligible_feeds" == "$enabled_feeds" && "$mapped_feeds" == "$enabled_feeds" ]] || die "并非所有启用公众号都有可用正文和 Readeck 映射"
+printf '同步映射通过：%s 个公众号，%s 篇可用正文，均唯一进入 Readeck。\n' "$enabled_feeds" "$mapped_articles"
 
 if [[ "$mode" == "--public" ]]; then
   rss_base_url="$(env_value RSS_BASE_URL)"

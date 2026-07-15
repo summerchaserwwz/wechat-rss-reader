@@ -86,6 +86,13 @@
 - 下一步：真实公网仍必须由 `cloudflared` 的 team/AUD 校验和 Cloudflare Access 精确邮箱策略保护；获得金融授权后再做无痕与已授权 Chrome 实机验收。
 - 证据：command:./scripts/restore-test.sh:403/403 anonymous and 200/200 simulated Access identity, restore pass
 
+### [2026-07-15 12:43] - 全量同步映射纳入本机硬验收
+
+- 做了什么：跨 WeRSS、同步状态和 Readeck 三个 SQLite 交叉核对 95 条文章映射，并将同一断言并入 `verify.sh --local`：正文门槛、文章/书签唯一性、孤儿、URL 错配以及 12 个启用公众号覆盖率。
+- 验证结果：95 篇达到正文门槛的 WeRSS 文章全部且唯一映射到 95 篇 Readeck 书签；0 个 WeRSS/Readeck 孤儿、0 个 URL 错配；12/12 个启用公众号均有可用正文和 Readeck 映射。更新后的本机验收打印同步映射通过，随后仍只在已知 WeRSS `x86_64` 门禁返回 1。
+- 下一步：小时采样继续验证新增文章在 5 分钟同步周期后的零遗漏/零重复；不把静态全量一致性替代真实时间门禁。
+- 证据：command:./scripts/verify.sh --local:12 feeds、95 unique mappings pass, R-002 fail only
+
 ## 协调者交接（Coordinator，启用模块并行时填写）
 
 - Global sync status：pending-coordinator-pass / synced / n/a

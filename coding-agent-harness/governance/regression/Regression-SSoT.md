@@ -10,7 +10,7 @@
 | RG-004 | WeRSS/Readeck/同步状态/Reader 主题备份恢复 | `backup.sh`; `restore-test.sh` | 数据、密钥、镜像、主题升级前后 | L2-local-smoke | 2026-07-15 | pass；backup 20260715-121728、restore 20260715-121812 | coordinator | none |
 | RG-005 | Obsidian Base 与真实笔记结构 | Base parse；Obsidian UI；真实样本 | Base/字段/目录变更 | L3-live | 2026-07-15 | partial；真实 UI screenshot pass，Base 列待验 | user + coordinator | R-005 |
 | RG-006 | 微信抓取与每小时调度 | 12 源 + `17 * * * *` + SQLite/任务队列 | 授权、抓取配置、镜像升级 | L3-live | 2026-07-15 | partial；12 源/99 篇，长期周期待观察 | user + coordinator | R-006 |
-| RG-007 | WeRSS → Readeck 全量同步 | unittest；API/SQLite 计数；LaunchAgent | 同步器/Readeck API 变更 | L2/L3 | 2026-07-15 | pass；95 完整文章 loaded | coordinator | none |
+| RG-007 | WeRSS → Readeck 全量同步 | unittest；跨三个 SQLite 唯一映射；LaunchAgent | 同步器/Readeck API 变更 | L2/L3 | 2026-07-15 | pass；12/12 来源、95/95 正文唯一映射，0 孤儿/错配 | coordinator | none |
 | RG-008 | Readeck → Obsidian 收藏/高亮/批注与保护 | 真实样本；hash/mtime；unittest | Markdown 渲染/筛选规则变更 | L3-live | 2026-07-15 | pass-with-residual；1 真实样本，额外排版样本待补 | coordinator | R-008 |
 
 ## 未关闭回归残余
