@@ -21,7 +21,7 @@
     unread: ["未读", "还没有读完的文章"],
     favorites: ["收藏", "准备继续处理的文章"],
     highlights: ["划线", "包含摘录或批注的文章"],
-    valuable: ["高价值", "价值评分为 4–5 的文章"],
+    valuable: ["高价值", "价值评分为 4-5 的文章"],
     subscriptions: ["订阅", "公众号来源与抓取状态"],
   };
 
@@ -59,6 +59,8 @@
     addFeed: $("#add-feed"),
     subscriptionAdd: $("#subscription-add"),
     feedDialog: $("#feed-dialog"),
+    feedDeviceNote: $("#feed-device-note"),
+    feedLocalLink: $("#feed-local-link"),
     toast: $("#toast"),
   };
 
@@ -153,9 +155,9 @@
   }
 
   function fullTime(value) {
-    if (!value) return "—";
+    if (!value) return "暂无";
     const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "—";
+    if (Number.isNaN(date.getTime())) return "暂无";
     return new Intl.DateTimeFormat("zh-CN", {
       month: "2-digit",
       day: "2-digit",
@@ -545,7 +547,7 @@
         if (!doc.querySelector("link[data-reader-embed-theme]")) {
           const embedTheme = doc.createElement("link");
           embedTheme.rel = "stylesheet";
-          embedTheme.href = "/reader-assets/embed.css?v=1";
+          embedTheme.href = "/reader-assets/embed.css?v=2";
           embedTheme.dataset.readerEmbedTheme = "true";
           doc.head.append(embedTheme);
         }
@@ -590,6 +592,14 @@
     render();
   }
 
+  function prepareFeedDialog() {
+    const mobileDevice = window.matchMedia("(max-width: 760px), (pointer: coarse)").matches;
+    elements.feedLocalLink.hidden = mobileDevice;
+    elements.feedDeviceNote.textContent = mobileDevice
+      ? "当前是手机或触屏设备，不能访问部署 Mac 的 127.0.0.1。请回到部署 Mac 打开 WeRSS，添加后 Reader 会自动出现新来源。"
+      : "下面的按钮只访问当前设备的 127.0.0.1，因此必须在部署这套系统的 Mac 上使用。";
+  }
+
   function bindEvents() {
     elements.tabList.addEventListener("click", (event) => {
       const button = event.target.closest("[data-tab]");
@@ -612,7 +622,10 @@
     elements.readerBack.addEventListener("click", () => { elements.app.dataset.mobileView = "timeline"; });
     elements.timelineBack.addEventListener("click", () => { elements.app.dataset.mobileView = "sources"; });
     for (const button of [elements.addFeed, elements.subscriptionAdd]) {
-      button.addEventListener("click", () => elements.feedDialog.showModal());
+      button.addEventListener("click", () => {
+        prepareFeedDialog();
+        elements.feedDialog.showModal();
+      });
     }
     document.addEventListener("keydown", (event) => {
       const editable = event.target.matches?.("input, textarea, [contenteditable='true']");

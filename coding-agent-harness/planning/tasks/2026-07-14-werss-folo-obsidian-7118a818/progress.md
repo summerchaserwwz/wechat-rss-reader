@@ -36,12 +36,26 @@
 - P1：Reader 的“新增公众号”安全入口与自动出现逻辑已实现，但 Goal 指定的“新增一个用户选定公众号，来源 N→N+1”仍需用户给出目标公众号并在本机 WeRSS 完成受控添加。
 - P2：Docker Desktop 为 Caddy 发布回环端口需要非 internal bridge，因此 Caddy 具备出站能力；已用只读根、`no-new-privileges`、仅保留 `NET_BIND_SERVICE` 和固定无动态上游的 Caddyfile 降低风险。
 
+### [2026-07-15 19:06] - Petdex 半透明磨砂视觉重构
+
+- 做了什么：直接检查 `petdex.dev` 的真实页面与计算样式，将 Reader 从分散蓝紫光的后台面板感改成上部钴蓝环境光、下部近黑画布；来源栏和顶部导航使用高透明磨砂，时间线与正文使用更稳定的深色表面阶梯。统一 24px 大面板、16px 文章卡和胶囊按钮，并将主操作改为白色高对比胶囊。同步更新嵌入正文的 SF Pro/苹方排版、引用块、代码块、图片圆角和选区反馈。
+- 验证结果：授权公网 Reader 在默认桌面视口真实显示 12 个来源、104 篇文章和三栏正文；390×844 下时间线、正文、价值/主题工具栏和新增公众号弹窗均无横向溢出。手机弹窗继续不渲染本机 WeRSS 链接。正文原生划线与批注组件未被替换。Shell、JS、Compose、diff 检查、10 个 unittest、`verify.sh --reader-public`、`verify-reader-ui.sh` 和 Harness 全部通过。
+- 下一步：整个任务仍等待用户选定公众号 12→13 与 72 小时/7 天时间门禁，视觉切片本身已完成。
+- 证据：command:Chrome public Reader desktop/mobile visual audit:Petdex glass、article typography、mobile dialog pass；command:static+10 unittest+public/UI+Harness:pass；diff:reader-ui/styles.css,embed.css,index.html,app.js:surface ladder、glass、type and cache bust
+
 ### [2026-07-15 18:18] - Reader 六图、真实状态闭环与恢复验收
 
 - 做了什么：建立不修改 Cloudflare/DNS 的临时本机 Reader Caddy 与 Playwright 会话，在 1440×900 和 390×844 真实视口生成收件箱、顶部 Tab、一键收藏、订阅页、价值标签、移动端共 6 张无秘密截图。对真实文章《Prompt Engineering 已死，任务合同当立》补齐价值 5、主题“任务合同”和已读状态；复用其既有持久划线与非空批注，完成收藏、标签、已读和 Obsidian 同步闭环。收藏临时测试文章后刷新仍持久，随后在 Readeck 回滚收藏；样本文章重置为未读后滚动 85%，900 ms 防抖后自动回到 100%。
 - 验证结果：Readeck API 确认样本 `is_marked=true`、`read_progress=100`、仅一个 `价值/5`、包含 `主题/任务合同`，并存在 text/note 均非空的 annotation。Obsidian 已写入 `reader_value: 5` 与 `reader_tags: 任务合同`；两次同步中人工字段摘要和“我的笔记”摘要完全不变，第二次全文件 SHA-256 不变。稳定性观察交叉计算出 4 篇、3 个公众号的发布到 Reader 延迟为 29.4、15.5、40.2、24.6 分钟，均不超过 70 分钟。新备份 `20260715-181655` 与独立恢复 `20260715-181736` 通过：104 篇文章、1 收藏、1 篇含批注、三个 SQLite、Reader UI、Access 403/403 与模拟身份 200/200 均恢复成功。
 - 下一步：运行最终全量命令并提交本切片；随后只剩用户选定公众号 N→N+1、72 小时/7 天项目级时间门禁、最终审查和人工确认。
 - 证据：screenshot:docs/images/09-reader-folo-inbox.png:1440×900 三栏正文；screenshot:docs/images/10-reader-top-tabs.png:6 Tab 数量与活动态；screenshot:docs/images/11-reader-one-click-favorite.png:列表/正文双收藏；screenshot:docs/images/12-reader-subscriptions.png:来源与抓取状态；screenshot:docs/images/13-reader-value-tags.png:价值 5 与主题；screenshot:docs/images/14-reader-mobile.png:390×844 单栏正文；command:Playwright API/UI + Readeck API + Obsidian hash:E2E pass；command:backup 20260715-181655 + restore 20260715-181736:pass
+
+### [2026-07-15 18:44] - 新增公众号桌面/手机安全分流
+
+- 做了什么：补齐“新增公众号”对话框的设备分流。桌面端明确说明链接只访问当前设备的 `127.0.0.1`，并保留“在部署 Mac 打开 WeRSS”；手机或触屏设备隐藏该链接，只提示回到部署 Mac 完成添加，避免用户在手机上误开自己的 localhost。
+- 验证结果：临时本机假身份 Reader 在 1440px 下显示唯一的本机 WeRSS 链接；缩到 390×844 后通过快捷键 6 进入订阅页，打开对话框只出现手机说明，DOM 中没有“在部署 Mac 打开 WeRSS”链接。临时 Playwright 会话和 Caddy 容器已删除，公网 Access/DNS/Tunnel 未修改。
+- 下一步：等待用户给出一个新公众号名称，在 WeRSS 受控 UI 完成 12→13 并验证自动出现；72 小时/7 天观察继续。
+- 证据：command:Playwright desktop/mobile feed-dialog audit:desktop local link present、mobile link absent and explanation present；diff:reader-ui/index.html,app.js,styles.css:device-safe subscription flow
 
 ### [2026-07-15 17:11] - Petdex 磨砂 Reader 与沉浸正文
 

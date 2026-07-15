@@ -4,19 +4,20 @@
 
 html.reader-embed {
   color-scheme: dark;
-  --reader-canvas: #0b0d15;
-  --reader-surface: #11131c;
-  --reader-surface-muted: #171a25;
-  --reader-border: #2a2e3f;
-  --reader-ink: #f3f4f9;
-  --reader-muted: #a7aabc;
-  --reader-accent: #8d93ff;
-  --reader-accent-soft: #252947;
-  --color-app-bg: 17 19 28;
-  --color-app-fg: 243 244 249;
-  --color-primary: 141 147 255;
-  --color-primary-light: 166 171 255;
-  --color-primary-dark: 100 107 237;
+  --reader-canvas: #0a0b0f;
+  --reader-surface: #111217;
+  --reader-surface-muted: #181920;
+  --reader-border: #30323d;
+  --reader-ink: #f1f1f4;
+  --reader-body: #d4d4db;
+  --reader-muted: #a3a4ae;
+  --reader-accent: #9196ff;
+  --reader-accent-soft: #272943;
+  --color-app-bg: 17 18 23;
+  --color-app-fg: 241 241 244;
+  --color-primary: 145 150 255;
+  --color-primary-light: 183 186 255;
+  --color-primary-dark: 104 110 230;
   min-width: 0;
   overflow-x: hidden;
   background: var(--reader-surface);
@@ -27,8 +28,13 @@ html.reader-embed body {
   overflow-x: hidden;
   color: var(--reader-ink);
   background:
-    radial-gradient(circle at 50% -12%, rgba(107, 116, 255, 0.1), transparent 28rem),
+    radial-gradient(circle at 50% -14%, rgba(115, 122, 255, 0.11), transparent 29rem),
     var(--reader-surface);
+}
+
+html.reader-embed ::selection {
+  color: #f8f8fb;
+  background: rgba(113, 121, 255, 0.42);
 }
 
 html.reader-embed .layout {
@@ -73,9 +79,47 @@ html.reader-embed .bookmark-header {
   padding-top: 3rem;
 }
 
+html.reader-embed .bookmark-header,
 html.reader-embed .bookmark-article .prose {
-  font-size: 1.125rem;
-  line-height: var(--reader-leading, 1.86);
+  font-family: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  font-feature-settings: "calt", "kern", "liga";
+}
+
+html.reader-embed .bookmark-header :is(h1, h2),
+html.reader-embed .bookmark-article .prose :is(h1, h2, h3, h4) {
+  color: var(--reader-ink);
+  font-family: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  font-weight: 680;
+  letter-spacing: -0.025em;
+}
+
+html.reader-embed .bookmark-article .prose {
+  color: var(--reader-body);
+  font-size: 1.075rem;
+  line-height: var(--reader-leading, 1.9);
+  letter-spacing: 0.008em;
+}
+
+html.reader-embed .bookmark-article .prose :is(p, li) {
+  color: inherit;
+}
+
+html.reader-embed .bookmark-article .prose blockquote {
+  padding: 1.4rem 1.55rem;
+  color: var(--reader-muted);
+  background: rgba(255, 255, 255, 0.025);
+  border-left-color: var(--reader-accent);
+  border-radius: 0 16px 16px 0;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.035);
+}
+
+html.reader-embed .bookmark-article .prose :is(pre, table) {
+  border: 1px solid var(--reader-border);
+  border-radius: 16px;
+}
+
+html.reader-embed .bookmark-article .prose img {
+  border-radius: 18px;
 }
 
 html.reader-embed .annotator {

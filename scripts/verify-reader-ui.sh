@@ -46,6 +46,16 @@ grep -q '价值/' "$ROOT_DIR/reader-ui/app.js" || die "Reader 未实现价值标
 grep -q '主题/' "$ROOT_DIR/reader-ui/app.js" || die "Reader 未实现主题标签"
 grep -q 'data-reader-embed-theme' "$ROOT_DIR/reader-ui/app.js" || die "Reader 未注入沉浸正文主题"
 grep -q 'bookmark-sidebar' "$ROOT_DIR/reader-ui/embed.css" || die "Reader 没有隐藏 Readeck 正文侧栏"
+grep -q 'pointer: coarse' "$ROOT_DIR/reader-ui/app.js" || die "Reader 未区分手机端新增公众号流程"
+grep -q 'feed-local-link' "$ROOT_DIR/reader-ui/index.html" || die "Reader 缺少部署 Mac 本机新增入口"
+grep -q -- '--panel-radius: 24px' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 未保留 Petdex 方向的 24px 面板圆角"
+grep -q 'backdrop-filter: blur(22px)' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 未保留顶部与来源栏磨砂材质"
+grep -q 'background: #f1f1f4' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 主操作未使用高对比白色胶囊"
+grep -q 'font-family: "SF Pro Text"' "$ROOT_DIR/reader-ui/embed.css" || die "Reader 正文未使用中文友好的系统字体"
+grep -q '::selection' "$ROOT_DIR/reader-ui/embed.css" || die "Reader 正文缺少清晰选区反馈"
+if grep -R -nE '[—–]' "$ROOT_DIR/reader-ui"; then
+  die "Reader 可见文案包含不一致的长破折号"
+fi
 
 screenshot_names=(
   09-reader-folo-inbox.png
@@ -92,4 +102,4 @@ required = {"name", "articles", "complete_articles", "readeck_articles", "unread
 assert all(required <= set(item) for item in payload["feeds"])
 PY
 
-printf 'Reader UI 验证通过：6 个 Tab/快捷键、三栏与沉浸正文、80%% 已读阈值、6 张截图、Access 403/403、授权 API、抓取状态和无前端秘密均符合契约。\n'
+printf 'Reader UI 验证通过：6 个 Tab/快捷键、Petdex 磨砂三栏、沉浸正文、80%% 已读阈值、6 张截图、Access 403/403、授权 API、抓取状态和无前端秘密均符合契约。\n'

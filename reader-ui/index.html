@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="color-scheme" content="light dark">
-    <meta name="theme-color" content="#080a13">
+    <meta name="color-scheme" content="dark">
+    <meta name="theme-color" content="#111426">
     <title>公众号 Reader</title>
-    <link rel="stylesheet" href="/reader-assets/styles.css?v=4">
+    <link rel="stylesheet" href="/reader-assets/styles.css?v=7">
   </head>
   <body>
     <svg class="icon-sprite" aria-hidden="true">
@@ -120,10 +120,10 @@
             <h2>每小时更新，5 分钟进入 Reader</h2>
             <p>微信没有文章 Webhook。当前在每小时第 17 分钟抓取，完整正文随后由本机同步任务送入阅读库。</p>
             <div class="status-grid">
-              <div><span>最近同步</span><strong id="status-generated">—</strong></div>
-              <div><span>最近公众号入库</span><strong id="status-latest">—</strong></div>
-              <div><span>启用来源</span><strong id="status-feeds">—</strong></div>
-              <div><span>同步状态</span><strong id="status-health">—</strong></div>
+              <div><span>最近同步</span><strong id="status-generated">暂无</strong></div>
+              <div><span>最近公众号入库</span><strong id="status-latest">暂无</strong></div>
+              <div><span>启用来源</span><strong id="status-feeds">暂无</strong></div>
+              <div><span>同步状态</span><strong id="status-health">暂无</strong></div>
             </div>
             <button id="subscription-add" class="primary-button" type="button"><svg><use href="#i-plus"/></svg>新增公众号</button>
           </div>
@@ -142,11 +142,12 @@
           <li>Reader 会在后续抓取与 5 分钟同步周期中自动出现新来源。</li>
         </ol>
         <p>公网和手机不会暴露 WeRSS 管理端；这是刻意保留的安全边界。</p>
-        <a class="primary-button" href="http://127.0.0.1:8001" target="_blank" rel="noreferrer"><svg><use href="#i-external"/></svg>在部署 Mac 打开 WeRSS</a>
+        <p id="feed-device-note" class="feed-device-note">下面的按钮只访问当前设备的本机地址，因此必须在部署这套系统的 Mac 上使用。</p>
+        <a id="feed-local-link" class="primary-button feed-local-link" href="http://127.0.0.1:8001" target="_blank" rel="noreferrer"><svg><use href="#i-external"/></svg>在部署 Mac 打开 WeRSS</a>
       </form>
     </dialog>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="/reader-assets/app.js?v=3" defer></script>
+    <script src="/reader-assets/app.js?v=5" defer></script>
   </body>
 </html>
