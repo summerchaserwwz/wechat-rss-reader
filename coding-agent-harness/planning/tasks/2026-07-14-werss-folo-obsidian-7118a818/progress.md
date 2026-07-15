@@ -35,6 +35,13 @@
 - P1：公众号资格/授权、12 个来源和每小时任务已完成；72 小时/7 天近实时观察仍是时间门禁。
 - P2：Docker Desktop 为 Caddy 发布回环端口需要非 internal bridge，因此 Caddy 具备出站能力；已用只读根、`no-new-privileges`、仅保留 `NET_BIND_SERVICE` 和固定无动态上游的 Caddyfile 降低风险。
 
+### [2026-07-15 17:11] - Petdex 磨砂 Reader 与沉浸正文
+
+- 做了什么：保留 Folo 三栏阅读信息架构，将公网 Reader 改为 Petdex 方向的近黑/靛蓝环境光、半透明磨砂面板、冷色细边框和紧凑元数据；靛蓝用于导航，橙色只保留未读、收藏与价值状态。为嵌入正文新增独立同源 `embed.css`，隐藏 Readeck 自带顶栏、侧栏和信息栏，同时保留原生划线与批注组件；固定主题 CSS 增加浏览器与 CDN `no-store`，避免容器重启后的旧样式缓存。
+- 验证结果：授权 Chrome 公网页面显示 6 个顶部 Tab、12 个来源和 103 篇文章；正文 iframe 的 `.layout-topnav`、`.bookmark-sidebar`、`.bookmark-topbar` 计算样式均为 `display:none`，正文容器占满 iframe，`scrollWidth` 等于 viewport。10 个 unittest、Compose、Shell、`verify.sh --reader-public`、`verify-reader-ui.sh` 和 `git diff --check` 全部通过。
+- 下一步：等待用户视觉确认；继续 72 小时/7 天稳定性观察和最终人工门禁，不提前关闭整个任务。
+- 证据：command:Chrome public Reader DOM/computed-style audit:103 articles、immersive iframe pass；command:python3 unittest + verify public/UI:pass；diff:reader-ui/styles.css,reader-ui/embed.css,Caddyfile.reader:Petdex glass and cache-safe embed
+
 ### [2026-07-15 14:04] - Cloudflare 公网与 Obsidian Base 实机验收
 
 - 做了什么：经用户明确授权启用 Zero Trust Free；创建精确邮箱 Allow、OTP 与一周会话的 self-hosted Access 应用；启用 Managed OAuth；授权 `cloudflared` 后创建独立 `wechat-rss` Tunnel、`reader.sumerchaser.top` DNS 和 LaunchAgent。修复 `cloudflared tunnel list` 在首次无 Tunnel 时返回 JSON `null` 导致脚本退出的问题。已授权 Chrome 直接进入 Reader，并在 Obsidian 实机横向检查 Base 全部九列。

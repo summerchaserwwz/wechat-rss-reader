@@ -98,6 +98,12 @@
 - 表现为正文横向溢出、隐藏控件常驻、导航退化成无样式 HTML；单独修改配色和字体无法修复。
 - 最终由 Reader Caddy 容器启动时从固定 Readeck 0.22.3 实例读取固定 CSS，再和 `reader-theme/reader.css` 拼接成一个同源响应。运行时实测 `.layout=grid`、`.hidden=none`、标注器为 absolute，桌面正文 736 px、移动正文 351 px，两个视口都无横向溢出。
 
+### 嵌入正文不能只依赖固定 bundle 路径刷新样式
+
+- 现象：Reader Caddy 重建后，公网 iframe 已获得 `reader-embed` class，但固定 `/assets/bundle.1cd17fd7.css` 仍可能被浏览器或 Cloudflare 复用旧响应，导致 Readeck 顶栏与侧栏继续显示。
+- 修复：固定主题响应增加浏览器/CDN `no-store`；Reader 外壳在 iframe load 后注入带版本号的同源 `/reader-assets/embed.css`，该文件只负责嵌入布局与 Petdex 深色变量，不复制 Readeck 的标注逻辑。
+- 验证：公网 Chrome 计算样式确认 `.layout-topnav`、`.bookmark-sidebar`、`.bookmark-topbar` 为 `display:none`，`.bookmark-container` 与 `.bookmark-content` 占满 iframe；原生 `.annotator` 未隐藏，划线与批注能力保持由 Readeck 管理。
+
 ### URL Token 不是可接受的免密码设备授权
 
 - 未提交草案曾通过 URL 携带静态 Token 写一年期 Cookie，并把固定管理员身份转发给 Readeck。

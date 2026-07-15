@@ -8,32 +8,32 @@
   --reader-border: #e0e0e0;
   --reader-ink: #1d1d1f;
   --reader-muted: #6e6e73;
-  --reader-accent: #0066cc;
-  --reader-accent-soft: #eef6ff;
+  --reader-accent: #ff5c00;
+  --reader-accent-soft: #fff0e8;
 
   --color-app-bg: 245 245 247;
   --color-app-fg: 29 29 31;
-  --color-primary: 0 102 204;
-  --color-primary-light: 0 113 227;
-  --color-primary-dark: 0 88 179;
+  --color-primary: 255 92 0;
+  --color-primary-light: 255 118 40;
+  --color-primary-dark: 197 67 0;
 }
 
 :root.dark {
   color-scheme: dark;
-  --reader-canvas: #1c1c1e;
-  --reader-surface: #242426;
-  --reader-surface-muted: #2c2c2e;
-  --reader-border: #3a3a3c;
-  --reader-ink: #f5f5f7;
-  --reader-muted: #a1a1a6;
-  --reader-accent: #2997ff;
-  --reader-accent-soft: #102a43;
+  --reader-canvas: #0b0d15;
+  --reader-surface: #11131c;
+  --reader-surface-muted: #171a25;
+  --reader-border: #2a2e3f;
+  --reader-ink: #f3f4f9;
+  --reader-muted: #a7aabc;
+  --reader-accent: #8d93ff;
+  --reader-accent-soft: #252947;
 
-  --color-app-bg: 28 28 30;
-  --color-app-fg: 245 245 247;
-  --color-primary: 41 151 255;
-  --color-primary-light: 100 181 255;
-  --color-primary-dark: 10 132 255;
+  --color-app-bg: 17 19 28;
+  --color-app-fg: 243 244 249;
+  --color-primary: 141 147 255;
+  --color-primary-light: 166 171 255;
+  --color-primary-dark: 100 107 237;
 }
 
 html,
@@ -245,7 +245,7 @@ body.font-sans {
 .bookmark-display--font-merriweather,
 .bookmark-display--font-plex-serif,
 .bookmark-display--font-literata {
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  font-family: "Songti SC", STSong, "Source Han Serif SC", "Noto Serif CJK SC", Georgia, serif;
 }
 
 .bookmark-display--font-public-sans,
@@ -334,7 +334,7 @@ rd-annotation[data-annotation-color="none"] {
 
 .bookmark-article .prose ::selection {
   color: var(--reader-ink);
-  background: #cce6ff;
+  background: #ffd8c2;
 }
 
 .annotator {
@@ -371,6 +371,69 @@ rd-annotation[data-annotation-color="none"] {
 .bookmark-sidebar {
   background: var(--reader-surface);
   border-color: var(--reader-border);
+}
+
+/* Embedded article mode used by the Folo-style Reader shell. The native
+   Readeck document stays in charge of selectors, annotations and notes. */
+html.reader-embed,
+html.reader-embed body {
+  min-width: 0;
+  overflow-x: hidden;
+  background: var(--reader-surface);
+}
+
+html.reader-embed .layout {
+  display: block !important;
+  min-height: 100%;
+  max-width: none;
+}
+
+html.reader-embed :is(.layout-topnav, .sidemenu, .bookmark-topbar, .bookmark-sidebar) {
+  display: none !important;
+}
+
+html.reader-embed .bookmark-container {
+  display: block !important;
+}
+
+html.reader-embed .layout-content {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+html.reader-embed .bookmark-content {
+  width: 100%;
+  max-width: none;
+  min-height: 100%;
+  padding: 0 2rem 6rem;
+}
+
+html.reader-embed .bookmark-header,
+html.reader-embed .bookmark-display--width-regular {
+  width: min(100%, 46rem);
+  max-width: 46rem;
+  margin-inline: auto;
+}
+
+html.reader-embed .bookmark-header {
+  padding-top: 3rem;
+}
+
+html.reader-embed .bookmark-article {
+  width: min(100%, 46rem);
+  max-width: 46rem;
+  margin-inline: auto;
+}
+
+html.reader-embed .bookmark-article .prose {
+  font-size: 1.125rem;
+  line-height: var(--reader-leading, 1.86);
+}
+
+html.reader-embed .annotator {
+  z-index: 100;
 }
 
 @media (max-width: 1024px) {
@@ -417,5 +480,13 @@ rd-annotation[data-annotation-color="none"] {
   .annotator--content {
     border-radius: 8px 8px 0 0;
     padding: 1rem;
+  }
+
+  html.reader-embed .bookmark-content {
+    padding-inline: 1rem;
+  }
+
+  html.reader-embed .bookmark-header {
+    padding-top: 1.5rem;
   }
 }

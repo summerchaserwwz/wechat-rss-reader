@@ -15,8 +15,9 @@ DOMAIN="gui/$(id -u)"
   exit 1
 }
 
-mkdir -p "$RUNTIME_DIR" "$PLIST_DIR"
+mkdir -p "$RUNTIME_DIR" "$RUNTIME_DIR/public-status" "$PLIST_DIR"
 chmod 700 "$RUNTIME_DIR"
+chmod 700 "$RUNTIME_DIR/public-status"
 chmod 600 "$RUNTIME_DIR/readeck_api_token"
 install -m 0755 "$ROOT_DIR/scripts/reading-sync.py" "$RUNTIME_DIR/reading-sync.py"
 install -m 0644 "$ROOT_DIR/config/$LABEL.plist" "$PLIST_PATH"
@@ -27,4 +28,4 @@ launchctl bootout "$DOMAIN/$LABEL" >/dev/null 2>&1 || true
 launchctl bootstrap "$DOMAIN" "$PLIST_PATH"
 launchctl kickstart -k "$DOMAIN/$LABEL"
 
-echo "公众号阅读同步已启用：每 5 分钟检查 WeRSS、Readeck 与 Obsidian。"
+echo "公众号阅读同步已启用：每 5 分钟检查 WeRSS、Readeck、Reader 状态与 Obsidian。"

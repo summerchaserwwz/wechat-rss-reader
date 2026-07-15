@@ -23,6 +23,7 @@ class ReadingSyncTests(unittest.TestCase):
             "created": "2026-07-14T10:01:00Z",
             "is_marked": True,
             "read_progress": 42,
+            "labels": ["微信公众号", "WeRSS", "公众号/测试公众号", "价值/4", "主题/Agent"],
         }
 
     def test_render_contains_obsidian_highlight_and_note(self):
@@ -36,6 +37,8 @@ class ReadingSyncTests(unittest.TestCase):
         self.assertIn("> 批注：我的批注", output)
         self.assertIn("正文里有 ==高亮==[^1]", output)
         self.assertNotIn("title: old", output)
+        self.assertIn("reader_value: 4", output)
+        self.assertIn('  - "Agent"', output)
 
     def test_manual_notes_and_frontmatter_survive_refresh(self):
         first = reading_sync.render_note(self.bookmark(), "测试公众号", "# 标题\n\n第一版正文", [])
@@ -74,6 +77,37 @@ class ReadingSyncTests(unittest.TestCase):
             self.assertEqual(row["article_id"], "article-1")
             self.assertNotIn("token", row.keys())
             self.assertEqual(state_path.stat().st_mode & 0o777, 0o600)
+
+    def test_reader_metadata_separates_managed_value_and_topics(self):
+        value, topics = reading_sync.reader_metadata(
+            ["微信公众号", "价值/2", "主题/AI", "主题/工程", "主题/AI", "价值/5"]
+        )
+        self.assertEqual(value, 5)
+        self.assertEqual(topics, ["AI", "工程"])
+
+    def test_reader_status_contains_feed_counts_without_secret(self):
+        status = reading_sync.build_reader_status(
+            {
+                "cron": "17 * * * *",
+                "cron_status": 1,
+                "feeds": [
+                    {
+                        "mp_name": "测试公众号",
+                        "articles": 3,
+                        "complete_articles": 2,
+                        "update_time": 1784029237,
+                        "latest_published_at": 1784029200,
+                    }
+                ],
+            },
+            [self.bookmark()],
+        )
+        self.assertEqual(status["health"], "ok")
+        self.assertEqual(status["cron"], "17 * * * *")
+        self.assertEqual(status["sync_interval_seconds"], 300)
+        self.assertEqual(status["feeds"][0]["readeck_articles"], 1)
+        self.assertEqual(status["feeds"][0]["unread"], 1)
+        self.assertNotIn("token", str(status).lower())
 
 
 if __name__ == "__main__":

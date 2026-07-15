@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#080a13">
+    <title>公众号 Reader</title>
+    <link rel="stylesheet" href="/reader-assets/styles.css?v=4">
+  </head>
+  <body>
+    <svg class="icon-sprite" aria-hidden="true">
+      <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M4 5.5h16v13H4zM4 14h4l2 2h4l2-2h4"/></symbol>
+      <symbol id="i-unread" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/></symbol>
+      <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z"/></symbol>
+      <symbol id="i-highlight" viewBox="0 0 24 24"><path d="m6 15 8.5-8.5 3 3L9 18H6zM5 20h14"/></symbol>
+      <symbol id="i-value" viewBox="0 0 24 24"><path d="M12 3 4.5 7.2v9.6L12 21l7.5-4.2V7.2zM9 12.2l2 2 4-4"/></symbol>
+      <symbol id="i-feeds" viewBox="0 0 24 24"><path d="M5 5h14v4H5zM5 11h14v8H5zM8 14h8M8 17h5"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 4 4"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M18.5 8A7 7 0 1 0 19 15M18.5 8V3.5M18.5 8H14"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4.5 4.5L19 7"/></symbol>
+      <symbol id="i-back" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></symbol>
+      <symbol id="i-tag" viewBox="0 0 24 24"><path d="M4 5h9l7 7-8 8-8-8z"/><circle cx="9" cy="10" r="1.5"/></symbol>
+      <symbol id="i-external" viewBox="0 0 24 24"><path d="M13 5h6v6M19 5l-9 9M18 14v5H5V6h5"/></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    </svg>
+
+    <div id="app" class="app-shell" data-mobile-view="timeline">
+      <aside class="source-pane" aria-label="公众号与筛选">
+        <header class="brand-row">
+          <div class="brand-mark">R</div>
+          <div>
+            <strong>公众号 Reader</strong>
+            <span id="sync-brief">正在连接本地阅读库</span>
+          </div>
+        </header>
+
+        <label class="search-box">
+          <svg><use href="#i-search"/></svg>
+          <input id="source-search" type="search" placeholder="搜索公众号" autocomplete="off">
+        </label>
+
+        <div class="source-heading">
+          <span>公众号</span>
+          <button id="add-feed" class="icon-button" type="button" aria-label="新增公众号" title="新增公众号">
+            <svg><use href="#i-plus"/></svg>
+          </button>
+        </div>
+        <nav id="source-list" class="source-list" aria-label="公众号列表"></nav>
+
+        <footer class="source-footer">
+          <span class="health-dot" id="health-dot"></span>
+          <span id="health-text">等待同步状态</span>
+        </footer>
+      </aside>
+
+      <header class="top-tabs" aria-label="阅读视图">
+        <div class="mobile-brand">公众号 Reader</div>
+        <nav id="tab-list" class="tab-list">
+          <button type="button" data-tab="inbox" aria-keyshortcuts="1"><svg><use href="#i-inbox"/></svg><span>收件箱</span><b>0</b></button>
+          <button type="button" data-tab="unread" aria-keyshortcuts="2"><svg><use href="#i-unread"/></svg><span>未读</span><b>0</b></button>
+          <button type="button" data-tab="favorites" aria-keyshortcuts="3"><svg><use href="#i-star"/></svg><span>收藏</span><b>0</b></button>
+          <button type="button" data-tab="highlights" aria-keyshortcuts="4"><svg><use href="#i-highlight"/></svg><span>划线</span><b>0</b></button>
+          <button type="button" data-tab="valuable" aria-keyshortcuts="5"><svg><use href="#i-value"/></svg><span>高价值</span><b>0</b></button>
+          <button type="button" data-tab="subscriptions" aria-keyshortcuts="6"><svg><use href="#i-feeds"/></svg><span>订阅</span><b>0</b></button>
+        </nav>
+        <button id="refresh" class="icon-button refresh-button" type="button" aria-label="刷新 Reader" title="刷新 Reader">
+          <svg><use href="#i-refresh"/></svg>
+        </button>
+      </header>
+
+      <section class="timeline-pane" aria-label="文章时间线">
+        <header class="timeline-heading">
+          <button id="timeline-back" class="mobile-back icon-button" type="button" aria-label="返回公众号列表"><svg><use href="#i-back"/></svg></button>
+          <div>
+            <h1 id="timeline-title">收件箱</h1>
+            <p id="timeline-subtitle">按发布时间排列</p>
+          </div>
+        </header>
+        <div id="timeline" class="timeline" aria-live="polite"></div>
+      </section>
+
+      <main class="reader-pane" aria-label="文章正文">
+        <section id="reader-empty" class="reader-empty">
+          <div class="empty-mark">R</div>
+          <h2>选择一篇文章开始阅读</h2>
+          <p>左侧筛选来源，中间处理未读与收藏，右侧保留正文上下文。</p>
+        </section>
+
+        <section id="reader-content" class="reader-content" hidden>
+          <header class="reader-toolbar">
+            <button id="reader-back" class="mobile-back icon-button" type="button" aria-label="返回时间线"><svg><use href="#i-back"/></svg></button>
+            <div class="reader-title-block">
+              <strong id="reader-title"></strong>
+              <span id="reader-meta"></span>
+            </div>
+            <button id="reader-read" class="toolbar-button" type="button"><svg><use href="#i-check"/></svg><span>标为已读</span></button>
+            <button id="reader-star" class="toolbar-button star-button" type="button" aria-keyshortcuts="S"><svg><use href="#i-star"/></svg><span>收藏</span></button>
+          </header>
+
+          <section class="value-toolbar" aria-label="价值与主题">
+            <span>价值</span>
+            <div id="rating-control" class="rating-control" role="radiogroup" aria-label="价值评分"></div>
+            <span class="divider"></span>
+            <svg class="tag-icon"><use href="#i-tag"/></svg>
+            <div id="topic-list" class="topic-list"></div>
+            <form id="topic-form" class="topic-form">
+              <input id="topic-input" maxlength="36" placeholder="添加主题">
+              <button type="submit">添加</button>
+            </form>
+          </section>
+
+          <iframe id="article-frame" class="article-frame" title="文章正文"></iframe>
+        </section>
+
+        <section id="subscription-detail" class="subscription-detail" hidden>
+          <div class="subscription-hero">
+            <span class="eyebrow">订阅与抓取</span>
+            <h2>每小时更新，5 分钟进入 Reader</h2>
+            <p>微信没有文章 Webhook。当前在每小时第 17 分钟抓取，完整正文随后由本机同步任务送入阅读库。</p>
+            <div class="status-grid">
+              <div><span>最近同步</span><strong id="status-generated">—</strong></div>
+              <div><span>最近公众号入库</span><strong id="status-latest">—</strong></div>
+              <div><span>启用来源</span><strong id="status-feeds">—</strong></div>
+              <div><span>同步状态</span><strong id="status-health">—</strong></div>
+            </div>
+            <button id="subscription-add" class="primary-button" type="button"><svg><use href="#i-plus"/></svg>新增公众号</button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="feed-dialog" class="feed-dialog">
+      <form method="dialog" class="dialog-card">
+        <button class="dialog-close icon-button" value="cancel" aria-label="关闭"><svg><use href="#i-close"/></svg></button>
+        <span class="eyebrow">本机受控操作</span>
+        <h2>新增微信公众号</h2>
+        <ol>
+          <li>在部署这套系统的 Mac 上打开 WeRSS。</li>
+          <li>搜索公众号名称，完成添加并点击“应用”。</li>
+          <li>Reader 会在后续抓取与 5 分钟同步周期中自动出现新来源。</li>
+        </ol>
+        <p>公网和手机不会暴露 WeRSS 管理端；这是刻意保留的安全边界。</p>
+        <a class="primary-button" href="http://127.0.0.1:8001" target="_blank" rel="noreferrer"><svg><use href="#i-external"/></svg>在部署 Mac 打开 WeRSS</a>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="/reader-assets/app.js?v=3" defer></script>
+  </body>
+</html>

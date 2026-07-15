@@ -15,8 +15,69 @@
 	handle @public_theme {
 		root * /tmp
 		rewrite * /bundle.css
+		header Cache-Control "no-store, max-age=0"
+		header CDN-Cache-Control "no-store"
 		header Content-Type "text/css; charset=utf-8"
 		file_server
+	}
+
+	@public_reader_assets {
+		host {$READER_PUBLIC_HOST:reader.sumerchaser.top}
+		path /reader-assets/*
+		header Cf-Access-Authenticated-User-Email {$CF_ACCESS_EMAIL:disabled@example.invalid}
+		header Cf-Access-Jwt-Assertion *
+	}
+	handle @public_reader_assets {
+		uri strip_prefix /reader-assets
+		root * /srv/reader-ui
+		header Cache-Control "public, max-age=300"
+		file_server
+	}
+
+	@public_reader_status {
+		host {$READER_PUBLIC_HOST:reader.sumerchaser.top}
+		path /reader-runtime/status.json
+		header Cf-Access-Authenticated-User-Email {$CF_ACCESS_EMAIL:disabled@example.invalid}
+		header Cf-Access-Jwt-Assertion *
+	}
+	handle @public_reader_status {
+		root * /srv/reader-runtime
+		rewrite * /reader-status.json
+		header Cache-Control "no-store"
+		header Content-Type "application/json; charset=utf-8"
+		file_server
+	}
+
+	@public_reader_home {
+		host {$READER_PUBLIC_HOST:reader.sumerchaser.top}
+		path /
+		header Cf-Access-Authenticated-User-Email {$CF_ACCESS_EMAIL:disabled@example.invalid}
+		header Cf-Access-Jwt-Assertion *
+	}
+	handle @public_reader_home {
+		root * /srv/reader-ui
+		rewrite * /index.html
+		header Cache-Control "no-store"
+		header Content-Security-Policy "default-src 'self'; connect-src 'self'; frame-src 'self'; img-src 'self' data:; object-src 'none'; script-src 'self'; style-src 'self'; base-uri 'none'; frame-ancestors 'self'"
+		file_server
+	}
+
+	@public_article_page {
+		host {$READER_PUBLIC_HOST:reader.sumerchaser.top}
+		path /bookmarks/*
+		header Cf-Access-Authenticated-User-Email {$CF_ACCESS_EMAIL:disabled@example.invalid}
+		header Cf-Access-Jwt-Assertion *
+	}
+	handle @public_article_page {
+		reverse_proxy readeck:8000 {
+			header_up Host {http.request.host}
+			header_up X-Forwarded-Proto https
+			header_up Remote-User summer
+			header_up Remote-Email summer@localhost
+			header_up -Remote-Groups
+			header_down -X-Frame-Options
+			header_down Content-Security-Policy "base-uri 'none'; default-src 'self'; connect-src 'self'; font-src 'self'; form-action 'self'; frame-ancestors 'self'; img-src 'self' data:; media-src 'self' data:; object-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
+		}
 	}
 
 	@public_authorized {
@@ -42,6 +103,7 @@
 	handle /assets/bundle.1cd17fd7.css {
 		root * /tmp
 		rewrite * /bundle.css
+		header Cache-Control "no-store, max-age=0"
 		header Content-Type "text/css; charset=utf-8"
 		file_server
 	}

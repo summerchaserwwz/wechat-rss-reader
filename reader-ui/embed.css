@@ -1,0 +1,93 @@
+/* Same-origin article overrides injected by reader-ui/app.js.
+   Keeping this separate avoids stale upstream bundle caches while preserving
+   Readeck's native annotation and note behavior. */
+
+html.reader-embed {
+  color-scheme: dark;
+  --reader-canvas: #0b0d15;
+  --reader-surface: #11131c;
+  --reader-surface-muted: #171a25;
+  --reader-border: #2a2e3f;
+  --reader-ink: #f3f4f9;
+  --reader-muted: #a7aabc;
+  --reader-accent: #8d93ff;
+  --reader-accent-soft: #252947;
+  --color-app-bg: 17 19 28;
+  --color-app-fg: 243 244 249;
+  --color-primary: 141 147 255;
+  --color-primary-light: 166 171 255;
+  --color-primary-dark: 100 107 237;
+  min-width: 0;
+  overflow-x: hidden;
+  background: var(--reader-surface);
+}
+
+html.reader-embed body {
+  min-width: 0;
+  overflow-x: hidden;
+  color: var(--reader-ink);
+  background:
+    radial-gradient(circle at 50% -12%, rgba(107, 116, 255, 0.1), transparent 28rem),
+    var(--reader-surface);
+}
+
+html.reader-embed .layout {
+  display: block !important;
+  min-height: 100%;
+  max-width: none;
+}
+
+html.reader-embed :is(.layout-topnav, .sidemenu, .bookmark-topbar, .bookmark-sidebar) {
+  display: none !important;
+}
+
+html.reader-embed .layout-content {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+html.reader-embed .bookmark-container {
+  display: block !important;
+  width: 100% !important;
+  max-width: none;
+}
+
+html.reader-embed .bookmark-content {
+  width: 100% !important;
+  max-width: none;
+  min-height: 100%;
+  padding: 0 2rem 6rem;
+}
+
+html.reader-embed .bookmark-header,
+html.reader-embed .bookmark-display--width-regular,
+html.reader-embed .bookmark-article {
+  width: min(100%, 46rem);
+  max-width: 46rem;
+  margin-inline: auto;
+}
+
+html.reader-embed .bookmark-header {
+  padding-top: 3rem;
+}
+
+html.reader-embed .bookmark-article .prose {
+  font-size: 1.125rem;
+  line-height: var(--reader-leading, 1.86);
+}
+
+html.reader-embed .annotator {
+  z-index: 100;
+}
+
+@media (max-width: 640px) {
+  html.reader-embed .bookmark-content {
+    padding-inline: 1rem;
+  }
+
+  html.reader-embed .bookmark-header {
+    padding-top: 1.5rem;
+  }
+}

@@ -81,6 +81,7 @@ tar -C "$ROOT_DIR" -czf "$tmp_archive" \
   Caddyfile \
   Caddyfile.reader \
   reader-theme \
+  reader-ui \
   .env.example \
   README.md \
   -C "$stage" \

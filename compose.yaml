@@ -154,6 +154,8 @@ services:
     volumes:
       - ./Caddyfile.reader:/etc/caddy/Caddyfile:ro
       - ./reader-theme:/srv/reader-theme:ro
+      - ./reader-ui:/srv/reader-ui:ro
+      - ${HOME}/.local/share/wechat-rss/public-status:/srv/reader-runtime:ro
     networks:
       - host-ingress
       - reading
