@@ -46,7 +46,7 @@ WeRSS -> Readeck -> reading-sync -> SummerOS Archive
 - [x] 三次连续小时任务完整处理 12/12 个公众号，真实新增文章 2.16 分钟进入 Readeck且零重复。
 - [x] Reader UI 为全中文科技蓝磨砂三栏，顶部 6 个 Tab、行内收藏、已读/未读、价值评分、主题标签与淡绿虚线高亮实机可用。
 - [x] 划线保持正文颜色；批注框避让选区；保存后自动定位并显示原位笔记；划线笔记区、Markdown 下载、可选 Obsidian 目录、字号持久化和 390px 移动端均经真实浏览器验证。
-- [x] 本机账号迁移通过；公开模板不含实际密码/Token/数据库；本机与模板 Compose、README 链接、秘密扫描、最终备份恢复通过；GitHub 公开仓库已创建。
+- [x] 本机账号迁移通过；公开模板不含实际密码/Token/数据库；本机与模板 Compose、README 链接、秘密扫描、最终备份恢复通过；公开仓库默认 `main` 已发布且 GitHub CI 成功。
 - [x] “检查新文章”真实触发 12 个公众号抓取并完成 reading-sync；10 分钟冷却、single-flight、连续失败暂停和 `200013` 保护均有测试。
 - [x] `werss.sumerchaser.top` 使用独立 Access 应用/AUD 指向 `127.0.0.1:8083`；匿名根/API 被拦截，授权 Chrome 到达 WeRSS 原生登录页，现有 Reader ingress 无回归。
 - [ ] 72 小时/7 天近实时观察完成。

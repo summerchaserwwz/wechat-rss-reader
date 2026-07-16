@@ -274,9 +274,9 @@
 - 下一步：完成全量静态/单元/Compose/Caddy/Harness 回归；整个任务仍等待 72 小时/7 天观察与最终人工确认。
 - 证据：screenshots:docs/images/05-reader-划线批注.png,docs/images/15-reader-划线笔记与字号.png；command:Playwright desktop/mobile/create-save-delete/export/font E2E；command:verify-reader-ui.sh + verify.sh --reader-public:pass
 
-### [2026-07-16 15:53] - 账号迁移与 GitHub 公开发布准备
+### [2026-07-16 15:53] - 账号迁移与 GitHub 公开发布
 
 - 做了什么：按用户要求把当前 WeRSS 管理登录迁移为 `summer`，本机密码单独保存在 ignored `.env`；将仓库从单机配置泛化为可公开复用模板，域名、管理员用户名、Obsidian Inbox 和 LaunchAgent HOME 均可配置；新增酷炫 README、部署指南、Security Policy、MIT License、GitHub CI、账号迁移脚本和 Readeck Token 安全保存脚本；创建公开 GitHub 仓库 `summerchaserwwz/wechat-rss-reader`。
-- 验证结果：新 WeRSS 账号实际登录成功，旧用户名拒绝；本机 Compose 和 `.env.example` Compose 均通过；14 个 unittest、Shell、Node、4 个 plist、Reader UI、公网 Reader/WeRSS、README 22 个本地链接、Harness 与秘密扫描通过；最终备份 `20260716-155105` 和独立恢复 `20260716-155153` 通过，恢复出 118 篇文章、收藏、4 篇含批注、双 Access Caddy、主动刷新和同步状态。
-- 下一步：提交全部集成改动，推送分支，创建 Draft PR 并核验远端 README/CI；72 小时/7 天时间门禁仍独立继续。
-- 证据：repository:https://github.com/summerchaserwwz/wechat-rss-reader；command:secret scan + full test matrix + backup/restore:pass
+- 验证结果：新 WeRSS 账号实际登录成功，旧用户名拒绝；本机 Compose 和 `.env.example` Compose 均通过；14 个 unittest、Shell、Node、4 个 plist、Reader UI、公网 Reader/WeRSS、README 22 个本地链接、Harness 与秘密扫描通过；最终备份 `20260716-155105` 和独立恢复 `20260716-155153` 通过，恢复出 118 篇文章、收藏、4 篇含批注、双 Access Caddy、主动刷新和同步状态。提交 `f414553` 已推到功能分支和默认 `main`；远端 README、部署、安全、Reader 和同步文件已读取核验，两个 GitHub CI run 均成功。
+- 下一步：72 小时/7 天时间门禁继续；完成后执行最终对抗审查、walkthrough 和人工确认。
+- 证据：repository:https://github.com/summerchaserwwz/wechat-rss-reader；commit:f414553；actions:29481551970,29481511814 success；command:secret scan + full test matrix + backup/restore:pass
