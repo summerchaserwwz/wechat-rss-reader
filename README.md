@@ -1,60 +1,126 @@
-# WeRSS + Readeck + Obsidian 公众号阅读系统
+<div align="center">
 
-这是一套免费、开源、可自托管的公众号阅读链路。Folo 不再是必需组件。
+# WeChat RSS Reader
 
-```text
-微信公众号运营授权
-  -> WeRSS 每小时抓取新文章与正文
-  -> 自定义 Reader 浏览；Readeck 持久化收藏、划线、批注
-  -> 本机同步器每 5 分钟检查
-  -> 精选文章进入 SummerOS Archive
-  -> Obsidian 保留原文、高亮、批注、我的笔记和双链
+### 把微信公众号变成一个真正属于你的阅读与知识系统
+
+**WeRSS 抓取 · Readeck 持久化 · Apple 磨砂 Reader · Obsidian 沉淀 · Cloudflare 私有访问**
+
+[![macOS](https://img.shields.io/badge/macOS-Apple%20Silicon-111827?logo=apple)](https://github.com/summerchaserwwz/wechat-rss-reader)
+[![Docker Compose](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](compose.yaml)
+[![CI](https://github.com/summerchaserwwz/wechat-rss-reader/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
+[![Private by default](https://img.shields.io/badge/security-private%20by%20default-22c55e)](SECURITY.md)
+[![License](https://img.shields.io/badge/license-MIT-2f7cf6)](LICENSE)
+
+![WeChat RSS Reader 三栏磨砂工作台](docs/images/09-reader-folo-inbox.png)
+
+</div>
+
+> 这是 WeRSS、Readeck 与 Obsidian 的集成部署层，不是三个上游项目的 Fork。仓库提供固定镜像、Reader UI、同步器、安全反代、Cloudflare Tunnel、备份恢复和可执行文档；真实文章、微信授权与密钥永远留在你的机器上。
+
+## 为什么是这套组合
+
+| 你要的能力 | 由谁负责 | 结果 |
+| --- | --- | --- |
+| 公众号持续更新与全文抓取 | WeRSS | 每小时自动检查，也可在 Reader 主动刷新 |
+| 干净的三栏阅读体验 | 自定义 Reader + Readeck | 未读、收藏、价值、标签、字号、移动端 |
+| 划线、摘录与批注 | Readeck + Reader | 淡绿虚线不遮字，保存后原位显示笔记 |
+| Markdown 与知识沉淀 | reading-sync + Obsidian | 精选原文、摘录、批注和人工笔记安全共存 |
+| 手机/外网私有访问 | Cloudflare Access + Tunnel | 不开放源端口，Reader 与管理端独立授权 |
+| 可恢复、可升级 | 备份/恢复脚本 + 固定镜像摘要 | SQLite、Token、授权和主题一起恢复 |
+
+## 系统怎么联动
+
+```mermaid
+flowchart LR
+  WX["微信公众号运营授权"] --> W["WeRSS<br/>抓取正文与订阅源"]
+  W --> R["Readeck<br/>全文、收藏、进度、批注"]
+  R --> UI["Glass Reader<br/>三栏阅读与划线笔记"]
+  UI --> S["reading-sync<br/>每 5 分钟幂等同步"]
+  S --> O["Obsidian Archive<br/>原文 + 摘录 + 我的笔记"]
+  CF["Cloudflare Access"] --> UI
+  CF --> W
 ```
 
-当前实测状态：12 个公众号、108 篇 WeRSS 文章；104 篇达到正文门槛的文章已经全部且唯一进入 Readeck。已经用真实文章验证收藏、80% 自动已读、选中文字后下划线高亮、批注、价值评分、主题标签、Obsidian 入库和人工笔记不覆盖。
+核心规则很简单：**完整正文全部进 Reader；只有收藏或含划线/批注的文章默认进 Obsidian。** 因此阅读库可以很大，知识库仍保持干净。
+
+## 5 分钟本机启动
+
+要求：Apple Silicon macOS、Docker Desktop、Chrome；要抓公众号还需要公众号/服务号运营权限。
+
+```bash
+git clone https://github.com/summerchaserwwz/wechat-rss-reader.git
+cd wechat-rss-reader
+
+./scripts/doctor.sh
+./scripts/init-secrets.sh
+docker compose pull
+docker compose up -d
+./scripts/init-readeck.sh
+```
+
+然后打开：
+
+- WeRSS 管理：`http://127.0.0.1:8001`
+- Reader/Readeck：`http://127.0.0.1:8002`
+- 自定义 Reader 反代：`http://127.0.0.1:8082`
+
+首次生成的 WeRSS 用户名和随机密码保存在本机 `.env`：
+
+```bash
+awk -F= '$1 == "WERSS_ADMIN_USERNAME" || $1 == "WERSS_BOOTSTRAP_PASSWORD" { print }' .env
+```
+
+不要把 `.env` 提交到 Git。首次启动前可修改 `WERSS_ADMIN_USERNAME`；系统已经初始化后请运行 `./scripts/change-werss-admin.sh <新用户名>`。密码建议至少 24 位随机字符。
 
 ## 你最终怎么用
 
-1. 平时打开 `https://reader.sumerchaser.top/` 浏览公众号文章。界面采用 Folo 式三栏信息架构，并按 Petdex 方向使用近黑、靛蓝环境光和半透明磨砂面板。
-2. 值得保留的文章点“收藏”；阅读时选中文字创建高亮，可同时写批注。
-3. 后台同步器每 5 分钟运行一次。
-4. 只要文章被收藏，或存在高亮/批注，就会自动进入 Obsidian：
+1. 在 WeRSS 完成运营者扫码，添加公众号，并启用每小时任务。
+2. 在 Reader 浏览所有完整文章；打开后自动记录阅读进度，滚动到 80% 自动已读。
+3. 值得保留的文章点收藏；拖选文字即可高亮和批注，弹层会自动避开选区。
+4. 顶部“划线笔记”集中显示摘录、笔记、文章与来源；可下载 Markdown 或直接选择 Obsidian 目录。
+5. 后台同步器每 5 分钟把收藏或含划线的文章写入 `OBSIDIAN_INBOX_DIR`。
+6. Obsidian 中人工 frontmatter 和“我的笔记”永不被后续同步覆盖。
 
-```text
-/Users/summer/Obsidian/SummerOS/
-02_Archive/02_DailyProcessed/reading/readeck_inbox
-```
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/05-reader-划线批注.png" alt="划线与批注"></td>
+    <td width="50%"><img src="docs/images/15-reader-划线笔记与字号.png" alt="划线笔记与字号"></td>
+  </tr>
+  <tr>
+    <td align="center">批注弹层避让选区</td>
+    <td align="center">摘录集中管理与字号控制</td>
+  </tr>
+</table>
 
-5. Readeck 高亮会变成 Obsidian 的 `==高亮==`，批注会出现在摘录区和原文脚注中。
-6. 你在顶部“我的笔记”里写的内容，以及 `rating`、`topics` 等人工字段，后续同步永远不会覆盖。
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/06-obsidian-高亮批注笔记.png" alt="Obsidian 原文笔记"></td>
+    <td width="50%"><img src="docs/images/14-reader-mobile.png" alt="移动端 Reader"></td>
+  </tr>
+  <tr>
+    <td align="center">原文、高亮、批注与我的笔记</td>
+    <td align="center">390 px 移动端阅读</td>
+  </tr>
+</table>
 
-![新版中文 Readeck 公众号文章库](docs/images/03-reader-桌面文章库.png)
-
-![Readeck 选中文字后划线和批注](docs/images/05-reader-划线批注.png)
-
-![Obsidian 保留我的笔记、划线、批注和原文](docs/images/06-obsidian-高亮批注笔记.png)
-
-![Cloudflare 公网免 Readeck 密码文章库](docs/images/07-cloudflare-公网阅读器.png)
-
-![Folo 三栏与 Petdex 磨砂风 Reader](docs/images/09-reader-folo-inbox.png)
-
-![Reader 价值评分与主题标签](docs/images/13-reader-value-tags.png)
-
-![Reader 390px 移动端正文](docs/images/14-reader-mobile.png)
-
-完整阅读教程见 [Readeck 与 Obsidian 图文教程](docs/Readeck与Obsidian图文教程.md)。
+当前维护者部署已用 12 个公众号和 100+ 篇真实文章验证全量同步、收藏、自动已读、划线批注、Markdown/Obsidian 入库和重复同步不覆盖。完整操作见 [图文教程](docs/Readeck与Obsidian图文教程.md)，部署细节见 [部署指南](docs/DEPLOYMENT.md)。
 
 ## 服务地址和访问方式
 
 | 服务 | 地址 | 用途 |
 | --- | --- | --- |
-| WeRSS | `http://127.0.0.1:8001` | 微信授权、公众号管理、抓取任务 |
+| WeRSS 本机入口 | `http://127.0.0.1:8001` | 部署 Mac 上的微信授权、公众号管理、抓取任务 |
 | Readeck 管理入口 | `http://127.0.0.1:8002` | 本机维护和故障恢复 |
 | 只读 RSS 代理 | `http://127.0.0.1:8080` | 兼容其他 RSS 阅读器，可选 |
 | Readeck 专用反代 | `http://127.0.0.1:8082` | 只供 Cloudflare Tunnel 使用 |
-| 公网阅读器 | `https://reader.sumerchaser.top/` | 日常桌面/手机阅读，Cloudflare Access 保护 |
+| WeRSS 专用反代 | `http://127.0.0.1:8083` | 只供 Cloudflare Tunnel 使用 |
+| 公网阅读器 | `https://reader.example.com/` | 替换成你的域名，Cloudflare Access 保护 |
+| 公网 WeRSS 管理 | `https://werss.example.com/` | 替换成你的域名，使用独立 Access 应用 |
 
-日常阅读不使用 Readeck 用户名和密码。公网入口已经启用 Cloudflare Access：新设备首次输入允许邮箱收到的一次性验证码，之后一周内直接进入文章库，不再出现 Readeck 登录表单。当前已登录 Chrome 已实测直接打开 `https://reader.sumerchaser.top/`。
+日常阅读不使用 Readeck 用户名和密码。配置 Cloudflare Access 后，新设备首次输入允许邮箱收到的一次性验证码，之后在会话有效期内直接进入文章库，不再出现 Readeck 登录表单。
+
+WeRSS 公网入口使用另一个 Access 应用和独立 AUD。通过 Access 后仍保留 WeRSS 自己的管理登录，这是对公众号授权和抓取配置的第二层保护。
 
 WeRSS 和 Readeck 的本机管理员账号只用于维护与恢复。密码只保存在本机 `.env`，不要截图或发送给别人：
 
@@ -76,7 +142,7 @@ awk -F= '$1 == "READECK_ADMIN_PASSWORD" { print $2 }' .env
 首次部署：
 
 ```bash
-cd /Users/summer/Documents/wechat-rss
+cd wechat-rss-reader
 ./scripts/doctor.sh
 ./scripts/init-secrets.sh
 docker compose pull
@@ -95,7 +161,7 @@ docker compose ps
 
 本机验证会检查：
 
-- WeRSS、Readeck 与两个 Caddy 入口都只绑定 `127.0.0.1`。
+- WeRSS、Readeck 与三个 Caddy 入口都只绑定 `127.0.0.1`。
 - WeRSS 管理端正常，随机 Feed 路径返回合法 Atom。
 - Feed 代理的根路径、API、非 Atom、写方法和路径穿越均被拒绝。
 - Readeck 未登录首页跳转到登录页，未登录 API 返回 `401`。
@@ -106,7 +172,7 @@ docker compose ps
 
 ## 3. 微信授权和公众号抓取
 
-用 Chrome 打开 `http://127.0.0.1:8001`：
+在阅读器左侧公众号区域点 `+`，或直接打开你配置的 `https://werss.example.com/`。部署 Mac 也可使用 `http://127.0.0.1:8001`：
 
 1. 登录 WeRSS。
 2. 完成公众号运营者扫码授权。
@@ -117,7 +183,7 @@ docker compose ps
 17 * * * *
 ```
 
-5. 添加后可手工运行一次全部公众号更新。不要相信接口里偶发的“执行 0 个订阅号”文案，应以任务队列、文章数量和正文状态为准。
+5. 添加后回到阅读器点“检查新文章”。不要相信 WeRSS 接口里偶发的“执行 0 个订阅号”文案，应以任务队列、文章数量和正文状态为准。
 
 本机 Feed 仍可用于其他阅读器：
 
@@ -210,15 +276,16 @@ v1 不把全部图片复制进 Vault；Markdown 图片仍引用 Readeck 资源�
 
 ## 6. Cloudflare 外网阅读
 
-Cloudflare Tunnel 与 Zero Trust Free 计划适合在手机或外网打开 Readeck。目标地址为：
+Cloudflare Tunnel 与 Zero Trust Free 计划同时保护日常阅读和 WeRSS 管理。两个目标地址为：
 
 ```text
-https://reader.sumerchaser.top/
+https://reader.example.com/
+https://werss.example.com/
 ```
 
 安全顺序固定为：先启用 Zero Trust、创建 Access 应用和允许策略，再创建 Tunnel/DNS，最后运行公网验收。不能先把裸 Readeck 发布到公网。
 
-当前已经按该顺序启用 Zero Trust Free、精确邮箱 Access 策略、独立 Tunnel、DNS 和 LaunchAgent。需要重新生成本机 Tunnel 配置时运行：
+完成 Zero Trust Free、精确邮箱 Access 策略、独立 Tunnel 和 DNS 后，运行以下命令生成本机 Tunnel 配置：
 
 ```bash
 ./scripts/configure-cloudflare-tunnel.sh
@@ -228,18 +295,19 @@ https://reader.sumerchaser.top/
 
 1. 打开 Cloudflare 官方授权页。
 2. 创建独立的 `wechat-rss` Tunnel，不复用其他项目 Tunnel。
-3. 把 `reader.sumerchaser.top` 指向本机 `127.0.0.1:8082`。
+3. 把 `reader.example.com` 指向本机 `127.0.0.1:8082`，把 `werss.example.com` 指向本机 `127.0.0.1:8083`。
 4. 将作用域凭据保存到 `~/.cloudflared/`，权限设为 `600`。
 5. 安装 macOS LaunchAgent，开机自动保持连接。
-6. 把 Readeck 的公开基地址改为 HTTPS 域名。
+6. 为 Reader 与 WeRSS ingress 分别写入各自 Access AUD，并把 Readeck 的公开基地址改为 HTTPS 域名。
 
 公网验收：
 
 ```bash
 ./scripts/verify.sh --reader-public
+./scripts/verify-werss-public.sh
 ```
 
-当前实测访问契约是：已授权设备无需 Readeck 用户名和密码；无 Cookie 的请求不能读取文章；未授权 `/api/bookmarks` 返回 `401/403`，未授权 `/feed/all.atom` 被 Access 拦截；授权会话中的 `/feed/all.atom` 由 Readeck 返回 `404`。WeRSS 管理端不会通过这个 Tunnel 暴露。
+验收契约是：已授权设备无需 Readeck 用户名和密码；无 Cookie 的请求不能读取文章；未授权 Reader、API 和 Feed 都被 Access 拦截。WeRSS 管理端只通过独立 Access 应用进入，匿名根路径和 API 均被边缘拦截，源站仍只监听回环地址。
 
 ![Cloudflare 公网 Reader 实机](docs/images/07-cloudflare-公网阅读器.png)
 
@@ -260,9 +328,9 @@ https://reader.sumerchaser.top/
 备份会短暂停止 WeRSS 与 Readeck，确保 SQLite/WAL 一致，并包含：
 
 - WeRSS SQLite、授权文件、登录密钥和缓存数据。
-- Readeck 用户、90+ 篇文章、收藏、高亮、批注和资源文件。
+- Readeck 用户、全部文章、收藏、高亮、批注和资源文件。
 - `.env`、最小权限 Readeck API Token、同步映射数据库。
-- Compose、两个 Caddy 配置和操作说明。
+- Compose、三个 Caddy 配置、主动刷新控制端和操作说明。
 - 若 Cloudflare 已启用，则包含该 Tunnel 的本机配置和作用域凭据；不包含高权限账户 `cert.pem`。
 
 归档权限为 `600`。独立恢复演练：
@@ -280,7 +348,7 @@ https://reader.sumerchaser.top/
 - Readeck API Token 只授予书签读写权限，不授予用户、系统或管理权限。
 - Readeck 与 WeRSS 均只监听本机回环地址。
 - 不安装 Watchtower，不跟随 `latest`；镜像使用固定摘要。
-- Cloudflare 只暴露 Readeck 专用代理，不暴露 WeRSS、Docker 或本机其他端口。
+- Cloudflare 只暴露 Reader 与 WeRSS 两个专用 Caddy；两者使用独立 Access 应用和 AUD。Docker、WeRSS 原始端口及本机其他端口均不公开。
 
 ## 9. 常见问题
 
@@ -295,9 +363,23 @@ WeRSS 首次只抓有限历史页，并受公众号授权范围、微信风控�
 3. 文章是否已经 `has_content=1`；正文未就绪的文章不会进入 Readeck。
 4. Mac 在计划执行时间是否处于唤醒状态。
 
+### 怎么追加新的公众号？
+
+在阅读器左侧公众号标题旁点 `+`，打开 Access 保护的 WeRSS 管理后台，搜索并添加公众号，再回到阅读器点“检查新文章”。手机和外网设备也可以完成，不再要求回到部署 Mac。
+
 ### 为什么 Readeck 有文章，Obsidian 没有？
 
 这是默认设计。只有点收藏，或创建至少一条高亮/批注，文章才进入 Obsidian。
+
+### 划线笔记怎么导出，Obsidian 路径怎么改？
+
+打开顶部“划线笔记”：
+
+1. 点下载按钮，会生成带日期、摘录、笔记、公众号、文章标题和原文链接的 Markdown 文件。
+2. 点文件夹按钮，选择任意本机 Obsidian 目录；以后“导出全部划线笔记”会直接覆盖该目录中的汇总 Markdown。
+3. 需要换位置时再次点文件夹按钮；不支持目录授权的浏览器仍可使用 Markdown 下载。
+
+这个浏览器目录只影响手工汇总导出。后台每 5 分钟的逐篇自动同步目录仍是 `02_Archive/02_DailyProcessed/reading/readeck_inbox`，两条路径互不冲突。
 
 ### 可以把全部文章都导入 Obsidian 吗？
 
@@ -314,3 +396,18 @@ WeRSS 首次只抓有限历史页，并受公众号授权范围、微信风控�
 不需要。Folo 可作为可选 RSS 客户端，但本项目主链路不依赖其付费订阅、私密 Feed 或 Obsidian 集成。
 
 完整验收矩阵见 [docs/验收清单.md](docs/验收清单.md)。
+
+## 项目结构
+
+```text
+reader-ui/          Apple 磨砂三栏 Reader
+reader-theme/       注入 Readeck 正文的阅读主题
+scripts/            初始化、同步、主动刷新、Cloudflare、备份恢复
+config/             LaunchAgent 与 Tunnel 示例
+docs/               部署、使用、架构、截图与验收证据
+compose.yaml        WeRSS + Readeck + 三个 Caddy
+```
+
+## 上游与许可证
+
+本仓库只维护集成代码和部署配置。WeRSS、Readeck、Caddy 与 Cloudflare Tunnel 仍是各自独立项目，使用时请同时遵守各上游许可证与服务条款。本仓库自有部分使用 [MIT License](LICENSE)。

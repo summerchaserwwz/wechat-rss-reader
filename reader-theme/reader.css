@@ -2,38 +2,40 @@
 
 :root {
   color-scheme: light;
-  --reader-canvas: #f5f5f7;
+  --reader-canvas: #f3f7fc;
   --reader-surface: #ffffff;
-  --reader-surface-muted: #fafafc;
-  --reader-border: #e0e0e0;
-  --reader-ink: #1d1d1f;
-  --reader-muted: #6e6e73;
-  --reader-accent: #ff5c00;
-  --reader-accent-soft: #fff0e8;
+  --reader-surface-muted: #edf4fc;
+  --reader-border: #cfdded;
+  --reader-ink: #102033;
+  --reader-muted: #60758d;
+  --reader-accent: #2f7cf6;
+  --reader-accent-soft: #e8f2ff;
+  --reader-annotation: #4eaa72;
 
-  --color-app-bg: 245 245 247;
-  --color-app-fg: 29 29 31;
-  --color-primary: 255 92 0;
-  --color-primary-light: 255 118 40;
-  --color-primary-dark: 197 67 0;
+  --color-app-bg: 243 247 252;
+  --color-app-fg: 16 32 51;
+  --color-primary: 47 124 246;
+  --color-primary-light: 99 166 255;
+  --color-primary-dark: 29 89 190;
 }
 
 :root.dark {
   color-scheme: dark;
-  --reader-canvas: #0b0d15;
-  --reader-surface: #11131c;
-  --reader-surface-muted: #171a25;
-  --reader-border: #2a2e3f;
-  --reader-ink: #f3f4f9;
-  --reader-muted: #a7aabc;
-  --reader-accent: #8d93ff;
-  --reader-accent-soft: #252947;
+  --reader-canvas: #070b14;
+  --reader-surface: #0d1422;
+  --reader-surface-muted: #121d2d;
+  --reader-border: #263a52;
+  --reader-ink: #edf5ff;
+  --reader-muted: #93a9c0;
+  --reader-accent: #2f7cf6;
+  --reader-accent-soft: #132a4c;
+  --reader-annotation: #8ad4a8;
 
-  --color-app-bg: 17 19 28;
-  --color-app-fg: 243 244 249;
-  --color-primary: 141 147 255;
-  --color-primary-light: 166 171 255;
-  --color-primary-dark: 100 107 237;
+  --color-app-bg: 13 20 34;
+  --color-app-fg: 237 245 255;
+  --color-primary: 47 124 246;
+  --color-primary-light: 99 166 255;
+  --color-primary-dark: 29 89 190;
 }
 
 html,
@@ -245,7 +247,7 @@ body.font-sans {
 .bookmark-display--font-merriweather,
 .bookmark-display--font-plex-serif,
 .bookmark-display--font-literata {
-  font-family: "Songti SC", STSong, "Source Han Serif SC", "Noto Serif CJK SC", Georgia, serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
 }
 
 .bookmark-display--font-public-sans,
@@ -315,40 +317,51 @@ body.font-sans {
 
 .rd-annotation,
 rd-annotation {
+  color: var(--reader-body) !important;
+  -webkit-text-fill-color: var(--reader-body) !important;
   background: transparent !important;
   border: 0;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
   text-decoration-line: underline;
-  text-decoration-color: var(--reader-accent);
-  text-decoration-thickness: 2px;
-  text-underline-offset: 0.2em;
+  text-decoration-style: dashed;
+  text-decoration-color: var(--reader-annotation);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 0.24em;
   text-decoration-skip-ink: auto;
 }
 
 .rd-annotation[data-annotation-color="none"],
 rd-annotation[data-annotation-color="none"] {
   background: transparent !important;
-  text-decoration-color: var(--reader-accent);
+  text-decoration-color: var(--reader-annotation);
 }
 
 .bookmark-article .prose ::selection {
-  color: var(--reader-ink);
-  background: #ffd8c2;
+  color: var(--reader-body) !important;
+  -webkit-text-fill-color: var(--reader-body) !important;
+  background: transparent;
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-color: var(--reader-annotation);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 0.24em;
 }
 
 .annotator {
-  width: min(28rem, calc(100vw - 2rem));
+  width: min(21.25rem, calc(100vw - 1.75rem));
   filter: none;
 }
 
 .annotator--content {
   color: var(--reader-ink);
-  background: var(--reader-surface);
-  border: 1px solid var(--reader-border);
-  border-radius: 8px;
+  background: rgba(18, 27, 42, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 18px;
   padding: 0.75rem;
   box-shadow: none;
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
 }
 
 .annotator--arrow {
@@ -356,16 +369,18 @@ rd-annotation[data-annotation-color="none"] {
 }
 
 .annotator textarea {
+  min-height: 72px;
+  max-height: 124px;
   color: var(--reader-ink);
   background: var(--reader-canvas);
   border-color: var(--reader-border);
-  border-radius: 6px;
+  border-radius: 11px;
   line-height: 1.6;
 }
 
 .annotator .btn-primary {
-  background: var(--reader-accent);
-  border-radius: 6px;
+  background: #0066cc;
+  border-radius: 999px;
 }
 
 .bookmark-sidebar {
@@ -428,7 +443,7 @@ html.reader-embed .bookmark-article {
 }
 
 html.reader-embed .bookmark-article .prose {
-  font-size: 1.125rem;
+  font-size: var(--reader-font-size, 17px);
   line-height: var(--reader-leading, 1.86);
 }
 

@@ -21,7 +21,7 @@ append_if_missing() {
 append_if_missing READECK_SECRET_KEY "$(openssl rand -hex 32)"
 append_if_missing READECK_ADMIN_PASSWORD "$(openssl rand -hex 24)"
 append_if_missing READECK_BASE_URL "http://127.0.0.1:8002/"
-append_if_missing READECK_ALLOWED_HOSTS "127.0.0.1,localhost,readeck,reader.sumerchaser.top"
+append_if_missing READECK_ALLOWED_HOSTS "127.0.0.1,localhost,readeck,reader.example.com"
 append_if_missing HOST_UID "$(id -u)"
 append_if_missing HOST_GID "$(id -g)"
 

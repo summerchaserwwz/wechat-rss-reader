@@ -11,16 +11,31 @@
     sourceQuery: "",
     selectedId: "",
     loading: false,
+    refreshControl: {
+      phase: "idle",
+      message: "可以检查新文章",
+      new_articles: 0,
+      last_werss_fetch_at: "",
+      last_sync_at: "",
+      next_allowed_at: "",
+    },
+    refreshPollTimer: 0,
+    refreshGeneration: 0,
     progressTimer: 0,
+    progressStartTimer: 0,
     annotationTimer: 0,
     annotationObserver: null,
+    pendingAnnotationId: "",
+    lastSelectionRect: null,
+    fontSize: 17,
+    exportDirectoryHandle: null,
   };
 
   const tabMeta = {
     inbox: ["收件箱", "按发布时间排列"],
     unread: ["未读", "还没有读完的文章"],
     favorites: ["收藏", "准备继续处理的文章"],
-    highlights: ["划线", "包含摘录或批注的文章"],
+    highlights: ["划线笔记", "摘录、批注与来源"],
     valuable: ["高价值", "价值评分为 4-5 的文章"],
     subscriptions: ["订阅", "公众号来源与抓取状态"],
   };
@@ -35,7 +50,13 @@
     timelineTitle: $("#timeline-title"),
     timelineSubtitle: $("#timeline-subtitle"),
     timelineBack: $("#timeline-back"),
+    notesActions: $("#notes-actions"),
+    notesDownload: $("#notes-download"),
+    notesFolder: $("#notes-folder"),
     refresh: $("#refresh"),
+    refreshLabel: $("#refresh-label"),
+    refreshSummary: $("#refresh-summary"),
+    refreshDetail: $("#refresh-detail"),
     readerEmpty: $("#reader-empty"),
     readerContent: $("#reader-content"),
     readerTitle: $("#reader-title"),
@@ -43,7 +64,12 @@
     readerRead: $("#reader-read"),
     readerStar: $("#reader-star"),
     readerBack: $("#reader-back"),
+    readerAutoStatus: $("#reader-auto-status"),
     articleFrame: $("#article-frame"),
+    fontLarger: $("#font-larger"),
+    fontSmaller: $("#font-smaller"),
+    fontSize: $("#font-size"),
+    articleNotes: $("#article-notes"),
     ratingControl: $("#rating-control"),
     topicList: $("#topic-list"),
     topicForm: $("#topic-form"),
@@ -53,6 +79,8 @@
     statusLatest: $("#status-latest"),
     statusFeeds: $("#status-feeds"),
     statusHealth: $("#status-health"),
+    statusRefreshResult: $("#status-refresh-result"),
+    statusNextRefresh: $("#status-next-refresh"),
     syncBrief: $("#sync-brief"),
     healthDot: $("#health-dot"),
     healthText: $("#health-text"),
@@ -60,7 +88,13 @@
     subscriptionAdd: $("#subscription-add"),
     feedDialog: $("#feed-dialog"),
     feedDeviceNote: $("#feed-device-note"),
+    feedPublicLink: $("#feed-public-link"),
     feedLocalLink: $("#feed-local-link"),
+    exportDialog: $("#export-dialog"),
+    exportFolderLabel: $("#export-folder-label"),
+    chooseExportFolder: $("#choose-export-folder"),
+    exportToFolder: $("#export-to-folder"),
+    forgetExportFolder: $("#forget-export-folder"),
     toast: $("#toast"),
   };
 
@@ -97,11 +131,11 @@
       },
     });
     if (response.status === 401 || response.status === 403) {
-      throw new Error("当前会话没有 Reader 访问权限，请重新完成 Cloudflare 邮箱验证。");
+      throw new Error("当前会话没有阅读库访问权限，请重新完成 Cloudflare 邮箱验证。");
     }
     if (!response.ok) {
       const detail = (await response.text()).slice(0, 240);
-      throw new Error(`Reader 请求失败（${response.status}）${detail ? `：${detail}` : ""}`);
+      throw new Error(`阅读库请求失败（${response.status}）${detail ? `：${detail}` : ""}`);
     }
     if (response.status === 204) return null;
     const type = response.headers.get("content-type") || "";
@@ -167,6 +201,175 @@
     }).format(date);
   }
 
+  function cooldownText(value) {
+    if (!value) return "现在可以";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime()) || date.getTime() <= Date.now()) return "现在可以";
+    const seconds = Math.max(1, Math.ceil((date.getTime() - Date.now()) / 1000));
+    if (seconds < 60) return `${seconds} 秒后`;
+    return `${Math.ceil(seconds / 60)} 分钟后`;
+  }
+
+  function scheduleText(cron, intervalSeconds) {
+    const parts = String(cron || "").trim().split(/\s+/);
+    let fetchText = "定时抓取";
+    if (parts.length === 5 && /^\d+$/.test(parts[0])) {
+      if (parts[1] === "*") fetchText = `每小时第 ${parts[0]} 分钟抓取`;
+      else if (/^\*\/\d+$/.test(parts[1])) fetchText = `每 ${parts[1].slice(2)} 小时第 ${parts[0]} 分钟抓取`;
+    }
+    const seconds = Number(intervalSeconds || 300);
+    const syncText = seconds >= 60 && seconds % 60 === 0 ? `约 ${seconds / 60} 分钟同步` : `约 ${seconds} 秒同步`;
+    return `${fetchText} · ${syncText}`;
+  }
+
+  function annotationsFor(bookmarkId) {
+    return state.annotations.filter((item) => item.bookmark_id === bookmarkId);
+  }
+
+  function annotationById(id) {
+    return state.annotations.find((item) => String(item.id) === String(id)) || null;
+  }
+
+  function annotationSource(item) {
+    const bookmark = state.bookmarks.find((entry) => entry.id === item.bookmark_id);
+    return bookmark ? sourceName(bookmark) : item.bookmark_site_name || "未知公众号";
+  }
+
+  function markdownEscape(value) {
+    return String(value || "").replaceAll("\r", "").trim();
+  }
+
+  function buildAnnotationsMarkdown(items = state.annotations) {
+    const created = new Intl.DateTimeFormat("zh-CN", { dateStyle: "long", timeStyle: "short" }).format(new Date());
+    const sections = items.map((item, index) => {
+      const bookmark = state.bookmarks.find((entry) => entry.id === item.bookmark_id);
+      const title = bookmark?.title || item.bookmark_title || "未命名文章";
+      const url = bookmark?.url || item.bookmark_url || "";
+      const source = annotationSource(item);
+      const quote = markdownEscape(item.text).split("\n").map((line) => `> ${line}`).join("\n");
+      const note = markdownEscape(item.note) || "（未填写笔记）";
+      return `## ${index + 1}. ${title}\n\n- 公众号：${source}\n- 原文：${url ? `[${url}](${url})` : "暂无"}\n- 划线时间：${fullTime(item.created)}\n\n${quote}\n\n**我的笔记**\n\n${note}`;
+    });
+    return `# 公众号划线笔记\n\n- 导出时间：${created}\n- 共 ${items.length} 条摘录\n\n${sections.join("\n\n---\n\n")}\n`;
+  }
+
+  function markdownFilename() {
+    const date = new Intl.DateTimeFormat("sv-SE", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    return `公众号划线笔记-${date}.md`;
+  }
+
+  function downloadMarkdown() {
+    if (!state.annotations.length) {
+      showToast("还没有划线笔记");
+      return;
+    }
+    const blob = new Blob([buildAnnotationsMarkdown()], { type: "text/markdown;charset=utf-8" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = markdownFilename();
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    showToast(`已导出 ${state.annotations.length} 条划线笔记`);
+  }
+
+  function openSettingsDb() {
+    return new Promise((resolve, reject) => {
+      const requestDb = indexedDB.open("wechat-reader-settings", 1);
+      requestDb.onupgradeneeded = () => requestDb.result.createObjectStore("settings");
+      requestDb.onsuccess = () => resolve(requestDb.result);
+      requestDb.onerror = () => reject(requestDb.error);
+    });
+  }
+
+  async function saveDirectoryHandle(handle) {
+    const db = await openSettingsDb();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction("settings", "readwrite");
+      tx.objectStore("settings").put(handle, "obsidian-directory");
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  }
+
+  async function loadDirectoryHandle() {
+    if (!("indexedDB" in window)) return;
+    try {
+      const db = await openSettingsDb();
+      state.exportDirectoryHandle = await new Promise((resolve, reject) => {
+        const tx = db.transaction("settings", "readonly");
+        const requestHandle = tx.objectStore("settings").get("obsidian-directory");
+        requestHandle.onsuccess = () => resolve(requestHandle.result || null);
+        requestHandle.onerror = () => reject(requestHandle.error);
+      });
+      db.close();
+      renderExportTarget();
+    } catch {
+      state.exportDirectoryHandle = null;
+    }
+  }
+
+  async function forgetDirectoryHandle() {
+    const db = await openSettingsDb();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction("settings", "readwrite");
+      tx.objectStore("settings").delete("obsidian-directory");
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+    state.exportDirectoryHandle = null;
+    renderExportTarget();
+    showToast("已清除浏览器导出目录");
+  }
+
+  function renderExportTarget() {
+    const supported = "showDirectoryPicker" in window;
+    elements.exportFolderLabel.textContent = state.exportDirectoryHandle?.name || (supported ? "尚未选择" : "此浏览器不支持直写目录");
+    elements.chooseExportFolder.disabled = !supported;
+    elements.exportToFolder.disabled = !state.exportDirectoryHandle;
+    elements.forgetExportFolder.disabled = !state.exportDirectoryHandle;
+  }
+
+  async function chooseExportDirectory() {
+    if (!("showDirectoryPicker" in window)) {
+      showToast("当前浏览器不支持选择目录，请使用 Markdown 下载", true);
+      return;
+    }
+    try {
+      const handle = await window.showDirectoryPicker({ mode: "readwrite", startIn: "documents" });
+      state.exportDirectoryHandle = handle;
+      await saveDirectoryHandle(handle);
+      renderExportTarget();
+      showToast(`已选择目录：${handle.name}`);
+    } catch (error) {
+      if (error?.name !== "AbortError") showToast("无法保存所选目录", true);
+    }
+  }
+
+  async function exportToDirectory() {
+    const handle = state.exportDirectoryHandle;
+    if (!handle) {
+      await chooseExportDirectory();
+      if (!state.exportDirectoryHandle) return;
+    }
+    if (!state.annotations.length) {
+      showToast("还没有划线笔记");
+      return;
+    }
+    try {
+      const permission = await state.exportDirectoryHandle.requestPermission({ mode: "readwrite" });
+      if (permission !== "granted") throw new Error("目录写入权限未授予");
+      const file = await state.exportDirectoryHandle.getFileHandle(markdownFilename(), { create: true });
+      const writer = await file.createWritable();
+      await writer.write(buildAnnotationsMarkdown());
+      await writer.close();
+      showToast(`已写入 ${state.exportDirectoryHandle.name}`);
+    } catch (error) {
+      showToast(error.message || "导出到 Obsidian 目录失败", true);
+    }
+  }
+
   function selectedBookmark() {
     return state.bookmarks.find((item) => item.id === state.selectedId) || null;
   }
@@ -176,7 +379,7 @@
       inbox: state.bookmarks.length,
       unread: state.bookmarks.filter((item) => Number(item.read_progress || 0) < 100).length,
       favorites: state.bookmarks.filter((item) => item.is_marked).length,
-      highlights: state.bookmarks.filter((item) => state.annotatedIds.has(item.id)).length,
+      highlights: state.annotations.length,
       valuable: state.bookmarks.filter((item) => valueOf(item) >= 4).length,
       subscriptions: sourceCatalog().length,
     };
@@ -254,6 +457,22 @@
     }
   }
 
+  function filteredAnnotations() {
+    return state.annotations
+      .filter((item) => !state.activeSource || annotationSource(item) === state.activeSource)
+      .sort((a, b) => new Date(b.created || 0) - new Date(a.created || 0));
+  }
+
+  function annotationRow(item) {
+    const note = markdownEscape(item.note);
+    return `<article class="annotation-row" data-bookmark-id="${escapeHtml(item.bookmark_id)}" data-annotation-id="${escapeHtml(item.id)}" tabindex="0">
+      <div class="annotation-row-meta"><span>${escapeHtml(annotationSource(item))}</span><time>${shortTime(item.created)}</time></div>
+      <blockquote>${escapeHtml(markdownEscape(item.text) || "空摘录")}</blockquote>
+      <p class="annotation-row-note ${note ? "" : "is-empty"}">${escapeHtml(note || "尚未写笔记，点击回到原文补充")}</p>
+      <span class="annotation-row-source">${escapeHtml(item.bookmark_title || "查看原文")}</span>
+    </article>`;
+  }
+
   function entryRow(bookmark) {
     const value = valueOf(bookmark);
     const topics = topicsOf(bookmark);
@@ -312,18 +531,38 @@
         render();
       });
     }
+    for (const row of elements.timeline.querySelectorAll(".annotation-row")) {
+      const open = () => selectAnnotation(row.dataset.bookmarkId, row.dataset.annotationId);
+      row.addEventListener("click", open);
+      row.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          open();
+        }
+      });
+    }
   }
 
   function renderTimeline() {
     const [title, subtitle] = tabMeta[state.activeTab];
+    elements.notesActions.hidden = state.activeTab !== "highlights";
     elements.timelineTitle.textContent = state.activeSource && state.activeTab !== "subscriptions" ? state.activeSource : title;
-    elements.timelineSubtitle.textContent = state.activeSource && state.activeTab !== "subscriptions" ? `${filteredBookmarks().length} 篇 · ${subtitle}` : subtitle;
+    const activeCount = state.activeTab === "highlights" ? filteredAnnotations().length : filteredBookmarks().length;
+    elements.timelineSubtitle.textContent = state.activeSource && state.activeTab !== "subscriptions" ? `${activeCount} 条 · ${subtitle}` : subtitle;
     if (state.loading) {
       elements.timeline.innerHTML = `<div class="loading-list">正在同步文章状态…</div>`;
       return;
     }
     if (state.activeTab === "subscriptions") {
       elements.timeline.innerHTML = subscriptionRows();
+      bindTimelineRows();
+      return;
+    }
+    if (state.activeTab === "highlights") {
+      const annotations = filteredAnnotations();
+      elements.timeline.innerHTML = annotations.length
+        ? `<div class="annotation-library-intro"><strong>自动收集的划线笔记</strong><span>点击任意摘录回到原文；每 5 分钟自动同步到 Obsidian。</span></div>${annotations.map(annotationRow).join("")}`
+        : `<div class="empty-list">选中文字写下笔记后，会自动出现在这里。</div>`;
       bindTimelineRows();
       return;
     }
@@ -350,6 +589,25 @@
     }
   }
 
+  function renderFontSize() {
+    elements.fontSize.value = String(state.fontSize);
+    elements.fontSize.textContent = `${state.fontSize}px`;
+    elements.fontSmaller.disabled = state.fontSize <= 15;
+    elements.fontLarger.disabled = state.fontSize >= 24;
+    try {
+      elements.articleFrame.contentDocument?.documentElement.style.setProperty("--reader-font-size", `${state.fontSize}px`);
+    } catch {
+      // The next same-origin frame load applies the preference.
+    }
+  }
+
+  function setFontSize(value) {
+    state.fontSize = Math.max(15, Math.min(24, Number(value) || 17));
+    localStorage.setItem("reader-font-size", String(state.fontSize));
+    renderFontSize();
+    showToast(`正文字号 ${state.fontSize}px`);
+  }
+
   function renderReader() {
     const bookmark = selectedBookmark();
     const subscriptions = state.activeTab === "subscriptions";
@@ -370,25 +628,63 @@
     elements.readerStar.querySelector("span").textContent = bookmark.is_marked ? "已收藏" : "收藏";
     const isRead = Number(bookmark.read_progress || 0) >= 100;
     elements.readerRead.querySelector("span").textContent = isRead ? "标为未读" : "标为已读";
+    const progress = Number(bookmark.read_progress || 0);
+    elements.readerAutoStatus.textContent = progress >= 100 ? "已自动记录 · 已读" : progress > 0 ? `自动记录 · ${progress}%` : "自动记录 · 未读";
+    const noteCount = annotationsFor(bookmark.id).length;
+    elements.articleNotes.querySelector("b").textContent = String(noteCount);
+    elements.articleNotes.classList.toggle("has-notes", noteCount > 0);
     renderRating(bookmark);
     renderTopics(bookmark);
+    renderFontSize();
   }
 
   function renderSubscriptionStatus() {
     const status = state.status;
+    const refresh = state.refreshControl;
     elements.statusGenerated.textContent = fullTime(status?.generated_at);
     elements.statusLatest.textContent = fullTime(status?.latest_fetched_at);
     elements.statusFeeds.textContent = `${sourceCatalog().length} 个公众号`;
     elements.statusHealth.textContent = status?.health === "ok" ? "运行正常" : status ? "需要检查" : "等待状态";
+    elements.statusRefreshResult.textContent = refresh.phase === "complete"
+      ? `新增 ${Number(refresh.new_articles || 0)} 篇`
+      : refresh.message || "尚未主动检查";
+    elements.statusNextRefresh.textContent = cooldownText(refresh.next_allowed_at);
+  }
+
+  function renderRefreshControl() {
+    const refresh = state.refreshControl || {};
+    const labels = {
+      idle: "检查新文章",
+      checking_werss: "检查 WeRSS",
+      syncing_reader: "同步阅读库",
+      complete: "检查完成",
+      cooldown: "冷却中",
+      single_flight: "正在检查",
+      failed: "检查失败",
+    };
+    const phase = labels[refresh.phase] ? refresh.phase : "idle";
+    const active = phase === "checking_werss" || phase === "syncing_reader" || phase === "single_flight";
+    elements.refresh.dataset.phase = phase;
+    elements.refresh.disabled = active;
+    elements.refresh.classList.toggle("is-loading", active);
+    elements.refreshLabel.textContent = labels[phase];
+    elements.refreshSummary.textContent = refresh.message || labels[phase];
+
+    const details = [];
+    if (phase === "complete") details.push(`新增 ${Number(refresh.new_articles || 0)} 篇`);
+    if (refresh.last_werss_fetch_at) details.push(`抓取 ${fullTime(refresh.last_werss_fetch_at)}`);
+    if (refresh.last_sync_at) details.push(`同步 ${fullTime(refresh.last_sync_at)}`);
+    if (phase === "cooldown" || cooldownText(refresh.next_allowed_at) !== "现在可以") {
+      details.push(`下次 ${cooldownText(refresh.next_allowed_at)}`);
+    }
+    elements.refreshDetail.textContent = details.join(" / ") || "触发 WeRSS 抓取并同步阅读库";
   }
 
   function renderHealth() {
     const ok = state.status?.health === "ok";
     elements.healthDot.className = `health-dot ${ok ? "ok" : state.status ? "error" : ""}`;
     elements.healthText.textContent = ok ? "抓取与同步运行正常" : state.status ? "同步状态需要检查" : "未读取到抓取状态";
-    elements.syncBrief.textContent = state.status
-      ? `抓取 ${state.status.cron || "17 * * * *"} · 同步 ${state.status.sync_interval_seconds || 300} 秒`
-      : "每小时抓取 · 5 分钟同步";
+    elements.syncBrief.textContent = scheduleText(state.status?.cron || "17 * * * *", state.status?.sync_interval_seconds || 300);
   }
 
   function render() {
@@ -397,20 +693,28 @@
     renderTimeline();
     renderReader();
     renderHealth();
+    renderRefreshControl();
   }
 
-  async function refreshAnnotations() {
+  async function refreshAnnotations({ focusNewest = false } = {}) {
+    const previousIds = new Set(state.annotations.map((item) => String(item.id)));
     const annotations = await fetchPaged("/api/bookmarks/annotations?");
     state.annotations = annotations;
     state.annotatedIds = new Set(annotations.map((item) => item.bookmark_id));
     renderTabs();
     if (state.activeTab === "highlights") renderTimeline();
+    renderReader();
+    const newest = focusNewest ? annotations.find((item) => !previousIds.has(String(item.id))) : null;
+    enhanceArticleAnnotations(elements.articleFrame.contentDocument, newest?.id || state.pendingAnnotationId);
+    if (newest) {
+      state.pendingAnnotationId = "";
+      showToast("划线笔记已保存，并进入 Obsidian 自动同步队列");
+    }
   }
 
   async function refreshData({ quiet = false } = {}) {
     if (state.loading) return;
     state.loading = true;
-    elements.refresh.classList.add("is-loading");
     if (!quiet) renderTimeline();
     try {
       const [bookmarks, annotations, status] = await Promise.all([
@@ -426,11 +730,87 @@
       if (!quiet) showToast(`已刷新 ${bookmarks.length} 篇文章`);
     } catch (error) {
       showToast(error.message || "刷新失败", true);
-      elements.timeline.innerHTML = `<div class="empty-list">${escapeHtml(error.message || "无法读取 Reader")}</div>`;
+      elements.timeline.innerHTML = `<div class="empty-list">${escapeHtml(error.message || "无法读取阅读库")}</div>`;
     } finally {
       state.loading = false;
-      elements.refresh.classList.remove("is-loading");
       render();
+    }
+  }
+
+  async function refreshControlRequest(action) {
+    return request("/reader-control/refresh", {
+      method: "POST",
+      body: JSON.stringify({ action }),
+    });
+  }
+
+  function setRefreshControl(payload) {
+    if (!payload || typeof payload !== "object") return;
+    state.refreshControl = { ...state.refreshControl, ...payload };
+    renderRefreshControl();
+    if (state.activeTab === "subscriptions") renderSubscriptionStatus();
+  }
+
+  async function pollRefreshControl(generation) {
+    window.clearTimeout(state.refreshPollTimer);
+    if (generation !== state.refreshGeneration) return;
+    try {
+      const payload = await refreshControlRequest("status");
+      if (generation !== state.refreshGeneration) return;
+      setRefreshControl(payload);
+      const terminal = ["complete", "cooldown", "failed", "idle"].includes(payload.phase);
+      if (!terminal) {
+        state.refreshPollTimer = window.setTimeout(() => pollRefreshControl(generation), 1800);
+        return;
+      }
+      await refreshData({ quiet: true });
+      if (payload.phase === "complete") {
+        showToast(`检查完成，新增 ${Number(payload.new_articles || 0)} 篇文章`);
+      } else if (payload.phase === "failed") {
+        showToast(payload.message || "检查新文章失败", true);
+      }
+    } catch (error) {
+      setRefreshControl({ phase: "failed", message: error.message || "刷新控制端不可用" });
+      showToast(error.message || "刷新控制端不可用", true);
+    }
+  }
+
+  async function checkForNewArticles() {
+    const generation = ++state.refreshGeneration;
+    window.clearTimeout(state.refreshPollTimer);
+    setRefreshControl({ phase: "checking_werss", message: "正在请求 WeRSS 检查新文章" });
+    try {
+      const payload = await refreshControlRequest("start");
+      if (generation !== state.refreshGeneration) return;
+      setRefreshControl(payload);
+      if (["checking_werss", "syncing_reader", "single_flight"].includes(payload.phase)) {
+        state.refreshPollTimer = window.setTimeout(() => pollRefreshControl(generation), 1000);
+        return;
+      }
+      await refreshData({ quiet: true });
+      if (payload.phase === "cooldown") {
+        showToast(`主动抓取仍在冷却，${cooldownText(payload.next_allowed_at)}可再次检查`);
+      } else if (payload.phase === "complete") {
+        showToast(`检查完成，新增 ${Number(payload.new_articles || 0)} 篇文章`);
+      } else if (payload.phase === "failed") {
+        showToast(payload.message || "检查新文章失败", true);
+      }
+    } catch (error) {
+      setRefreshControl({ phase: "failed", message: error.message || "检查新文章失败" });
+      showToast(error.message || "检查新文章失败", true);
+    }
+  }
+
+  async function loadRefreshControl() {
+    try {
+      const payload = await refreshControlRequest("status");
+      setRefreshControl(payload);
+      if (["checking_werss", "syncing_reader", "single_flight"].includes(payload.phase)) {
+        const generation = ++state.refreshGeneration;
+        state.refreshPollTimer = window.setTimeout(() => pollRefreshControl(generation), 600);
+      }
+    } catch (error) {
+      setRefreshControl({ phase: "failed", message: "刷新控制端尚未就绪" });
     }
   }
 
@@ -525,6 +905,138 @@
     }
   }
 
+  function selectionRect(doc) {
+    const selection = doc?.getSelection?.();
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return null;
+    const rect = selection.getRangeAt(0).getBoundingClientRect();
+    if (!rect.width && !rect.height) return null;
+    return { top: rect.top, right: rect.right, bottom: rect.bottom, left: rect.left, width: rect.width, height: rect.height };
+  }
+
+  function placeFloatingElement(element, anchor, doc, preferredWidth = 320) {
+    if (!element || !anchor || !doc?.defaultView) return;
+    const viewportWidth = doc.defaultView.innerWidth;
+    const viewportHeight = doc.defaultView.innerHeight;
+    const margin = 14;
+    const gap = 12;
+    const width = Math.min(preferredWidth, viewportWidth - margin * 2);
+    element.style.setProperty("position", "fixed", "important");
+    element.style.setProperty("width", `${width}px`, "important");
+    element.style.setProperty("max-width", `${width}px`, "important");
+    element.style.setProperty("transform", "none", "important");
+    element.style.setProperty("right", "auto", "important");
+    element.style.setProperty("bottom", "auto", "important");
+    const height = Math.min(element.offsetHeight || 180, viewportHeight - margin * 2);
+
+    let left;
+    let top;
+    if (anchor.right + gap + width <= viewportWidth - margin) {
+      left = anchor.right + gap;
+      top = Math.max(margin, Math.min(anchor.top - 12, viewportHeight - height - margin));
+    } else if (anchor.left - gap - width >= margin) {
+      left = anchor.left - gap - width;
+      top = Math.max(margin, Math.min(anchor.top - 12, viewportHeight - height - margin));
+    } else {
+      left = Math.max(margin, Math.min(anchor.left + anchor.width / 2 - width / 2, viewportWidth - width - margin));
+      const below = anchor.bottom + gap;
+      top = below + height <= viewportHeight - margin ? below : Math.max(margin, anchor.top - height - gap);
+    }
+    element.style.setProperty("left", `${Math.round(left)}px`, "important");
+    element.style.setProperty("top", `${Math.round(top)}px`, "important");
+  }
+
+  function positionNativeAnnotator(doc) {
+    const annotator = doc?.querySelector?.(".annotator");
+    if (!annotator || getComputedStyle(annotator).display === "none") return;
+    const anchor = selectionRect(doc) || state.lastSelectionRect;
+    if (!anchor) return;
+    annotator.classList.add("reader-positioned-annotator");
+    placeFloatingElement(annotator, anchor, doc, 340);
+  }
+
+  function showAnnotationPopover(doc, item, target) {
+    if (!doc || !item || !target) return;
+    doc.querySelector(".reader-note-popover")?.remove();
+    const popover = doc.createElement("aside");
+    popover.className = "reader-note-popover";
+    popover.setAttribute("role", "note");
+
+    const heading = doc.createElement("div");
+    heading.className = "reader-note-popover-heading";
+    const label = doc.createElement("strong");
+    label.textContent = "划线笔记";
+    const close = doc.createElement("button");
+    close.type = "button";
+    close.setAttribute("aria-label", "关闭笔记");
+    close.textContent = "×";
+    close.addEventListener("click", () => popover.remove());
+    heading.append(label, close);
+
+    const quote = doc.createElement("blockquote");
+    quote.textContent = markdownEscape(item.text) || "空摘录";
+    const note = doc.createElement("p");
+    note.textContent = markdownEscape(item.note) || "尚未写笔记；再次点击划线可编辑。";
+    if (!markdownEscape(item.note)) note.classList.add("is-empty");
+    const source = doc.createElement("small");
+    source.textContent = `${annotationSource(item)} · ${fullTime(item.created)}`;
+    popover.append(heading, quote, note, source);
+    doc.body.append(popover);
+    placeFloatingElement(popover, target.getBoundingClientRect(), doc, 286);
+  }
+
+  function enhanceArticleAnnotations(doc, focusId = "") {
+    const bookmark = selectedBookmark();
+    if (!doc || !bookmark) return;
+    const byId = new Map(annotationsFor(bookmark.id).map((item) => [String(item.id), item]));
+    let focusTarget = null;
+    for (const target of doc.querySelectorAll("rd-annotation[data-annotation-id-value], .rd-annotation[data-annotation-id-value]")) {
+      const id = target.getAttribute("data-annotation-id-value") || "";
+      const item = byId.get(id);
+      if (!item) continue;
+      target.setAttribute("tabindex", "0");
+      target.setAttribute("role", "button");
+      target.setAttribute("aria-label", item.note ? "查看划线笔记" : "查看划线摘录");
+      target.title = item.note || "查看划线摘录";
+      if (!target.dataset.readerNoteBound) {
+        const open = (event) => {
+          event.stopPropagation();
+          showAnnotationPopover(doc, annotationById(id), target);
+        };
+        target.addEventListener("click", open);
+        target.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            open(event);
+          }
+        });
+        target.dataset.readerNoteBound = "true";
+      }
+      if (focusId && id === String(focusId) && !focusTarget) focusTarget = target;
+    }
+    if (focusTarget) {
+      focusTarget.scrollIntoView({ behavior: "auto", block: "center" });
+      window.setTimeout(() => showAnnotationPopover(doc, annotationById(focusId), focusTarget), 120);
+      state.pendingAnnotationId = "";
+    }
+  }
+
+  function selectAnnotation(bookmarkId, annotationId) {
+    state.pendingAnnotationId = annotationId;
+    selectBookmark(bookmarkId);
+    window.setTimeout(() => enhanceArticleAnnotations(elements.articleFrame.contentDocument, annotationId), 80);
+  }
+
+  function showCurrentArticleNotes() {
+    const bookmark = selectedBookmark();
+    if (!bookmark) return;
+    const notes = annotationsFor(bookmark.id);
+    if (!notes.length) {
+      showToast("本文还没有划线笔记");
+      return;
+    }
+    enhanceArticleAnnotations(elements.articleFrame.contentDocument, notes[0].id);
+  }
+
   function selectBookmark(id) {
     if (!state.bookmarks.some((item) => item.id === id)) return;
     state.selectedId = id;
@@ -547,17 +1059,33 @@
         if (!doc.querySelector("link[data-reader-embed-theme]")) {
           const embedTheme = doc.createElement("link");
           embedTheme.rel = "stylesheet";
-          embedTheme.href = "/reader-assets/embed.css?v=2";
+          embedTheme.href = "/reader-assets/embed.css?v=3";
           embedTheme.dataset.readerEmbedTheme = "true";
           doc.head.append(embedTheme);
         }
+        doc.documentElement.style.setProperty("--reader-font-size", `${state.fontSize}px`);
         state.annotationObserver?.disconnect();
         state.annotationObserver = new MutationObserver((records) => {
-          if (!records.some((record) => [...record.addedNodes, ...record.removedNodes].some((node) => node.nodeType === 1 && (node.matches?.("rd-annotation, .rd-annotation") || node.querySelector?.("rd-annotation, .rd-annotation"))))) return;
+          const annotationChanged = records.some((record) => [...record.addedNodes, ...record.removedNodes].some((node) => node.nodeType === 1 && (node.matches?.("rd-annotation, .rd-annotation") || node.querySelector?.("rd-annotation, .rd-annotation"))));
+          const annotatorChanged = records.some((record) => record.target?.matches?.(".annotator") || [...record.addedNodes].some((node) => node.nodeType === 1 && (node.matches?.(".annotator") || node.querySelector?.(".annotator"))));
+          if (annotatorChanged) window.requestAnimationFrame(() => positionNativeAnnotator(doc));
+          if (!annotationChanged) return;
           window.clearTimeout(state.annotationTimer);
-          state.annotationTimer = window.setTimeout(() => refreshAnnotations().catch(() => {}), 600);
+          state.annotationTimer = window.setTimeout(() => refreshAnnotations({ focusNewest: true }).catch(() => {}), 500);
         });
-        state.annotationObserver.observe(doc.body, { childList: true, subtree: true });
+        state.annotationObserver.observe(doc.body, { attributes: true, attributeFilter: ["class", "style", "hidden"], childList: true, subtree: true });
+        enhanceArticleAnnotations(doc, state.pendingAnnotationId);
+
+        const captureSelection = () => {
+          const rect = selectionRect(doc);
+          if (rect) {
+            state.lastSelectionRect = rect;
+            doc.querySelector(".reader-note-popover")?.remove();
+          }
+          window.setTimeout(() => positionNativeAnnotator(doc), 0);
+        };
+        doc.addEventListener("selectionchange", captureSelection);
+        doc.addEventListener("pointerup", captureSelection);
 
         let lastProgress = Number(bookmark.read_progress || 0);
         const updateProgress = () => {
@@ -574,7 +1102,16 @@
           window.clearTimeout(state.progressTimer);
           state.progressTimer = window.setTimeout(() => setReadProgress(bookmark.id, next, true), 900);
         };
-        frameWindow.addEventListener("scroll", updateProgress, { passive: true });
+        frameWindow.addEventListener("scroll", () => {
+          doc.querySelector(".reader-note-popover")?.remove();
+          updateProgress();
+        }, { passive: true });
+        frameWindow.addEventListener("resize", () => doc.querySelector(".reader-note-popover")?.remove(), { passive: true });
+        window.clearTimeout(state.progressStartTimer);
+        state.progressStartTimer = window.setTimeout(() => {
+          const current = selectedBookmark();
+          if (current?.id === bookmark.id && Number(current.read_progress || 0) === 0) setReadProgress(bookmark.id, 1, true);
+        }, 1500);
       } catch (error) {
         showToast("正文已打开，但无法读取内嵌阅读进度", true);
       }
@@ -594,10 +1131,20 @@
 
   function prepareFeedDialog() {
     const mobileDevice = window.matchMedia("(max-width: 760px), (pointer: coarse)").matches;
+    const publicFeedUrl = new URL(window.location.href);
+    if (publicFeedUrl.hostname.startsWith("reader.")) {
+      publicFeedUrl.hostname = `werss.${publicFeedUrl.hostname.slice("reader.".length)}`;
+      publicFeedUrl.pathname = "/";
+      publicFeedUrl.search = "";
+      publicFeedUrl.hash = "";
+      elements.feedPublicLink.href = publicFeedUrl.toString();
+    } else {
+      elements.feedPublicLink.href = "http://127.0.0.1:8001";
+    }
     elements.feedLocalLink.hidden = mobileDevice;
     elements.feedDeviceNote.textContent = mobileDevice
-      ? "当前是手机或触屏设备，不能访问部署 Mac 的 127.0.0.1。请回到部署 Mac 打开 WeRSS，添加后 Reader 会自动出现新来源。"
-      : "下面的按钮只访问当前设备的 127.0.0.1，因此必须在部署这套系统的 Mac 上使用。";
+      ? "当前设备请使用公网入口。新增后回到阅读器点击“检查新文章”。"
+      : "推荐使用公网入口；部署这套系统的 Mac 还可使用本机备用入口。";
   }
 
   function bindEvents() {
@@ -609,7 +1156,12 @@
       state.sourceQuery = elements.sourceSearch.value.trim();
       renderSources();
     });
-    elements.refresh.addEventListener("click", () => refreshData());
+    elements.refresh.addEventListener("click", () => checkForNewArticles());
+    elements.notesDownload.addEventListener("click", downloadMarkdown);
+    elements.notesFolder.addEventListener("click", () => {
+      renderExportTarget();
+      elements.exportDialog.showModal();
+    });
     elements.readerStar.addEventListener("click", () => toggleFavorite());
     elements.readerRead.addEventListener("click", () => {
       const bookmark = selectedBookmark();
@@ -619,6 +1171,12 @@
       event.preventDefault();
       addTopic(elements.topicInput.value);
     });
+    elements.fontLarger.addEventListener("click", () => setFontSize(state.fontSize + 1));
+    elements.fontSmaller.addEventListener("click", () => setFontSize(state.fontSize - 1));
+    elements.articleNotes.addEventListener("click", showCurrentArticleNotes);
+    elements.chooseExportFolder.addEventListener("click", chooseExportDirectory);
+    elements.exportToFolder.addEventListener("click", exportToDirectory);
+    elements.forgetExportFolder.addEventListener("click", forgetDirectoryHandle);
     elements.readerBack.addEventListener("click", () => { elements.app.dataset.mobileView = "timeline"; });
     elements.timelineBack.addEventListener("click", () => { elements.app.dataset.mobileView = "sources"; });
     for (const button of [elements.addFeed, elements.subscriptionAdd]) {
@@ -648,10 +1206,17 @@
         if (next) selectBookmark(next.id);
       }
     });
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) loadRefreshControl();
+    });
     bindArticleFrame();
   }
 
+  state.fontSize = Math.max(15, Math.min(24, Number(localStorage.getItem("reader-font-size")) || 17));
   bindEvents();
   render();
+  renderFontSize();
+  loadDirectoryHandle();
   refreshData();
+  loadRefreshControl();
 })();

@@ -42,8 +42,8 @@ else
   note_warn "docker CLI 尚不可用；启动 Docker Desktop 后会安装 CLI"
 fi
 
-vault="/Users/summer/Obsidian/SummerOS"
-[[ -d "$vault" ]] && pass "SummerOS Vault 存在" || fail "未找到 SummerOS Vault"
+vault="$(env_value OBSIDIAN_INBOX_DIR "$HOME/Documents/Obsidian/reading/readeck_inbox")"
+[[ -d "$vault" ]] && pass "Obsidian 收件箱存在" || note_warn "Obsidian 收件箱尚不存在：$vault"
 
 printf '\n资格硬门禁（必须由你本人确认）：\n'
 printf '1. 你能登录 mp.weixin.qq.com，并拥有至少一个公众号或服务号的管理员/运营者权限。\n'

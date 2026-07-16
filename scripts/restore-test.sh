@@ -26,8 +26,11 @@ tar -xzf "$archive" -C "$restore_dir"
 [[ -f "$restore_dir/compose.yaml" ]] || die "备份缺少 compose.yaml"
 [[ -f "$restore_dir/Caddyfile" ]] || die "备份缺少 Caddyfile"
 [[ -f "$restore_dir/Caddyfile.reader" ]] || die "备份缺少 Caddyfile.reader"
+[[ -f "$restore_dir/Caddyfile.werss-public" ]] || die "备份缺少 Caddyfile.werss-public"
 [[ -f "$restore_dir/reader-theme/reader.css" ]] || die "备份缺少 Reader 自定义主题"
 [[ -f "$restore_dir/reader-ui/index.html" ]] || die "备份缺少 Reader UI"
+[[ -f "$restore_dir/scripts/reader-refresh-control.py" ]] || die "备份缺少 Reader 刷新控制脚本"
+[[ -f "$restore_dir/config/com.summer.wechat-rss-reader-refresh.plist" ]] || die "备份缺少 Reader 刷新 LaunchAgent"
 db_file="$restore_dir/data/we_mp_rss.db"
 [[ -f "$db_file" ]] || die "备份缺少 data/we_mp_rss.db"
 readeck_db="$restore_dir/readeck-data/data/db.sqlite3"
@@ -36,6 +39,9 @@ sync_db="$restore_dir/runtime/reading-sync.sqlite3"
 [[ -f "$sync_db" ]] || die "备份缺少阅读同步状态数据库"
 [[ -f "$restore_dir/secrets/readeck_api_token" ]] || die "备份缺少 Readeck API 令牌"
 [[ -f "$restore_dir/runtime/readeck_api_token" ]] || die "备份缺少运行时 Readeck API 令牌"
+[[ -f "$restore_dir/runtime/reader_refresh_config.json" ]] || die "备份缺少 Reader 刷新身份配置"
+[[ -f "$restore_dir/runtime/reader_refresh_secret" ]] || die "备份缺少 Reader 刷新内部密钥"
+[[ -f "$restore_dir/runtime/werss_refresh_credentials.json" ]] || die "备份缺少 WeRSS 主动刷新 Access Key"
 
 integrity="$(sqlite3 "$db_file" 'PRAGMA integrity_check;')"
 [[ "$integrity" == "ok" ]] || die "SQLite 完整性检查失败：$integrity"
@@ -95,10 +101,12 @@ werss_port="$(find_free_port)"
 caddy_port="$(find_free_port)"
 readeck_port="$(find_free_port)"
 reader_caddy_port="$(find_free_port)"
-while [[ "$caddy_port" == "$werss_port" || "$readeck_port" == "$werss_port" || "$readeck_port" == "$caddy_port" || "$reader_caddy_port" == "$werss_port" || "$reader_caddy_port" == "$caddy_port" || "$reader_caddy_port" == "$readeck_port" ]]; do
+werss_public_caddy_port="$(find_free_port)"
+while [[ "$caddy_port" == "$werss_port" || "$readeck_port" == "$werss_port" || "$readeck_port" == "$caddy_port" || "$reader_caddy_port" == "$werss_port" || "$reader_caddy_port" == "$caddy_port" || "$reader_caddy_port" == "$readeck_port" || "$werss_public_caddy_port" == "$werss_port" || "$werss_public_caddy_port" == "$caddy_port" || "$werss_public_caddy_port" == "$readeck_port" || "$werss_public_caddy_port" == "$reader_caddy_port" ]]; do
   caddy_port="$(find_free_port)"
   readeck_port="$(find_free_port)"
   reader_caddy_port="$(find_free_port)"
+  werss_public_caddy_port="$(find_free_port)"
 done
 
 project="wechat-rss-restore-${stamp}"
@@ -109,6 +117,7 @@ cleanup_stack() {
   CADDY_HOST_PORT="$caddy_port" \
   READECK_HOST_PORT="$readeck_port" \
   READER_CADDY_HOST_PORT="$reader_caddy_port" \
+  WERSS_PUBLIC_CADDY_HOST_PORT="$werss_public_caddy_port" \
   READECK_BASE_URL="http://127.0.0.1:${readeck_port}/" \
   READECK_AUTH_FORWARDED_ENABLED="true" \
   CF_ACCESS_EMAIL="$access_test_email" \
@@ -121,6 +130,7 @@ WERSS_HOST_PORT="$werss_port" \
 CADDY_HOST_PORT="$caddy_port" \
 READECK_HOST_PORT="$readeck_port" \
 READER_CADDY_HOST_PORT="$reader_caddy_port" \
+WERSS_PUBLIC_CADDY_HOST_PORT="$werss_public_caddy_port" \
 READECK_BASE_URL="http://127.0.0.1:${readeck_port}/" \
 READECK_AUTH_FORWARDED_ENABLED="true" \
 CF_ACCESS_EMAIL="$access_test_email" \
@@ -169,6 +179,18 @@ for _ in $(seq 1 30); do
 done
 (( reader_caddy_ready == 1 )) || die "恢复 Reader Caddy 在 30 秒内未就绪"
 
+werss_public_caddy_ready=0
+for _ in $(seq 1 30); do
+  werss_public_probe="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 3 \
+    "http://127.0.0.1:${werss_public_caddy_port}/" 2>/dev/null || true)"
+  if [[ "$werss_public_probe" == "404" ]]; then
+    werss_public_caddy_ready=1
+    break
+  fi
+  sleep 1
+done
+(( werss_public_caddy_ready == 1 )) || die "恢复 WeRSS 公网 Caddy 在 30 秒内未就绪"
+
 api_token="$(tr -d '\r\n' <"$restore_dir/runtime/readeck_api_token")"
 api_status="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 \
   -H "Authorization: Bearer $api_token" \
@@ -176,6 +198,10 @@ api_status="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 \
 [[ "$api_status" == "200" ]] || die "恢复实例的 Readeck API Token 无法读取书签"
 
 prefix="$(awk -F= '$1 == "FEED_PREFIX" { sub(/^[^=]*=/, ""); print; exit }' "$restore_dir/.env")"
+reader_public_host="$(awk -F= '$1 == "READECK_PUBLIC_HOSTNAME" { sub(/^[^=]*=/, ""); print; exit }' "$restore_dir/.env")"
+werss_public_host="$(awk -F= '$1 == "WERSS_PUBLIC_HOSTNAME" { sub(/^[^=]*=/, ""); print; exit }' "$restore_dir/.env")"
+reader_public_host="${reader_public_host:-reader.example.com}"
+werss_public_host="${werss_public_host:-werss.example.com}"
 root_status="$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:${caddy_port}/")"
 feed_status="$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:${caddy_port}/${prefix}/feed/all.atom")"
 [[ "$root_status" == "404" ]] || die "恢复实例 Caddy 根路径不是 404"
@@ -184,22 +210,32 @@ reader_status="$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:${rea
 reader_api_status="$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:${reader_caddy_port}/api/bookmarks")"
 [[ "$reader_status" == "303" ]] || die "恢复实例 Readeck 反代没有跳转到登录页"
 [[ "$reader_api_status" == "401" ]] || die "恢复实例 Readeck 未登录 API 不是 401"
-reader_public_status="$(curl -sS -o /dev/null -w '%{http_code}' -H 'Host: reader.sumerchaser.top' "http://127.0.0.1:${reader_caddy_port}/")"
-reader_public_api_status="$(curl -sS -o /dev/null -w '%{http_code}' -H 'Host: reader.sumerchaser.top' "http://127.0.0.1:${reader_caddy_port}/api/bookmarks")"
+reader_public_status="$(curl -sS -o /dev/null -w '%{http_code}' -H "Host: $reader_public_host" "http://127.0.0.1:${reader_caddy_port}/")"
+reader_public_api_status="$(curl -sS -o /dev/null -w '%{http_code}' -H "Host: $reader_public_host" "http://127.0.0.1:${reader_caddy_port}/api/bookmarks")"
 [[ "$reader_public_status" == "403" ]] || die "恢复实例缺少 Access 身份时 Reader 公网 Host 根路径不是 403"
 [[ "$reader_public_api_status" == "403" ]] || die "恢复实例缺少 Access 身份时 Reader 公网 Host API 不是 403"
 reader_authorized_status="$(curl -sS -L -o /dev/null -w '%{http_code}' --max-redirs 5 \
-  -H 'Host: reader.sumerchaser.top' \
+  -H "Host: $reader_public_host" \
   -H "Cf-Access-Authenticated-User-Email: $access_test_email" \
   -H 'Cf-Access-Jwt-Assertion: restore-test-jwt' \
   "http://127.0.0.1:${reader_caddy_port}/")"
 reader_authorized_api_status="$(curl -sS -o /dev/null -w '%{http_code}' \
-  -H 'Host: reader.sumerchaser.top' \
+  -H "Host: $reader_public_host" \
   -H "Cf-Access-Authenticated-User-Email: $access_test_email" \
   -H 'Cf-Access-Jwt-Assertion: restore-test-jwt' \
   "http://127.0.0.1:${reader_caddy_port}/api/bookmarks?limit=1")"
 [[ "$reader_authorized_status" == "200" ]] || die "恢复实例模拟 Access 身份未直接进入 Reader"
 [[ "$reader_authorized_api_status" == "200" ]] || die "恢复实例模拟 Access 身份无法读取 Reader API"
+werss_public_anonymous="$(curl -sS -o /dev/null -w '%{http_code}' \
+  -H "Host: $werss_public_host" \
+  "http://127.0.0.1:${werss_public_caddy_port}/")"
+werss_public_authorized="$(curl -sS -o /dev/null -w '%{http_code}' \
+  -H "Host: $werss_public_host" \
+  -H "Cf-Access-Authenticated-User-Email: $access_test_email" \
+  -H 'Cf-Access-Jwt-Assertion: restore-test-jwt' \
+  "http://127.0.0.1:${werss_public_caddy_port}/")"
+[[ "$werss_public_anonymous" == "403" ]] || die "恢复实例 WeRSS 公网 Host 无身份不是 403"
+[[ "$werss_public_authorized" == "200" ]] || die "恢复实例模拟 Access 身份无法进入 WeRSS UI"
 
 actual_users="$(sqlite3 "$readeck_db" 'select count(*) from user;')"
 actual_bookmarks="$(sqlite3 "$readeck_db" 'select count(*) from bookmark;')"
@@ -210,4 +246,4 @@ actual_annotated="$(sqlite3 "$readeck_db" "select count(*) from bookmark where a
 
 cleanup_stack
 trap - EXIT INT TERM
-printf '独立容器恢复演练通过：WeRSS Feed、Readeck 登录、文章、收藏、批注与同步状态均已验证；Reader 公网 Host 无身份 403/403、模拟 Access 身份 200/200；测试实例已关闭，恢复目录保留在：%s\n' "$restore_dir"
+printf '独立容器恢复演练通过：WeRSS Feed、Readeck 数据、Reader 与 WeRSS 双 Access Caddy、主动刷新凭据和同步状态均已验证；测试实例已关闭，恢复目录保留在：%s\n' "$restore_dir"

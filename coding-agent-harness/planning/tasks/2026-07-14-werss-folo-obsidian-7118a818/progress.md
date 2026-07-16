@@ -141,6 +141,27 @@
 - 下一步：三周期与 5 分钟同步门禁已满足；小时/每日自动化继续积累 72 小时和第 7 天证据，任何后续异常仍按回归处理。
 - 证据：command:safe completion-block aggregation:09:17/10:17/11:17 each total=12, fetch_errors=0, task_exceptions=0；report:/app/jobs/mps.py tracker semantics inspected
 
+### [2026-07-16 00:00] - WeRSS 独立 Access 与公网管理入口
+
+- 做了什么：在用户已授权的 Cloudflare 账户中创建 `WeRSS 公众号管理` 自托管 Access 应用和精确邮箱策略；从应用页安全读取 AUD 写入 ignored `.env`；保留 Reader ingress，在独立 `wechat-rss` Tunnel 新增 `werss.sumerchaser.top -> 127.0.0.1:8083`，两条 ingress 使用各自 AUD。LaunchAgent 首次重载出现 macOS I/O 错误，未删除外部对象，重试 bootstrap 后恢复活动连接。
+- 验证结果：`verify --reader-public` 与 `verify-werss-public.sh` 均通过；无 Cookie 的 Reader/API/Feed 与 WeRSS 根/API 被 Access 拦截；本机 WeRSS Caddy 非目标 Host 404、缺身份 403；已授权 Chrome 到达 `https://werss.sumerchaser.top/login?redirect=/` 的 WeRSS 原生中文登录页。现有 Reader 无回归。
+- 下一步：扩展架构、操作说明、备份恢复与最终审查证据；72 小时/7 天时间门禁继续运行。
+- 证据：command:configure-cloudflare-tunnel.sh:DNS route + ingress validate；command:cloudflared tunnel info:active darwin_arm64 connector；command:verify public scripts:pass；browser:authorized WeRSS title and host verified
+
+### [2026-07-16 00:15] - 科技蓝阅读 UI 与主动刷新闭环
+
+- 做了什么：按 `design-taste-frontend` 的审计和预检原则，把 Reader 锁定为 `4/3/8` 高密度工作台；移除旧紫色，统一近黑科技蓝磨砂、中文文案、淡绿透明虚线选区/持久批注；新增 Access 保护的公网 WeRSS 入口与本机备用入口。实现并安装只监听 `127.0.0.1:8787` 的主动刷新控制端，同时修复 Caddyfile 变化必须 `--force-recreate reader-caddy`。
+- 验证结果：14 个 unittest、Shell、Compose 和 `verify-reader-ui.sh` 通过；真实桌面 Chrome 显示 6 个 Tab、107 篇文章、行内收藏、价值 5/主题标签和划线文章。实际点击“检查新文章”完成 `checking_werss -> syncing_reader -> complete`，12 个公众号全部处理，新增 0 篇，未出现 `200013`，界面显示抓取/同步时间与冷却剩余。
+- 下一步：运行包含新 Caddy、控制端和凭据的真实备份/独立恢复；跑全量回归、秘密扫描和对抗审查。
+- 证据：command:python3 unittest:14 pass；command:verify-reader-ui.sh:pass；browser:desktop/list/article/highlight/feed-dialog/refresh states；command:local refresh status monitor:complete
+
+### [2026-07-16 00:33] - 新架构备份恢复与全量回归
+
+- 做了什么：重新生成无秘密的 1440×900 与 390×844 科技蓝截图，替换旧紫色证据；执行包含第三个 Caddy、主动刷新控制端/凭据、Reader UI 和 Tunnel 双 ingress 的一致性备份与独立恢复；更新 README、教程、Folo 差距审计、Architecture/Integration/System Map、Regression SSoT 和任务材料。
+- 验证结果：备份 `20260716-002238`、独立恢复 `20260716-002339` 通过，三个 SQLite、1 用户、107 篇文章、1 收藏、1 篇含批注、Reader/WeRSS 双 Access Caddy、主动刷新凭据与 Tunnel 作用域配置均恢复；14 unittest、Shell、Compose、4 plist、Reader UI、公网 Reader、公网 WeRSS、Harness、diff、秘密忽略和主按钮 5.33:1 对比度全部通过。`verify --local` 只在已知 WeRSS `x86_64` residual 返回 1。
+- 下一步：执行 L1 对抗审查，关闭新增安全 finding；保持 72 小时/7 天门禁进行中，不提交最终人工确认。
+- 证据：command:backup/restore:pass；command:regression matrix:pass except R-002；screenshot:docs/images/09-14 blue desktop/mobile；command:preflight:no old purple/no em dash/contrast AA
+
 ## 协调者交接（Coordinator，启用模块并行时填写）
 
 - Global sync status：pending-coordinator-pass / synced / n/a
@@ -245,3 +266,17 @@
 - 验证结果：自动化已在 Codex App 中激活；提示词明确禁止读取/输出秘密、修改 Cloudflare/DNS、提交 Git或处理付款。
 - 下一步：用每日证据完成 72 小时和 7 天门禁；异常时修复并重跑。
 - 证据：report:Codex automation wechat-rss-stability-watch:ACTIVE, 8 daily runs
+
+### [2026-07-16 15:18] - Apple 磨砂划线笔记与可配置导出
+
+- 做了什么：修复品牌栏直接显示 Cron、划线后正文变黑和原生批注框遮挡选区；将批注工具改为紧凑 Apple 磨砂浮层并动态避让选区；保存后自动定位划线并显示原位笔记卡；加入按条聚合的“划线笔记”、右侧字号控件、打开后自动进入阅读中、Markdown 下载和浏览器侧可选 Obsidian 目录。
+- 验证结果：1440×900 真实浏览器中选区文字保持 `rgb(203, 217, 232)`、背景透明，340px 批注框与选区相隔 11px；真实创建批注后数量递增、自动定位且只显示 1 个原位笔记卡，删除测试批注后数量恢复；字号 17→18px 跨刷新保存；3 条真实划线导出的 Markdown 含 3 个摘录、来源、原文链接和笔记；390×844 无父页面横向溢出，移动笔记卡完整收纳。回归期间 WeRSS 增至 124 篇，第一次公网验收按设计发现同步滞后并失败；运行正式同步器后 118 篇去重可用正文全部唯一进入 Reader，第二次公网验收通过。
+- 下一步：完成全量静态/单元/Compose/Caddy/Harness 回归；整个任务仍等待 72 小时/7 天观察与最终人工确认。
+- 证据：screenshots:docs/images/05-reader-划线批注.png,docs/images/15-reader-划线笔记与字号.png；command:Playwright desktop/mobile/create-save-delete/export/font E2E；command:verify-reader-ui.sh + verify.sh --reader-public:pass
+
+### [2026-07-16 15:53] - 账号迁移与 GitHub 公开发布准备
+
+- 做了什么：按用户要求把当前 WeRSS 管理登录迁移为 `summer`，本机密码单独保存在 ignored `.env`；将仓库从单机配置泛化为可公开复用模板，域名、管理员用户名、Obsidian Inbox 和 LaunchAgent HOME 均可配置；新增酷炫 README、部署指南、Security Policy、MIT License、GitHub CI、账号迁移脚本和 Readeck Token 安全保存脚本；创建公开 GitHub 仓库 `summerchaserwwz/wechat-rss-reader`。
+- 验证结果：新 WeRSS 账号实际登录成功，旧用户名拒绝；本机 Compose 和 `.env.example` Compose 均通过；14 个 unittest、Shell、Node、4 个 plist、Reader UI、公网 Reader/WeRSS、README 22 个本地链接、Harness 与秘密扫描通过；最终备份 `20260716-155105` 和独立恢复 `20260716-155153` 通过，恢复出 118 篇文章、收藏、4 篇含批注、双 Access Caddy、主动刷新和同步状态。
+- 下一步：提交全部集成改动，推送分支，创建 Draft PR 并核验远端 README/CI；72 小时/7 天时间门禁仍独立继续。
+- 证据：repository:https://github.com/summerchaserwwz/wechat-rss-reader；command:secret scan + full test matrix + backup/restore:pass

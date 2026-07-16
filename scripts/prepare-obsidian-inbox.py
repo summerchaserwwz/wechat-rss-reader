@@ -11,14 +11,18 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import os
 import re
 import sys
 from pathlib import Path
 
 
 DEFAULT_INBOX = Path(
-    "/Users/summer/Obsidian/SummerOS/02_Archive/02_DailyProcessed/reading/folo_inbox"
-)
+    os.environ.get(
+        "FOLO_INBOX_DIR",
+        str(Path.home() / "Documents/Obsidian/reading/folo_inbox"),
+    )
+).expanduser()
 MARKER = "<!-- wechat-rss-note-layout:v1 -->"
 READECK_MARKER = "<!-- readeck-sync:managed:start -->"
 DATE_PREFIX = re.compile(r"^\d{4}-\d{2}-\d{2}-")

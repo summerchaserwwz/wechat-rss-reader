@@ -1,6 +1,6 @@
 # WeChat RSS Stack Agent 入口
 
-本仓库维护 WeRSS、自托管 Readeck、两个本机 Caddy、Cloudflare Tunnel、自动同步器和 SummerOS Obsidian 之间的公众号阅读链路。`coding-agent-harness/` 是唯一工程主账本。
+本仓库维护 WeRSS、自托管 Readeck、三个本机 Caddy、Cloudflare Tunnel、主动刷新控制端、自动同步器和 SummerOS Obsidian 之间的公众号阅读链路。`coding-agent-harness/` 是唯一工程主账本。
 
 ## 项目概况
 
@@ -16,13 +16,13 @@
 
 1. 不提交 `.env`、`data/`、`backups/`、`observations/`、DMG、Feed 随机前缀或任何登录/授权材料。
 2. 不覆盖已有 `.env`；密钥轮换必须显式执行并记录影响。
-3. WeRSS 只允许绑定 `127.0.0.1:8001`，RSS Caddy 只允许 `127.0.0.1:8080`，Readeck 只允许 `127.0.0.1:8002`，Reader Caddy 只允许 `127.0.0.1:8082`。
-4. 公网只允许随机前缀下的 `GET/HEAD /feed/*.atom`；其他路径和方法必须 `404`。
+3. WeRSS 只允许绑定 `127.0.0.1:8001`，RSS Caddy 只允许 `127.0.0.1:8080`，Readeck 只允许 `127.0.0.1:8002`，Reader Caddy 只允许 `127.0.0.1:8082`，WeRSS 公网 Caddy 只允许 `127.0.0.1:8083`，刷新控制端只允许 `127.0.0.1:8787`。
+4. 兼容 RSS 公网只允许随机前缀下的 `GET/HEAD /feed/*.atom`；Reader 与 WeRSS 管理公网必须分别经过 Cloudflare Access 的独立 AUD，缺 JWT 或精确邮箱时必须拒绝。
 5. WeRSS、Readeck 与 Caddy 镜像使用固定摘要，不跟随 `latest`，不安装 Watchtower。
 6. 固定 WeRSS 镜像只使用 WebKit；不要把 `BROWSER_TYPE` 改为 Firefox，除非先更换并验证镜像。
 7. SQLite 备份前必须短暂停止 WeRSS 与 Readeck；恢复演练只能在独立目录、不同 Compose project 和端口执行。
 8. WeRSS 会在日志中打印环境变量；不得把原始容器日志写入公开 evidence、Issue 或文档。
-9. `FEED_PREFIX`、Readeck API Token 与 Cloudflare Tunnel 凭据都是秘密；不得进入公开笔记、截图、Issue 或日志。
+9. `FEED_PREFIX`、Readeck API Token、刷新内部密钥、WeRSS Access Key、Cloudflare Access AUD 与 Tunnel 凭据都是秘密；不得进入公开笔记、截图、Issue 或日志。
 10. Readeck 负责全文阅读、收藏、高亮和批注；同步器只把收藏或含高亮/批注的文章默认写入 Obsidian，且不得覆盖人工区。
 11. 完整公众号原文始终留在 SummerOS Archive；提升时创建衍生 Knowledge/Output 条目，不移动原文。
 12. 修改 SummerOS 前先读 `/Users/summer/Obsidian/SummerOS/AGENTS.md`，只创建本任务的新路径，不混入其大量既有 dirty 改动。
@@ -72,6 +72,8 @@
 | 静态检查 | `bash -n scripts/*.sh && docker compose config --quiet` |
 | 本机冒烟 | `./scripts/verify.sh --local` |
 | Readeck 公网冒烟 | `./scripts/verify.sh --reader-public` |
+| WeRSS 公网冒烟 | `./scripts/verify-werss-public.sh` |
+| 安装主动刷新 | `./scripts/install-reader-refresh-control.sh` |
 | 备份 | `./scripts/backup.sh` |
 | 独立恢复 | `./scripts/restore-test.sh` |
 | Harness 检查 | `harness check --profile target-project .` |

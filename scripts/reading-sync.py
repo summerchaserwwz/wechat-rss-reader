@@ -35,8 +35,11 @@ DEFAULT_TOKEN_FILE = DEFAULT_RUNTIME / "readeck_api_token"
 DEFAULT_STATE_DB = DEFAULT_RUNTIME / "reading-sync.sqlite3"
 DEFAULT_STATUS_FILE = DEFAULT_RUNTIME / "public-status/reader-status.json"
 DEFAULT_VAULT = Path(
-    "/Users/summer/Obsidian/SummerOS/02_Archive/02_DailyProcessed/reading/readeck_inbox"
-)
+    os.environ.get(
+        "OBSIDIAN_INBOX_DIR",
+        str(Path.home() / "Documents/Obsidian/reading/readeck_inbox"),
+    )
+).expanduser()
 
 MANUAL_START = "<!-- readeck-sync:manual:start -->"
 MANUAL_END = "<!-- readeck-sync:manual:end -->"

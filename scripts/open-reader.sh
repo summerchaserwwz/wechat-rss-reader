@@ -16,7 +16,9 @@ case "$mode" in
     base_url="http://127.0.0.1:${port}"
     ;;
   --public)
-    base_url="https://reader.sumerchaser.top"
+    public_host="$(env_value READECK_PUBLIC_HOSTNAME)"
+    [[ -n "$public_host" ]] || die ".env 缺少 READECK_PUBLIC_HOSTNAME"
+    base_url="https://${public_host}"
     ;;
   *)
     die "用法：scripts/open-reader.sh [--local|--public]"

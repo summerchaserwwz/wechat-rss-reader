@@ -7,7 +7,7 @@
   <key>ProgramArguments</key>
   <array>
     <string>/usr/bin/python3</string>
-    <string>/Users/summer/.local/share/wechat-rss/prepare-obsidian-inbox.py</string>
+    <string>__HOME__/.local/share/wechat-rss/prepare-obsidian-inbox.py</string>
     <string>--min-age</string>
     <string>30</string>
   </array>

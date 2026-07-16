@@ -4,9 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="color-scheme" content="dark">
-    <meta name="theme-color" content="#111426">
-    <title>公众号 Reader</title>
-    <link rel="stylesheet" href="/reader-assets/styles.css?v=7">
+    <meta name="theme-color" content="#070b14">
+    <title>公众号阅读器</title>
+    <link rel="stylesheet" href="/reader-assets/styles.css?v=10">
   </head>
   <body>
     <svg class="icon-sprite" aria-hidden="true">
@@ -24,6 +24,9 @@
       <symbol id="i-tag" viewBox="0 0 24 24"><path d="M4 5h9l7 7-8 8-8-8z"/><circle cx="9" cy="10" r="1.5"/></symbol>
       <symbol id="i-external" viewBox="0 0 24 24"><path d="M13 5h6v6M19 5l-9 9M18 14v5H5V6h5"/></symbol>
       <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11m-4-4 4 4 4-4M5 19h14"/></symbol>
+      <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 7h6l2-2h9v14h-17z"/></symbol>
+      <symbol id="i-note" viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></symbol>
     </svg>
 
     <div id="app" class="app-shell" data-mobile-view="timeline">
@@ -31,7 +34,7 @@
         <header class="brand-row">
           <div class="brand-mark">R</div>
           <div>
-            <strong>公众号 Reader</strong>
+            <strong>公众号阅读器</strong>
             <span id="sync-brief">正在连接本地阅读库</span>
           </div>
         </header>
@@ -56,18 +59,24 @@
       </aside>
 
       <header class="top-tabs" aria-label="阅读视图">
-        <div class="mobile-brand">公众号 Reader</div>
+        <div class="mobile-brand">公众号阅读器</div>
         <nav id="tab-list" class="tab-list">
           <button type="button" data-tab="inbox" aria-keyshortcuts="1"><svg><use href="#i-inbox"/></svg><span>收件箱</span><b>0</b></button>
           <button type="button" data-tab="unread" aria-keyshortcuts="2"><svg><use href="#i-unread"/></svg><span>未读</span><b>0</b></button>
           <button type="button" data-tab="favorites" aria-keyshortcuts="3"><svg><use href="#i-star"/></svg><span>收藏</span><b>0</b></button>
-          <button type="button" data-tab="highlights" aria-keyshortcuts="4"><svg><use href="#i-highlight"/></svg><span>划线</span><b>0</b></button>
+          <button type="button" data-tab="highlights" aria-keyshortcuts="4"><svg><use href="#i-highlight"/></svg><span>划线笔记</span><b>0</b></button>
           <button type="button" data-tab="valuable" aria-keyshortcuts="5"><svg><use href="#i-value"/></svg><span>高价值</span><b>0</b></button>
           <button type="button" data-tab="subscriptions" aria-keyshortcuts="6"><svg><use href="#i-feeds"/></svg><span>订阅</span><b>0</b></button>
         </nav>
-        <button id="refresh" class="icon-button refresh-button" type="button" aria-label="刷新 Reader" title="刷新 Reader">
-          <svg><use href="#i-refresh"/></svg>
-        </button>
+        <div class="refresh-cluster">
+          <div class="refresh-copy" aria-live="polite">
+            <strong id="refresh-summary">可以检查新文章</strong>
+            <span id="refresh-detail">上次状态读取完成</span>
+          </div>
+          <button id="refresh" class="toolbar-button refresh-button" type="button" data-phase="idle" aria-label="检查新文章" title="检查新文章">
+            <svg><use href="#i-refresh"/></svg><span id="refresh-label">检查新文章</span>
+          </button>
+        </div>
       </header>
 
       <section class="timeline-pane" aria-label="文章时间线">
@@ -76,6 +85,10 @@
           <div>
             <h1 id="timeline-title">收件箱</h1>
             <p id="timeline-subtitle">按发布时间排列</p>
+          </div>
+          <div id="notes-actions" class="notes-actions" hidden>
+            <button id="notes-download" class="icon-button" type="button" title="下载全部划线笔记 Markdown" aria-label="下载全部划线笔记 Markdown"><svg><use href="#i-download"/></svg></button>
+            <button id="notes-folder" class="icon-button" type="button" title="设置 Obsidian 导出目录" aria-label="设置 Obsidian 导出目录"><svg><use href="#i-folder"/></svg></button>
           </div>
         </header>
         <div id="timeline" class="timeline" aria-live="polite"></div>
@@ -95,6 +108,7 @@
               <strong id="reader-title"></strong>
               <span id="reader-meta"></span>
             </div>
+            <span id="reader-auto-status" class="reader-auto-status">自动记录阅读进度</span>
             <button id="reader-read" class="toolbar-button" type="button"><svg><use href="#i-check"/></svg><span>标为已读</span></button>
             <button id="reader-star" class="toolbar-button star-button" type="button" aria-keyshortcuts="S"><svg><use href="#i-star"/></svg><span>收藏</span></button>
           </header>
@@ -111,19 +125,31 @@
             </form>
           </section>
 
-          <iframe id="article-frame" class="article-frame" title="文章正文"></iframe>
+          <div class="reader-stage">
+            <iframe id="article-frame" class="article-frame" title="文章正文"></iframe>
+            <aside class="reading-dock" aria-label="阅读设置">
+              <span class="reading-dock-label">字体</span>
+              <button id="font-larger" type="button" aria-label="增大正文字号" title="增大正文字号">A+</button>
+              <output id="font-size" aria-live="polite">17</output>
+              <button id="font-smaller" type="button" aria-label="减小正文字号" title="减小正文字号">A−</button>
+              <span class="dock-divider"></span>
+              <button id="article-notes" type="button" aria-label="查看本文划线笔记" title="查看本文划线笔记"><svg><use href="#i-note"/></svg><b>0</b></button>
+            </aside>
+          </div>
         </section>
 
         <section id="subscription-detail" class="subscription-detail" hidden>
           <div class="subscription-hero">
             <span class="eyebrow">订阅与抓取</span>
-            <h2>每小时更新，5 分钟进入 Reader</h2>
-            <p>微信没有文章 Webhook。当前在每小时第 17 分钟抓取，完整正文随后由本机同步任务送入阅读库。</p>
+            <h2>每小时更新，约 5 分钟进入阅读库</h2>
+            <p>微信暂无新文章推送接口。系统在每小时第 17 分钟抓取，完整正文随后由本机同步任务送入阅读库。</p>
             <div class="status-grid">
               <div><span>最近同步</span><strong id="status-generated">暂无</strong></div>
               <div><span>最近公众号入库</span><strong id="status-latest">暂无</strong></div>
               <div><span>启用来源</span><strong id="status-feeds">暂无</strong></div>
               <div><span>同步状态</span><strong id="status-health">暂无</strong></div>
+              <div><span>最近检查结果</span><strong id="status-refresh-result">尚未主动检查</strong></div>
+              <div><span>下次允许检查</span><strong id="status-next-refresh">现在可以</strong></div>
             </div>
             <button id="subscription-add" class="primary-button" type="button"><svg><use href="#i-plus"/></svg>新增公众号</button>
           </div>
@@ -134,20 +160,42 @@
     <dialog id="feed-dialog" class="feed-dialog">
       <form method="dialog" class="dialog-card">
         <button class="dialog-close icon-button" value="cancel" aria-label="关闭"><svg><use href="#i-close"/></svg></button>
-        <span class="eyebrow">本机受控操作</span>
+        <span class="eyebrow">Access 保护</span>
         <h2>新增微信公众号</h2>
         <ol>
-          <li>在部署这套系统的 Mac 上打开 WeRSS。</li>
+          <li>打开受 Cloudflare Access 保护的 WeRSS 管理后台。</li>
           <li>搜索公众号名称，完成添加并点击“应用”。</li>
-          <li>Reader 会在后续抓取与 5 分钟同步周期中自动出现新来源。</li>
+          <li>回到阅读器点击“检查新文章”，新来源会在抓取和同步后出现。</li>
         </ol>
-        <p>公网和手机不会暴露 WeRSS 管理端；这是刻意保留的安全边界。</p>
-        <p id="feed-device-note" class="feed-device-note">下面的按钮只访问当前设备的本机地址，因此必须在部署这套系统的 Mac 上使用。</p>
-        <a id="feed-local-link" class="primary-button feed-local-link" href="http://127.0.0.1:8001" target="_blank" rel="noreferrer"><svg><use href="#i-external"/></svg>在部署 Mac 打开 WeRSS</a>
+        <p>公网入口只允许你的 Access 邮箱访问。WeRSS 自己的管理登录仍保留，用于保护公众号授权与抓取配置。</p>
+        <p id="feed-device-note" class="feed-device-note">推荐使用公网入口；部署这套系统的 Mac 还可使用本机备用入口。</p>
+        <div class="dialog-actions">
+          <a id="feed-public-link" class="primary-button" href="http://127.0.0.1:8001" target="_blank" rel="noreferrer"><svg><use href="#i-external"/></svg>打开 WeRSS 管理后台</a>
+          <a id="feed-local-link" class="secondary-button feed-local-link" href="http://127.0.0.1:8001" target="_blank" rel="noreferrer">本机备用入口</a>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="export-dialog" class="feed-dialog export-dialog">
+      <form method="dialog" class="dialog-card">
+        <button class="dialog-close icon-button" value="cancel" aria-label="关闭"><svg><use href="#i-close"/></svg></button>
+        <span class="eyebrow">Markdown 与 Obsidian</span>
+        <h2>划线笔记导出</h2>
+        <p>每条划线会自动保留摘录、笔记、公众号、文章标题和原文链接。服务器端仍会在约 5 分钟内把有划线的文章同步到 SummerOS。</p>
+        <div class="export-target">
+          <span>当前浏览器直写目录</span>
+          <strong id="export-folder-label">尚未选择</strong>
+          <small>浏览器出于隐私只显示目录名称；可随时重新选择其他 Obsidian 文件夹。</small>
+        </div>
+        <div class="dialog-actions">
+          <button id="choose-export-folder" class="primary-button" type="button"><svg><use href="#i-folder"/></svg>选择 Obsidian 目录</button>
+          <button id="export-to-folder" class="secondary-button" type="button">导出全部笔记</button>
+          <button id="forget-export-folder" class="secondary-button" type="button">清除目录</button>
+        </div>
       </form>
     </dialog>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="/reader-assets/app.js?v=5" defer></script>
+    <script src="/reader-assets/app.js?v=11" defer></script>
   </body>
 </html>

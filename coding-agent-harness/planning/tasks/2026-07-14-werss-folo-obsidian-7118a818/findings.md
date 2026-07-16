@@ -142,6 +142,42 @@
 - 真实截图为 `docs/images/06-obsidian-高亮批注笔记.png`；未修改 `readeck_inbox` 之外的业务笔记内容。
 - `公众号精选.base` 已在 Obsidian 1.12.7 实机横向验证九列；截图为 `docs/images/08-obsidian-Base.png`。
 
+### WeRSS 管理公网必须使用独立 Access 应用和 AUD
+
+- 用户需要在手机或外网追加公众号，因此“管理端只允许部署 Mac 本机访问”不再满足产品目标；但直接公开 `127.0.0.1:8001` 或和 Reader 共用 AUD 都会扩大权限边界。
+- 已创建 `WeRSS 公众号管理` 自托管 Access 应用，精确邮箱 Allow、一周会话；Tunnel 保留 Reader ingress，并新增 `werss.sumerchaser.top -> 127.0.0.1:8083`，两条 ingress 分别校验自己的 AUD。
+- WeRSS 专用 Caddy 非目标 Host 返回 404，目标 Host 缺 Access 身份返回 403；公网匿名根/API 被 Access 拦截，已授权 Chrome 到达 WeRSS 原生登录页。原生管理登录继续作为第二层保护。
+
+### Reader 主动刷新不能直接操作 SQLite 或 Docker
+
+- 浏览器点击“检查新文章”需要从公网 Reader 安全触发全部公众号抓取，再继续 reading-sync；浏览器不能持有 WeRSS Access Key，Caddy 也不应访问 Docker socket。
+- 最终控制端只监听 `127.0.0.1:8787`，校验 POST、Host、Origin、Access 精确邮箱/JWT 和 Caddy 注入的内部密钥；它调用 WeRSS 支持的 Access Key API，并轮询任务队列。
+- 控制端实现 10 分钟冷却、single-flight、连续两次失败暂停和 `200013` 立即暂停。真实点击已完成 `checking_werss -> syncing_reader -> complete`，12 个公众号任务完成，本轮新增 0 篇，没有触发微信风控。
+
+### 设计优化使用高密度阅读工作台而非营销页规则
+
+- `design-taste-frontend` 明确主要面向 landing/portfolio，不直接覆盖高密度产品 UI；本项目只采用其审计、色彩一致性、材料、交互状态、响应式与预检原则，不套营销页 Hero/Bento 结构。
+- 设计参数锁定 `DESIGN_VARIANCE 4 / MOTION_INTENSITY 3 / VISUAL_DENSITY 8`。最终为近黑 `#070b14`、钴蓝 `#2f7cf6`、青蓝环境光和克制半透明磨砂；删除旧紫色与遮挡式选区。
+- 真实桌面 Chrome 已验证三栏层级、顶部 6 个 Tab、行内收藏、价值/主题和刷新状态；临时选区与持久批注都使用透明底、淡绿 `#8ad4a8` 虚线下划线。新增公众号弹窗已改为 Access 保护的公网 WeRSS 主入口，并保留部署 Mac 本机备用入口。
+
+### Apple 控件语言只能适配到阅读交互，不能降低信息密度
+
+- `awesome-design-md` 的 Apple 参考强调 SF Pro/system 字体、单一行动蓝、18px 圆角、胶囊按钮、克制边框/阴影和 `saturate(180%) blur(20px)` 材质；这些规则已用于批注框、原位笔记、字号 Dock 和导出弹窗。
+- 公众号阅读仍需要来源、时间线、正文同时可见，因此保留 Folo 式三栏和 Petdex 科技蓝环境光，没有复制 Apple 营销页的大留白与单列 Hero。
+- 批注避让采用浏览器选区矩形与可视口剩余空间计算，优先右、左、上、下并钳制到边界；这比固定居中更能保证选中文字始终可见。
+
+### 划线笔记保留两条独立、可解释的 Markdown 出口
+
+- 服务器权威路径仍是 `reading-sync` 每 5 分钟把收藏或含高亮/批注的完整文章逐篇写入 SummerOS Archive，并保护人工区；不改变现有可靠契约。
+- Reader 新增的汇总出口只处理划线笔记：可直接下载 Markdown，或使用 File System Access API 选择本机目录写入。目录句柄保存在当前浏览器 IndexedDB，不把绝对路径或 API Token发送到服务端。
+- 移动端或不支持目录授权的浏览器自动保留下载路径；因此“可改默认路径”不会破坏跨浏览器可用性，也不会把 Vault 文件系统权限扩大到后端。
+
+### 公开仓库必须发布集成层，不能发布运行状态
+
+- 可公开范围是固定镜像 Compose、Reader UI、同步与刷新脚本、Caddy、LaunchAgent 模板、示例环境、文档和脱敏截图；微信授权、文章数据库、阅读状态、真实密码、Token、Access AUD 和 Tunnel 凭据全部留在 ignored 本机路径。
+- 域名、WeRSS 用户名、Obsidian Inbox 和 LaunchAgent HOME 已从个人硬编码改为 `.env` 或安装时替换。公共模板使用 `example.com` 和随机强密码，不复制维护者当前的本机弱密码选择。
+- 推送前当前文件与完整 Git 历史均扫描常见 GitHub Token、私钥、WeRSS Access Key 模式；`.env`、数据、备份、observations、sync-state、secrets 和 cloudflared 路径均验证被 Git 忽略。
+
 ## 技术决策
 
 | 决策 | 选择 | 原因 | 替代方案 | 状态 |
@@ -163,4 +199,4 @@
 | 是否拥有公众号运营权限？ | 已确认；WeRSS 显示已授权且 Token 有效 | user | done |
 | Docker 协议/权限是否完成？ | App 安装后需用户操作 | user | 本机 smoke 前 |
 | Cloudflare Tunnel 是否完成？ | 已完成 Access、独立 Tunnel、DNS、LaunchAgent、授权/匿名浏览器边界和公网 smoke | user + coordinator | done |
-| Readeck 是否稳定？ | 101 篇、真实高亮和 Obsidian 幂等样本通过；72 小时/7 天待观察 | user + coordinator | 完成判断前 |
+| Readeck 是否稳定？ | 当前 118 篇去重文章、真实高亮和 Obsidian 幂等样本通过；72 小时/7 天待观察 | user + coordinator | 完成判断前 |

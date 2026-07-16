@@ -22,11 +22,14 @@ werss_port="${WERSS_HOST_PORT:-$(env_value WERSS_HOST_PORT 8001)}"
 caddy_port="${CADDY_HOST_PORT:-$(env_value CADDY_HOST_PORT 8080)}"
 readeck_port="${READECK_HOST_PORT:-$(env_value READECK_HOST_PORT 8002)}"
 reader_caddy_port="${READER_CADDY_HOST_PORT:-$(env_value READER_CADDY_HOST_PORT 8082)}"
+werss_public_caddy_port="${WERSS_PUBLIC_CADDY_HOST_PORT:-$(env_value WERSS_PUBLIC_CADDY_HOST_PORT 8083)}"
 admin_url="http://127.0.0.1:${werss_port}"
 proxy_url="http://127.0.0.1:${caddy_port}"
 readeck_url="http://127.0.0.1:${readeck_port}"
 reader_proxy_url="http://127.0.0.1:${reader_caddy_port}"
-reader_host="reader.sumerchaser.top"
+werss_public_proxy_url="http://127.0.0.1:${werss_public_caddy_port}"
+reader_host="$(env_value READECK_PUBLIC_HOSTNAME reader.example.com)"
+werss_public_host="$(env_value WERSS_PUBLIC_HOSTNAME werss.example.com)"
 local_feed_url="${proxy_url}/${prefix}/feed/all.atom"
 tmp_feed="$(mktemp /tmp/wechat-rss-feed.XXXXXX)"
 trap 'rm -f "$tmp_feed"' EXIT
@@ -53,16 +56,19 @@ docker_compose ps
 container_arch="$(docker_compose exec -T we-mp-rss uname -m)"
 docker_compose exec -T caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null
 docker_compose exec -T reader-caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null
+docker_compose exec -T werss-public-caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null
 
 printf '检查管理端只绑定本机...\n'
 admin_binding="$(docker_compose port we-mp-rss 8001)"
 caddy_binding="$(docker_compose port caddy 8080)"
 readeck_binding="$(docker_compose port readeck 8000)"
 reader_caddy_binding="$(docker_compose port reader-caddy 8080)"
+werss_public_caddy_binding="$(docker_compose port werss-public-caddy 8080)"
 [[ "$admin_binding" == 127.0.0.1:* ]] || die "WeRSS 端口没有只绑定 127.0.0.1"
 [[ "$caddy_binding" == 127.0.0.1:* ]] || die "Caddy 端口没有只绑定 127.0.0.1"
 [[ "$readeck_binding" == 127.0.0.1:* ]] || die "Readeck 端口没有只绑定 127.0.0.1"
 [[ "$reader_caddy_binding" == 127.0.0.1:* ]] || die "Readeck 反代端口没有只绑定 127.0.0.1"
+[[ "$werss_public_caddy_binding" == 127.0.0.1:* ]] || die "WeRSS 公网反代端口没有只绑定 127.0.0.1"
 
 printf '检查本机管理端与只读代理...\n'
 expect_status 200 GET "${admin_url}/"
@@ -91,6 +97,27 @@ reader_public_root_status="$(curl -sS -o /dev/null -w '%{http_code}' -H "Host: $
 reader_public_api_status="$(curl -sS -o /dev/null -w '%{http_code}' -H "Host: ${reader_host}" "${reader_proxy_url}/api/bookmarks")"
 [[ "$reader_public_root_status" == "403" ]] || die "缺少 Access 身份时 Reader 公网 Host 根路径不是 403"
 [[ "$reader_public_api_status" == "403" ]] || die "缺少 Access 身份时 Reader 公网 Host API 不是 403"
+
+printf '检查 WeRSS 公网反代与 Reader 刷新控制边界...\n'
+werss_public_local_root="$(curl -sS -o /dev/null -w '%{http_code}' "$werss_public_proxy_url/")"
+werss_public_anonymous="$(curl -sS -o /dev/null -w '%{http_code}' -H "Host: ${werss_public_host}" "$werss_public_proxy_url/")"
+[[ "$werss_public_local_root" == "404" ]] || die "WeRSS 公网反代非目标 Host 根路径不是 404"
+[[ "$werss_public_anonymous" == "403" ]] || die "WeRSS 公网反代缺 Access 身份时不是 403"
+refresh_anonymous="$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H "Host: ${reader_host}" \
+  -H "Origin: https://${reader_host}" -H 'Content-Type: application/json' \
+  --data '{"action":"status"}' "$reader_proxy_url/reader-control/refresh")"
+[[ "$refresh_anonymous" == "404" || "$refresh_anonymous" == "403" ]] || die "Reader 刷新控制端匿名请求未被拒绝"
+access_email="$(env_value CF_ACCESS_EMAIL)"
+if [[ -n "$access_email" ]]; then
+  refresh_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
+    -H "Host: ${reader_host}" \
+    -H "Origin: https://${reader_host}" \
+    -H "Cf-Access-Authenticated-User-Email: ${access_email}" \
+    -H 'Cf-Access-Jwt-Assertion: local-refresh-smoke' \
+    -H 'Content-Type: application/json' \
+    --data '{"action":"status"}' "$reader_proxy_url/reader-control/refresh")"
+  [[ "$refresh_status" == "200" ]] || die "模拟 Access 身份无法读取 Reader 刷新状态"
+fi
 
 printf '检查 WeRSS → Readeck 全量同步映射...\n'
 sync_db="$HOME/.local/share/wechat-rss/reading-sync.sqlite3"

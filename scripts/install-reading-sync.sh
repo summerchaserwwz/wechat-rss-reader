@@ -21,6 +21,9 @@ chmod 700 "$RUNTIME_DIR/public-status"
 chmod 600 "$RUNTIME_DIR/readeck_api_token"
 install -m 0755 "$ROOT_DIR/scripts/reading-sync.py" "$RUNTIME_DIR/reading-sync.py"
 install -m 0644 "$ROOT_DIR/config/$LABEL.plist" "$PLIST_PATH"
+obsidian_inbox="$(awk -F= '$1 == "OBSIDIAN_INBOX_DIR" { sub(/^[^=]*=/, ""); print; exit }' "$ROOT_DIR/.env")"
+[[ -n "$obsidian_inbox" ]] || obsidian_inbox="$HOME/Documents/Obsidian/reading/readeck_inbox"
+/usr/bin/sed -i '' "s|__HOME__|$HOME|g; s|__OBSIDIAN_INBOX_DIR__|$obsidian_inbox|g" "$PLIST_PATH"
 plutil -lint "$PLIST_PATH" >/dev/null
 
 launchctl bootout "$DOMAIN/$OLD_LABEL" >/dev/null 2>&1 || true

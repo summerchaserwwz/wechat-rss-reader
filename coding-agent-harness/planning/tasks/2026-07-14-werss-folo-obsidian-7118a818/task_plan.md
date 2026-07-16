@@ -26,11 +26,14 @@ WeRSS -> Readeck -> reading-sync -> SummerOS Archive
 6. 扩展备份/恢复，覆盖 WeRSS、Readeck、API Token、同步状态和可选 Tunnel 凭据。
 7. 更新架构、回归、中文图文教程和 SummerOS 操作说明。
 8. 完成本机、公网、恢复、UI 和对抗审查。
+9. 为 Reader 增加受保护主动刷新，并把 WeRSS 管理端通过独立 Cloudflare Access 应用发布到专用域名。
+10. 修复划线文字变黑和批注遮挡，加入 Apple 磨砂批注、原位笔记、划线笔记区、字号调节、自动阅读进度和 Markdown/可选 Obsidian 目录导出。
+11. 泛化个人域名、账号、Vault 与 LaunchAgent 路径，补齐公开部署文档、安全策略、CI 和账号/Token 工具，并发布到 GitHub。
 
 ## 验收标准
 
 - [x] 公众号运营者授权和 12 个来源完成。
-- [x] 当前 101 篇达到正文门槛的文章全部且唯一进入 Readeck，容器原生 aarch64。
+- [x] 当前 118 篇去重后达到正文门槛的文章全部且唯一进入 Readeck，容器原生 aarch64。
 - [x] Readeck 收藏、高亮和批注真实可用。
 - [x] 精选文章自动生成 Obsidian 原文笔记。
 - [x] 人工笔记和人工字段经重复同步不覆盖。
@@ -41,6 +44,11 @@ WeRSS -> Readeck -> reading-sync -> SummerOS Archive
 - [x] Obsidian Base 九列实机验证完成。
 - [x] 扩展备份恢复真实通过，含 API Token、用户、101 篇文章、收藏、批注、Reader 主题、Tunnel 作用域凭据和 Access 身份映射。
 - [x] 三次连续小时任务完整处理 12/12 个公众号，真实新增文章 2.16 分钟进入 Readeck且零重复。
+- [x] Reader UI 为全中文科技蓝磨砂三栏，顶部 6 个 Tab、行内收藏、已读/未读、价值评分、主题标签与淡绿虚线高亮实机可用。
+- [x] 划线保持正文颜色；批注框避让选区；保存后自动定位并显示原位笔记；划线笔记区、Markdown 下载、可选 Obsidian 目录、字号持久化和 390px 移动端均经真实浏览器验证。
+- [x] 本机账号迁移通过；公开模板不含实际密码/Token/数据库；本机与模板 Compose、README 链接、秘密扫描、最终备份恢复通过；GitHub 公开仓库已创建。
+- [x] “检查新文章”真实触发 12 个公众号抓取并完成 reading-sync；10 分钟冷却、single-flight、连续失败暂停和 `200013` 保护均有测试。
+- [x] `werss.sumerchaser.top` 使用独立 Access 应用/AUD 指向 `127.0.0.1:8083`；匿名根/API 被拦截，授权 Chrome 到达 WeRSS 原生登录页，现有 Reader ingress 无回归。
 - [ ] 72 小时/7 天近实时观察完成。
 - [ ] 最终 review/walkthrough/人工确认完成。
 

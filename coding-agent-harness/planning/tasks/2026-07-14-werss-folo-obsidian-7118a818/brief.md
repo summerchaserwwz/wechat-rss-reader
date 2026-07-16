@@ -6,25 +6,28 @@
 
 ## 一句话结果
 
-建立本机自托管的公众号近实时阅读系统：WeRSS 抓取，Readeck 全文阅读/收藏/划线/批注，精选内容自动进入 SummerOS Archive，Cloudflare 提供可选外网登录入口。
+建立本机自托管的公众号近实时阅读系统：WeRSS 抓取，自定义公众号阅读器与 Readeck 提供全文阅读/收藏/划线/批注，精选内容自动进入 SummerOS Archive，Cloudflare 提供受 Access 保护的 Reader 与 WeRSS 管理入口。
 
 ## 已实现
 
-- 12 个公众号、94 篇文章；90 篇完整正文已进入 Readeck。
+- 12 个公众号、124 篇 WeRSS 文章；118 篇去重后的完整文章已进入 Readeck。
 - Readeck 0.22.3 原生 ARM64，只绑定 `127.0.0.1:8002`。
 - 每 5 分钟自动同步；收藏或高亮文章进入 `readeck_inbox`。
 - 真实样本验证高亮、批注、原文、人工笔记和不覆盖。
 - WeRSS 调整为每小时第 17 分钟抓取。
-- 独立 Reader Caddy、Cloudflare 配置脚本、扩展备份恢复和中文教程已实现或待最终验证。
+- Reader 已完成全中文科技蓝磨砂三栏、Apple 磨砂交互控件、顶部 Tab、一键收藏、自动阅读进度、价值评分、主题标签和不改正文颜色的淡绿虚线高亮。
+- 批注框会避让选区，保存后自动回到对应划线并显示原位笔记；“划线笔记”按条集中摘录、批注和来源，支持 Markdown 下载、可配置 Obsidian 目录与右侧字号持久化。
+- Reader 主动刷新控制端已真实触发全部公众号抓取并继续同步阅读库；有 10 分钟冷却、single-flight、连续失败和微信风控保护。
+- Reader 与 WeRSS 管理分别通过独立 Access 应用/AUD 接入同一 Tunnel；匿名访问均被拦截。
 
 ## 边界
 
 - 微信没有 webhook，近实时而非秒级。
-- WeRSS 管理端永不公开。
+- WeRSS 原始端口永不公开；公网管理只通过 `werss.sumerchaser.top -> 127.0.0.1:8083`，并保留原生管理登录。
 - Readeck 公网只通过 `reader.sumerchaser.top -> 127.0.0.1:8082`。
 - 原文留在 Archive；Knowledge/Output 使用衍生条目。
 - Folo/Tailscale 不再是完成依赖。
 
 ## 当前下一步
 
-用户解锁 Mac 后完成 Obsidian 实机截图；对 Cloudflare 账号持久授权进行 action-time 确认后创建 Tunnel/DNS；随后跑扩展备份恢复、全量回归与最终审查。
+重新执行包含 WeRSS 公网 Caddy与主动刷新凭据的扩展备份恢复、全量回归和对抗审查；72 小时/7 天真实观察完成后再收口和人工确认。

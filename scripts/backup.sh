@@ -20,6 +20,7 @@ stage="$(mktemp -d "$ROOT_DIR/backups/.backup-stage.XXXXXX")"
 was_running_werss=0
 was_running_readeck=0
 was_running_reader_caddy=0
+was_running_werss_public_caddy=0
 
 cleanup() {
   local status=$?
@@ -34,6 +35,9 @@ cleanup() {
   if (( was_running_reader_caddy == 1 )); then
     docker_compose start reader-caddy >/dev/null
   fi
+  if (( was_running_werss_public_caddy == 1 )); then
+    docker_compose start werss-public-caddy >/dev/null
+  fi
   exit "$status"
 }
 trap cleanup EXIT INT TERM
@@ -47,9 +51,13 @@ fi
 if [[ "$(docker_compose ps --status running -q reader-caddy)" != "" ]]; then
   was_running_reader_caddy=1
 fi
+if [[ "$(docker_compose ps --status running -q werss-public-caddy)" != "" ]]; then
+  was_running_werss_public_caddy=1
+fi
 
 printf '短暂停止 WeRSS 与 Readeck 以获得一致性 SQLite 备份...\n'
-docker_compose stop -t 30 we-mp-rss readeck reader-caddy >/dev/null
+docker_compose stop -t 30 reader-caddy werss-public-caddy >/dev/null
+docker_compose stop -t 30 we-mp-rss readeck >/dev/null
 
 [[ -d "$ROOT_DIR/data" ]] || die "data/ 不存在"
 [[ -d "$ROOT_DIR/readeck-data" ]] || die "readeck-data/ 不存在"
@@ -64,6 +72,16 @@ mkdir -p "$stage/runtime" "$stage/cloudflared"
 chmod 700 "$stage/runtime" "$stage/cloudflared"
 install -m 0600 "$runtime_dir/reading-sync.sqlite3" "$stage/runtime/reading-sync.sqlite3"
 install -m 0600 "$runtime_dir/readeck_api_token" "$stage/runtime/readeck_api_token"
+for runtime_file in \
+  reader-refresh-control.py \
+  reader_refresh_config.json \
+  reader_refresh_secret \
+  refresh-control-state.json \
+  werss_refresh_credentials.json; do
+  if [[ -f "$runtime_dir/$runtime_file" ]]; then
+    install -m 0600 "$runtime_dir/$runtime_file" "$stage/runtime/$runtime_file"
+  fi
+done
 if [[ -f "$HOME/.cloudflared/wechat-rss.yml" ]]; then
   install -m 0600 "$HOME/.cloudflared/wechat-rss.yml" "$stage/cloudflared/wechat-rss.yml"
   tunnel_credentials="$(awk '$1 == "credentials-file:" { print $2; exit }' "$HOME/.cloudflared/wechat-rss.yml")"
@@ -80,8 +98,11 @@ tar -C "$ROOT_DIR" -czf "$tmp_archive" \
   compose.yaml \
   Caddyfile \
   Caddyfile.reader \
+  Caddyfile.werss-public \
   reader-theme \
   reader-ui \
+  scripts \
+  config \
   .env.example \
   README.md \
   -C "$stage" \
@@ -104,6 +125,10 @@ fi
 if (( was_running_reader_caddy == 1 )); then
   docker_compose start reader-caddy >/dev/null
   was_running_reader_caddy=0
+fi
+if (( was_running_werss_public_caddy == 1 )); then
+  docker_compose start werss-public-caddy >/dev/null
+  was_running_werss_public_caddy=0
 fi
 
 trap - EXIT INT TERM

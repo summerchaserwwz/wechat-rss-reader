@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.summer.wechat-rss-reader-refresh</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/python3</string>
+    <string>__HOME__/.local/share/wechat-rss/reader-refresh-control.py</string>
+    <string>--config-file</string>
+    <string>__HOME__/.local/share/wechat-rss/reader_refresh_config.json</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>StandardOutPath</key>
+  <string>/tmp/wechat-rss-reader-refresh.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/wechat-rss-reader-refresh.err</string>
+</dict>
+</plist>

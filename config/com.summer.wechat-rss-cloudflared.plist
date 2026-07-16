@@ -6,10 +6,10 @@
   <string>com.summer.wechat-rss-cloudflared</string>
   <key>ProgramArguments</key>
   <array>
-    <string>/Users/summer/.local/bin/cloudflared</string>
+    <string>__HOME__/.local/bin/cloudflared</string>
     <string>--no-autoupdate</string>
     <string>--config</string>
-    <string>/Users/summer/.cloudflared/wechat-rss.yml</string>
+    <string>__HOME__/.cloudflared/wechat-rss.yml</string>
     <string>tunnel</string>
     <string>run</string>
   </array>

@@ -1,17 +1,27 @@
 # 实际文件由 scripts/configure-cloudflare-tunnel.sh 写入：
 # ~/.cloudflared/wechat-rss.yml
 tunnel: replace-with-tunnel-uuid
-credentials-file: /Users/summer/.cloudflared/replace-with-tunnel-uuid.json
+credentials-file: /Users/your-name/.cloudflared/replace-with-tunnel-uuid.json
 
 ingress:
-  - hostname: reader.sumerchaser.top
+  - hostname: reader.example.com
     service: http://127.0.0.1:8082
     originRequest:
-      httpHostHeader: reader.sumerchaser.top
+      httpHostHeader: reader.example.com
       connectTimeout: 10s
       access:
         required: true
         teamName: replace-with-cloudflare-team-name
         audTag:
           - replace-with-access-application-audience-tag
+  - hostname: werss.example.com
+    service: http://127.0.0.1:8083
+    originRequest:
+      httpHostHeader: werss.example.com
+      connectTimeout: 10s
+      access:
+        required: true
+        teamName: replace-with-cloudflare-team-name
+        audTag:
+          - replace-with-werss-access-application-audience-tag
   - service: http_status:404

@@ -7,8 +7,13 @@
   <key>ProgramArguments</key>
   <array>
     <string>/usr/bin/python3</string>
-    <string>/Users/summer/.local/share/wechat-rss/reading-sync.py</string>
+    <string>__HOME__/.local/share/wechat-rss/reading-sync.py</string>
   </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>OBSIDIAN_INBOX_DIR</key>
+    <string>__OBSIDIAN_INBOX_DIR__</string>
+  </dict>
   <key>RunAtLoad</key>
   <true/>
   <key>StartInterval</key>
