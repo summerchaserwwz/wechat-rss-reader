@@ -44,6 +44,9 @@
     highlightMode: false,
     installPrompt: null,
     edgeSwipe: null,
+    mobilePaneSwipe: null,
+    paneSwipeTimer: 0,
+    suppressPaneClickUntil: 0,
   };
 
   const tabMeta = {
@@ -58,6 +61,8 @@
   const $ = (selector) => document.querySelector(selector);
   const elements = {
     app: $("#app"),
+    sourcePane: $(".source-pane"),
+    timelinePane: $(".timeline-pane"),
     sourceToggle: $("#source-toggle"),
     tabList: $("#tab-list"),
     sourceList: $("#source-list"),
@@ -691,6 +696,7 @@
     elements.sourceList.innerHTML = rows.join("");
     for (const button of elements.sourceList.querySelectorAll("[data-source]")) {
       button.addEventListener("click", () => {
+        if (isPaneClickSuppressed()) return;
         state.activeSource = button.dataset.source || "";
         if (state.activeTab === "subscriptions") state.activeTab = "unread";
         resetTimelineWindow();
@@ -741,16 +747,18 @@
   function entryRow(bookmark) {
     const value = valueOf(bookmark);
     const topics = topicsOf(bookmark);
+    const stateName = readState(bookmark);
+    const progress = Number(bookmark.read_progress || 0);
+    const progressLabel = stateName === "read" ? "已读" : stateName === "reading" ? `${progress}%` : "未读";
     const labels = [
       ...(value ? [`<span class="chip value">价值 ${value}</span>`] : []),
       ...topics.slice(0, 2).map((topic) => `<span class="chip">${escapeHtml(topic)}</span>`),
     ].join("");
-    const stateName = readState(bookmark);
     const published = bookmark.published || bookmark.created;
     return `<article class="entry-row is-${stateName}" data-id="${bookmark.id}" tabindex="0" aria-current="${state.selectedId === bookmark.id}">
       <span class="entry-status"><i class="unread-dot" title="${stateName === "read" ? "已读" : stateName === "reading" ? `阅读 ${bookmark.read_progress}%` : "未读"}"></i></span>
       <div class="entry-body">
-        <div class="entry-meta"><span class="entry-source">${escapeHtml(sourceName(bookmark))}</span><span class="entry-time">${shortTime(published)}</span></div>
+        <div class="entry-meta"><span class="entry-source">${escapeHtml(sourceName(bookmark))}</span><span class="chip state-chip is-${stateName}">${progressLabel}</span><span class="entry-time">${shortTime(published)}</span></div>
         <h2 class="entry-title">${escapeHtml(bookmark.title || "未命名文章")}</h2>
         <p class="entry-description">${escapeHtml(bookmark.description || "暂无摘要")}</p>
         <div class="entry-labels">${labels}</div>
@@ -783,6 +791,7 @@
     for (const row of elements.timeline.querySelectorAll(".entry-row")) {
       const open = () => selectBookmark(row.dataset.id);
       row.addEventListener("click", (event) => {
+        if (isPaneClickSuppressed()) return;
         if (!event.target.closest("[data-star]")) open();
       });
       row.addEventListener("pointerenter", (event) => {
@@ -799,11 +808,13 @@
     for (const button of elements.timeline.querySelectorAll("[data-star]")) {
       button.addEventListener("click", (event) => {
         event.stopPropagation();
+        if (isPaneClickSuppressed()) return;
         toggleFavorite(button.dataset.star);
       });
     }
     for (const row of elements.timeline.querySelectorAll("[data-feed]")) {
       row.addEventListener("click", () => {
+        if (isPaneClickSuppressed()) return;
         state.activeSource = row.dataset.feed;
         state.activeTab = "unread";
         resetTimelineWindow();
@@ -813,7 +824,9 @@
     }
     for (const row of elements.timeline.querySelectorAll(".annotation-row")) {
       const open = () => selectAnnotation(row.dataset.bookmarkId, row.dataset.annotationId);
-      row.addEventListener("click", open);
+      row.addEventListener("click", () => {
+        if (!isPaneClickSuppressed()) open();
+      });
       row.addEventListener("keydown", (event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
@@ -821,7 +834,9 @@
         }
       });
     }
-    elements.timeline.querySelector("[data-load-more]")?.addEventListener("click", loadMoreTimeline);
+    elements.timeline.querySelector("[data-load-more]")?.addEventListener("click", () => {
+      if (!isPaneClickSuppressed()) loadMoreTimeline();
+    });
   }
 
   function renderTimeline() {
@@ -963,6 +978,85 @@
     state.edgeSwipe = null;
     elements.readerContent.classList.remove("is-edge-swiping", "is-edge-swipe-ready");
     elements.readerContent.style.removeProperty("--edge-swipe-distance");
+  }
+
+  function isPaneClickSuppressed() {
+    return performance.now() < state.suppressPaneClickUntil;
+  }
+
+  function clearMobilePaneSwipe(nextView = "") {
+    window.clearTimeout(state.paneSwipeTimer);
+    if (nextView) elements.app.dataset.mobileView = nextView;
+    elements.app.classList.remove("is-pane-swiping", "is-pane-settling");
+    elements.app.style.removeProperty("--pane-swipe-x");
+    state.mobilePaneSwipe = null;
+  }
+
+  function bindMobilePaneSwipe() {
+    const panes = [
+      { element: elements.sourcePane, view: "sources", target: "timeline", direction: -1 },
+      { element: elements.timelinePane, view: "timeline", target: "sources", direction: 1 },
+    ];
+
+    for (const pane of panes) {
+      pane.element.addEventListener("pointerdown", (event) => {
+        if (!isMobileLayout()
+          || elements.app.dataset.mobileView !== pane.view
+          || state.mobilePaneSwipe
+          || event.button !== 0
+          || event.target.closest("input, textarea, select, dialog, [contenteditable='true']")) return;
+        state.mobilePaneSwipe = {
+          ...pane,
+          pointerId: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          distance: 0,
+          moved: false,
+          width: Math.max(pane.element.clientWidth, window.innerWidth),
+        };
+        pane.element.setPointerCapture?.(event.pointerId);
+      });
+
+      pane.element.addEventListener("pointermove", (event) => {
+        const swipe = state.mobilePaneSwipe;
+        if (!swipe || swipe.pointerId !== event.pointerId || swipe.element !== pane.element) return;
+        const rawX = event.clientX - swipe.startX;
+        const vertical = Math.abs(event.clientY - swipe.startY);
+        const horizontal = Math.abs(rawX);
+        if (vertical > horizontal && vertical > 12) {
+          clearMobilePaneSwipe();
+          return;
+        }
+        if (horizontal < 8 || Math.sign(rawX) !== swipe.direction) return;
+        event.preventDefault();
+        swipe.moved = true;
+        swipe.distance = swipe.direction < 0 ? Math.max(-swipe.width, rawX) : Math.min(swipe.width, rawX);
+        state.suppressPaneClickUntil = performance.now() + 420;
+        elements.app.classList.add("is-pane-swiping");
+        elements.app.style.setProperty("--pane-swipe-x", `${swipe.distance}px`);
+      }, { passive: false });
+
+      const finish = (event, cancelled = false) => {
+        const swipe = state.mobilePaneSwipe;
+        if (!swipe || swipe.pointerId !== event.pointerId || swipe.element !== pane.element) return;
+        const shouldSwitch = !cancelled && swipe.moved && Math.abs(swipe.distance) >= 64;
+        if (!swipe.moved) {
+          clearMobilePaneSwipe();
+          return;
+        }
+        state.suppressPaneClickUntil = performance.now() + 420;
+        elements.app.classList.add("is-pane-settling");
+        elements.app.style.setProperty("--pane-swipe-x", `${shouldSwitch ? swipe.direction * swipe.width : 0}px`);
+        const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        state.paneSwipeTimer = window.setTimeout(
+          () => clearMobilePaneSwipe(shouldSwitch ? swipe.target : ""),
+          reducedMotion ? 0 : 170,
+        );
+      };
+
+      pane.element.addEventListener("pointerup", (event) => finish(event));
+      pane.element.addEventListener("pointercancel", (event) => finish(event, true));
+    }
   }
 
   function bindEdgeSwipeBack() {
@@ -1950,6 +2044,7 @@
         if (state.focusMode) setReaderFocus(false, { syncNative: false });
       }
     });
+    bindMobilePaneSwipe();
     bindEdgeSwipeBack();
     bindArticleFrame();
   }

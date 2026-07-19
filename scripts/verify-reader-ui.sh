@@ -95,8 +95,14 @@ grep -q 'id="install-app"' "$ROOT_DIR/reader-ui/index.html" || die "Reader 手�
 grep -q 'id="edge-back-indicator"' "$ROOT_DIR/reader-ui/index.html" || die "Reader 缺少边缘返回提示"
 grep -q 'bindEdgeSwipeBack' "$ROOT_DIR/reader-ui/app.js" || die "Reader 缺少左边缘返回手势"
 grep -q 'saveCurrentReadingProgress' "$ROOT_DIR/reader-ui/app.js" || die "Reader 返回前未保存阅读进度"
+grep -q 'bindMobilePaneSwipe' "$ROOT_DIR/reader-ui/app.js" || die "Reader 缺少公众号列表与文章列表双向滑动"
+grep -q 'Math.abs(swipe.distance) >= 64' "$ROOT_DIR/reader-ui/app.js" || die "Reader 列表滑动缺少防误触阈值"
+grep -q 'state-chip' "$ROOT_DIR/reader-ui/app.js" || die "Reader 紧凑文章列表缺少状态标签"
 grep -q 'history.replaceState({ readerView: "timeline" }' "$ROOT_DIR/reader-ui/app.js" || die "Reader 未接管 Android 系统返回历史"
 grep -q '\.reading-dock { display: none; }' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 手机布局未移除右下角悬浮条"
+grep -q -- '--panel-radius: 0px' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 手机列表未移除面板圆角"
+grep -q 'is-pane-swiping\[data-mobile-view="sources"\].*source-pane' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 手机列表缺少跟手横向位移"
+grep -q 'contain-intrinsic-size: 68px' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 手机文章列表仍不够紧凑"
 grep -q 'rel="manifest"' "$ROOT_DIR/reader-ui/index.html" || die "Reader 首页未声明 PWA manifest"
 grep -q '\.mobile-scroll-layer' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 缺少手机原生滚动触摸层样式"
 if grep -q 'addEventListener("touchmove"' "$ROOT_DIR/reader-ui/app.js"; then
@@ -216,4 +222,4 @@ assert "cooldown_remaining_seconds" in payload
 assert "secret" not in json.dumps(payload).lower()
 PY
 
-printf 'Reader UI 验证通过：Android PWA 独立窗口、左边缘返回并保存进度、未读默认与已读归档、顶栏全屏/收藏/设置、手机无悬浮条、桌面划线与导出、受保护刷新状态机和 Access 边界均符合契约。\n'
+printf 'Reader UI 验证通过：Android PWA 独立窗口、Codex 风格无圆角紧凑列表、公众号/文章列表双向滑动、正文左边缘返回并保存进度、未读默认与已读归档、手机无悬浮条、桌面划线与导出、受保护刷新状态机和 Access 边界均符合契约。\n'
