@@ -1581,11 +1581,11 @@ button:active,
 .mobile-font-control output { display: grid; height: 38px; place-items: center; color: #aaa; background: #191919; border-block: 1px solid #343434; font-size: 10px; }
 .mobile-read-hint { margin: -4px 0 0; color: #777; font-size: 10px; line-height: 1.55; }
 
-/* Mobile list surfaces follow a flat developer-tool language: square panes,
-   hairline hierarchy, compact rows, and one blue state accent. */
+/* Mobile list surfaces use Cursor's compact developer-tool radius scale:
+   hairline depth, 4px tags, 6px rows, 8px controls, and 10px panes. */
 @media (max-width: 760px) {
   :root {
-    --mobile-gutter: 0px;
+    --mobile-gutter: 6px;
     --mobile-nav-height: 52px;
     --canvas: #0d0d0d;
     --surface: #101010;
@@ -1600,9 +1600,9 @@ button:active,
     --faint: #6f6f6f;
     --accent-ink: #8ab4f8;
     --accent-soft: rgba(76, 139, 245, 0.12);
-    --panel-radius: 0px;
-    --card-radius: 0px;
-    --control-radius: 0px;
+    --panel-radius: 10px;
+    --card-radius: 6px;
+    --control-radius: 8px;
   }
 
   body,
@@ -1612,13 +1612,13 @@ button:active,
 
   .source-pane,
   .timeline-pane {
-    top: env(safe-area-inset-top);
-    right: env(safe-area-inset-right);
-    bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom));
-    left: env(safe-area-inset-left);
+    top: max(var(--mobile-gutter), env(safe-area-inset-top));
+    right: max(var(--mobile-gutter), env(safe-area-inset-right));
+    bottom: calc(max(var(--mobile-gutter), env(safe-area-inset-bottom)) + var(--mobile-nav-height) + var(--mobile-gutter));
+    left: max(var(--mobile-gutter), env(safe-area-inset-left));
     background: var(--surface);
-    border: 0;
-    border-radius: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--panel-radius);
     box-shadow: none;
     touch-action: pan-y;
     -webkit-backdrop-filter: none;
@@ -1626,15 +1626,14 @@ button:active,
   }
 
   .top-tabs {
-    right: 0;
-    bottom: 0;
-    left: 0;
-    height: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom));
-    padding: 0 4px env(safe-area-inset-bottom);
+    right: max(var(--mobile-gutter), env(safe-area-inset-right));
+    bottom: max(var(--mobile-gutter), env(safe-area-inset-bottom));
+    left: max(var(--mobile-gutter), env(safe-area-inset-left));
+    height: var(--mobile-nav-height);
+    padding: 0 4px;
     background: #111111;
-    border: 0;
-    border-top: 1px solid var(--line);
-    border-radius: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--panel-radius);
     box-shadow: none;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
@@ -1647,7 +1646,7 @@ button:active,
     margin: 0;
     padding: 0 10px;
     border: 0;
-    border-radius: 0;
+    border-radius: 6px;
   }
   .tab-list button span,
   .tab-list button b,
@@ -1673,7 +1672,7 @@ button:active,
     min-height: 51px;
     padding: 0;
     border: 0;
-    border-radius: 0;
+    border-radius: 6px;
   }
 
   .brand-row {
@@ -1690,7 +1689,7 @@ button:active,
     color: #d7d7d7;
     background: #181818;
     border: 1px solid #303030;
-    border-radius: 0;
+    border-radius: 6px;
     box-shadow: none;
     font-size: 12px;
     font-weight: 620;
@@ -1711,7 +1710,7 @@ button:active,
     padding: 0 9px;
     background: #141414;
     border: 1px solid #2a2a2a;
-    border-radius: 0;
+    border-radius: var(--control-radius);
   }
   .search-box:focus-within {
     background: #161616;
@@ -1730,7 +1729,7 @@ button:active,
     text-transform: none;
   }
   .source-pane .icon-button,
-  .timeline-pane .icon-button { border-radius: 0; }
+  .timeline-pane .icon-button { border-radius: 6px; }
   .source-list {
     padding: 0;
     touch-action: pan-y;
@@ -1739,21 +1738,19 @@ button:active,
     grid-template-columns: 26px minmax(0, 1fr) auto;
     gap: 8px;
     min-height: 42px;
-    margin: 0;
+    width: calc(100% - 12px);
+    margin: 2px 6px;
     padding: 6px 10px;
-    background: transparent;
-    border: 0;
-    border-bottom: 1px solid #1d1d1d;
-    border-left: 2px solid transparent;
-    border-radius: 0;
+    background: #111111;
+    border: 1px solid #202020;
+    border-radius: var(--card-radius);
   }
-  .source-item:hover { background: #151515; border-color: #1d1d1d; border-left-color: transparent; }
+  .source-item:hover { background: #151515; border-color: #292929; }
   .source-item[aria-current="true"] {
     color: var(--ink);
     background: #181b20;
-    border-color: #24282f;
-    border-left-color: #4c8bf5;
-    box-shadow: none;
+    border-color: #35445a;
+    box-shadow: inset 2px 0 #4c8bf5;
   }
   .source-avatar {
     width: 24px;
@@ -1761,7 +1758,7 @@ button:active,
     color: #a7a7a7;
     background: #191919;
     border: 1px solid #2b2b2b;
-    border-radius: 0;
+    border-radius: 4px;
     font-size: 10px;
     font-weight: 600;
   }
@@ -1772,7 +1769,7 @@ button:active,
     color: #858585;
     background: #141414;
     border: 1px solid #292929;
-    border-radius: 0;
+    border-radius: 4px;
     font-size: 9px;
     text-align: center;
   }
@@ -1800,23 +1797,22 @@ button:active,
   .timeline-heading .mobile-back {
     width: 38px;
     height: 38px;
-    border-radius: 0;
+    border-radius: 6px;
   }
-  .timeline { padding: 0; touch-action: pan-y; }
+  .timeline { padding: 4px 5px 6px; touch-action: pan-y; }
   .entry-row {
     grid-template-columns: minmax(0, 1fr) 38px;
     gap: 6px;
     min-height: 66px;
-    margin: 0;
+    margin: 0 0 4px;
     padding: 9px 6px 8px 12px;
-    background: transparent;
-    border: 0;
-    border-bottom: 1px solid #222222;
-    border-radius: 0;
+    background: #111111;
+    border: 1px solid #222222;
+    border-radius: var(--card-radius);
     contain-intrinsic-size: 68px;
     transition: background-color 120ms ease;
   }
-  .entry-row:hover { background: #151515; border-color: #222222; transform: none; }
+  .entry-row:hover { background: #151515; border-color: #2b2b2b; transform: none; }
   .entry-row[aria-current="true"] {
     background: #171b21;
     border-color: #2a313c;
@@ -1830,6 +1826,7 @@ button:active,
     color: #a6a6a6;
     background: #151515;
     border: 1px solid #292929;
+    border-radius: 4px;
     font-weight: 520;
   }
   .entry-title {
@@ -1850,7 +1847,7 @@ button:active,
     color: #8f8f8f;
     background: transparent;
     border: 1px solid #303030;
-    border-radius: 0;
+    border-radius: 4px;
     font-size: 8.5px;
   }
   .state-chip { display: inline-flex; }
@@ -1869,12 +1866,12 @@ button:active,
     color: #777777;
     background: transparent;
     border: 0;
-    border-radius: 0;
+    border-radius: 6px;
   }
   .star-action.is-active { color: var(--accent-ink); background: transparent; border-color: transparent; }
 
   .timeline-pane :is(.annotation-library-intro, .annotation-row, .subscription-row, .timeline-more, .empty-list, .loading-list) {
-    border-radius: 0;
+    border-radius: var(--card-radius);
     box-shadow: none;
   }
   .timeline-more { margin: 0; border-width: 0 0 1px; }
@@ -1886,16 +1883,16 @@ button:active,
   .reader-toolbar .mobile-back:active,
   .reader-toolbar #reader-focus:active,
   .reader-toolbar #reader-star:active,
-  .reader-toolbar .mobile-reader-more:active { border-radius: 0; }
-  .edge-back-indicator,
-  .toast,
-  .dialog-card,
-  .mobile-actions-dialog,
-  .mobile-actions-sheet .icon-button,
+  .reader-toolbar .mobile-reader-more:active { border-radius: 6px; }
+  .edge-back-indicator { border-radius: 0 10px 10px 0; }
+  .toast { border-radius: 8px; }
+  .dialog-card { border-radius: 12px; }
+  .mobile-actions-dialog { border-radius: 12px 12px 0 0; }
+  .mobile-actions-sheet .icon-button { border-radius: 6px; }
   .mobile-setting-action,
-  .mobile-font-control button,
-  .mobile-font-control button:first-child,
-  .mobile-font-control button:last-child { border-radius: 0; }
+  .mobile-font-control button { border-radius: 8px; }
+  .mobile-font-control button:first-child { border-radius: 8px 0 0 8px; }
+  .mobile-font-control button:last-child { border-radius: 0 8px 8px 0; }
 
   .app-shell.is-pane-swiping .source-pane,
   .app-shell.is-pane-swiping .timeline-pane {

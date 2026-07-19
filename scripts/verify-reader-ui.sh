@@ -100,7 +100,9 @@ grep -q 'Math.abs(swipe.distance) >= 64' "$ROOT_DIR/reader-ui/app.js" || die "Re
 grep -q 'state-chip' "$ROOT_DIR/reader-ui/app.js" || die "Reader 紧凑文章列表缺少状态标签"
 grep -q 'history.replaceState({ readerView: "timeline" }' "$ROOT_DIR/reader-ui/app.js" || die "Reader 未接管 Android 系统返回历史"
 grep -q '\.reading-dock { display: none; }' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 手机布局未移除右下角悬浮条"
-grep -q -- '--panel-radius: 0px' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 手机列表未移除面板圆角"
+grep -q -- '--panel-radius: 10px' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 手机主面板未使用克制 10px 圆角"
+grep -q -- '--card-radius: 6px' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 手机紧凑行未使用 6px 圆角"
+grep -q 'border-radius: 4px' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 手机标签未使用 4px 圆角"
 grep -q 'is-pane-swiping\[data-mobile-view="sources"\].*source-pane' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 手机列表缺少跟手横向位移"
 grep -q 'contain-intrinsic-size: 68px' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 手机文章列表仍不够紧凑"
 grep -q 'rel="manifest"' "$ROOT_DIR/reader-ui/index.html" || die "Reader 首页未声明 PWA manifest"
@@ -222,4 +224,4 @@ assert "cooldown_remaining_seconds" in payload
 assert "secret" not in json.dumps(payload).lower()
 PY
 
-printf 'Reader UI 验证通过：Android PWA 独立窗口、Codex 风格无圆角紧凑列表、公众号/文章列表双向滑动、正文左边缘返回并保存进度、未读默认与已读归档、手机无悬浮条、桌面划线与导出、受保护刷新状态机和 Access 边界均符合契约。\n'
+printf 'Reader UI 验证通过：Android PWA 独立窗口、awesome-design 4/6/8/10px 克制圆角与紧凑列表、公众号/文章列表双向滑动、正文左边缘返回并保存进度、未读默认与已读归档、手机无悬浮条、桌面划线与导出、受保护刷新状态机和 Access 边界均符合契约。\n'
