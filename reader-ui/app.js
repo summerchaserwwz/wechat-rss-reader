@@ -47,6 +47,7 @@
     mobilePaneSwipe: null,
     paneSwipeTimer: 0,
     suppressPaneClickUntil: 0,
+    suppressReaderClickUntil: 0,
     sourceToneMap: new Map(),
   };
 
@@ -130,6 +131,7 @@
     mobileActionsTitle: $("#mobile-actions-title"),
     mobileActionsClose: $("#mobile-actions-close"),
     mobileReaderRead: $("#mobile-reader-read"),
+    mobileHighlightMode: $("#mobile-highlight-mode"),
     mobileFontLarger: $("#mobile-font-larger"),
     mobileFontSmaller: $("#mobile-font-smaller"),
     mobileFontSize: $("#mobile-font-size"),
@@ -194,7 +196,11 @@
     elements.highlightMode.setAttribute("aria-pressed", String(state.highlightMode));
     elements.highlightMode.setAttribute("aria-label", state.highlightMode ? "退出划线模式" : "进入划线模式");
     elements.highlightMode.title = state.highlightMode ? "退出划线模式" : "进入划线模式";
+    elements.mobileHighlightMode.classList.toggle("is-active", state.highlightMode);
+    elements.mobileHighlightMode.setAttribute("aria-pressed", String(state.highlightMode));
+    elements.mobileHighlightMode.querySelector("span").textContent = state.highlightMode ? "退出划线模式" : "进入划线模式";
     applyHighlightModeToArticle();
+    enhanceArticleAnnotations(elements.articleFrame.contentDocument);
   }
 
   function setHighlightMode(active, { quiet = false } = {}) {
@@ -343,7 +349,7 @@
           if (!embedTheme) {
             embedTheme = doc.createElement("link");
             embedTheme.rel = "stylesheet";
-            embedTheme.href = "/reader-assets/embed.css?v=12";
+            embedTheme.href = "/reader-assets/embed.css?v=13";
             embedTheme.dataset.readerEmbedTheme = "true";
             embedTheme.addEventListener("load", revealArticle, { once: true });
             embedTheme.addEventListener("error", revealArticle, { once: true });
@@ -1011,9 +1017,19 @@
   }
 
   function resetEdgeSwipe() {
+    const swipe = state.edgeSwipe;
+    try {
+      swipe?.captureTarget?.releasePointerCapture?.(swipe.pointerId);
+    } catch {
+      // Pointer capture is released automatically after pointerup.
+    }
     state.edgeSwipe = null;
     elements.readerContent.classList.remove("is-edge-swiping", "is-edge-swipe-ready");
     elements.readerContent.style.removeProperty("--edge-swipe-distance");
+  }
+
+  function isReaderClickSuppressed() {
+    return performance.now() < state.suppressReaderClickUntil;
   }
 
   function isPaneClickSuppressed() {
@@ -1095,42 +1111,77 @@
     }
   }
 
-  function bindEdgeSwipeBack() {
-    elements.readerContent.addEventListener("pointerdown", (event) => {
-      if (!isMobileLayout() || elements.app.dataset.mobileView !== "reader" || event.button !== 0 || event.clientX > 28) return;
+  function bindReaderSwipeTarget(target) {
+    const marker = target?.documentElement || target;
+    const articleDocument = Boolean(target?.documentElement);
+    if (!target || marker.dataset.readerSwipeBackBound) return;
+    marker.dataset.readerSwipeBackBound = "true";
+
+    target.addEventListener("pointerdown", (event) => {
+      if (!isMobileLayout()
+        || elements.app.dataset.mobileView !== "reader"
+        || state.edgeSwipe
+        || event.button !== 0
+        || !event.isPrimary
+        // 划线模式中的横向拖动属于选区，只保留最右侧窄区返回。
+        || (articleDocument && state.highlightMode && event.clientX < marker.clientWidth - 32)
+        || !event.target.closest?.(".reader-stage, .bookmark-article, [data-reader-end-actions]")
+        || event.target.closest?.("input, textarea, select, dialog, [contenteditable='true']")) return;
       state.edgeSwipe = {
         pointerId: event.pointerId,
         startX: event.clientX,
         startY: event.clientY,
         distance: 0,
+        moved: false,
+        captureTarget: null,
       };
     });
-    elements.readerContent.addEventListener("pointermove", (event) => {
+
+    target.addEventListener("pointermove", (event) => {
       const swipe = state.edgeSwipe;
       if (!swipe || swipe.pointerId !== event.pointerId) return;
-      const distance = Math.max(0, event.clientX - swipe.startX);
+      const rawX = event.clientX - swipe.startX;
+      const distance = Math.max(0, swipe.startX - event.clientX);
       const vertical = Math.abs(event.clientY - swipe.startY);
-      if (vertical > distance && vertical > 18) {
+      const horizontal = Math.abs(rawX);
+      if ((vertical > horizontal && vertical > 12) || rawX > 8) {
         resetEdgeSwipe();
         return;
       }
-      swipe.distance = distance;
       if (distance < 8) return;
       event.preventDefault();
-      elements.readerContent.setPointerCapture?.(event.pointerId);
+      if (!swipe.moved) {
+        swipe.captureTarget = event.target;
+        try {
+          swipe.captureTarget.setPointerCapture?.(event.pointerId);
+        } catch {
+          // A document-level listener can still finish the gesture without capture.
+        }
+      }
+      swipe.moved = true;
+      swipe.distance = distance;
+      state.suppressReaderClickUntil = performance.now() + 420;
       elements.readerContent.classList.add("is-edge-swiping");
       elements.readerContent.classList.toggle("is-edge-swipe-ready", distance >= 72);
       elements.readerContent.style.setProperty("--edge-swipe-distance", `${Math.min(36, distance * 0.5)}px`);
     }, { passive: false });
+
     const finish = (event) => {
       const swipe = state.edgeSwipe;
       if (!swipe || swipe.pointerId !== event.pointerId) return;
-      const shouldReturn = swipe.distance >= 72;
+      const shouldReturn = swipe.moved && swipe.distance >= 72;
+      if (swipe.moved) state.suppressReaderClickUntil = performance.now() + 420;
       resetEdgeSwipe();
       if (shouldReturn) returnToTimeline();
     };
-    elements.readerContent.addEventListener("pointerup", finish);
-    elements.readerContent.addEventListener("pointercancel", resetEdgeSwipe);
+    target.addEventListener("pointerup", finish);
+    target.addEventListener("pointercancel", (event) => {
+      if (state.edgeSwipe?.pointerId === event.pointerId) resetEdgeSwipe();
+    });
+  }
+
+  function bindEdgeSwipeBack() {
+    bindReaderSwipeTarget(elements.readerContent);
   }
 
   function renderReader() {
@@ -1238,11 +1289,12 @@
     if (state.activeTab === "highlights") renderTimeline();
     renderReader();
     const newest = focusNewest ? annotations.find((item) => !previousIds.has(String(item.id))) : null;
-    enhanceArticleAnnotations(elements.articleFrame.contentDocument, state.highlightMode ? state.pendingAnnotationId : newest?.id || state.pendingAnnotationId);
+    const focusId = state.highlightMode && newest ? "" : newest?.id || state.pendingAnnotationId;
+    enhanceArticleAnnotations(elements.articleFrame.contentDocument, focusId);
     if (newest) {
       state.pendingAnnotationId = "";
       showToast(state.highlightMode
-        ? "纯划线已保存，不含笔记"
+        ? "划线已保存，点按可取消"
         : "划线笔记已保存，并进入 Obsidian 自动同步队列");
     }
   }
@@ -1729,6 +1781,41 @@
     placeFloatingElement(popover, target.getBoundingClientRect(), doc, 286);
   }
 
+  function annotationTargets(doc, annotationId) {
+    const id = String(annotationId || "");
+    return [...(doc?.querySelectorAll?.("rd-annotation[data-annotation-id-value], .rd-annotation[data-annotation-id-value]") || [])]
+      .filter((target) => target.getAttribute("data-annotation-id-value") === id);
+  }
+
+  function unwrapAnnotation(target) {
+    if (!target?.isConnected) return;
+    target.replaceWith(...Array.from(target.childNodes));
+  }
+
+  async function deleteAnnotation(annotationId, doc = elements.articleFrame.contentDocument) {
+    const item = annotationById(annotationId);
+    if (!item) return;
+    const targets = annotationTargets(doc, annotationId);
+    if (targets.some((target) => target.dataset.readerRemoving === "true")) return;
+    targets.forEach((target) => { target.dataset.readerRemoving = "true"; });
+    try {
+      await request(`/api/bookmarks/${encodeURIComponent(item.bookmark_id)}/annotations/${encodeURIComponent(item.id)}`, {
+        method: "DELETE",
+      });
+      state.annotations = state.annotations.filter((annotation) => String(annotation.id) !== String(item.id));
+      state.annotatedIds = new Set(state.annotations.map((annotation) => annotation.bookmark_id));
+      targets.forEach(unwrapAnnotation);
+      doc?.querySelector?.(".reader-note-popover")?.remove();
+      renderTabs();
+      if (state.activeTab === "highlights") renderTimeline();
+      renderReader();
+      showToast("已取消划线");
+    } catch (error) {
+      targets.forEach((target) => { delete target.dataset.readerRemoving; });
+      showToast(error.message, true);
+    }
+  }
+
   function enhanceArticleAnnotations(doc, focusId = "") {
     const bookmark = selectedBookmark();
     if (!doc || !bookmark) return;
@@ -1738,29 +1825,39 @@
       const id = target.getAttribute("data-annotation-id-value") || "";
       const item = byId.get(id);
       if (!item) continue;
+      const directDelete = isMobileReader() || state.highlightMode;
       target.setAttribute("tabindex", "0");
       target.setAttribute("role", "button");
-      target.setAttribute("aria-label", item.note ? "查看划线笔记" : "查看划线摘录");
-      target.title = item.note || "查看划线摘录";
-      if (!target.dataset.readerNoteBound) {
-        const open = (event) => {
+      target.setAttribute("aria-label", directDelete ? "取消这条划线" : item.note ? "查看划线笔记" : "查看划线摘录");
+      target.title = directDelete ? "点按取消划线" : item.note || "查看划线摘录";
+      if (!target.dataset.readerAnnotationBound) {
+        const activate = (event) => {
+          if (isReaderClickSuppressed() || !doc.getSelection()?.isCollapsed) return;
+          event.preventDefault();
           event.stopPropagation();
-          showAnnotationPopover(doc, annotationById(id), target);
+          event.stopImmediatePropagation();
+          if (isMobileReader() || state.highlightMode) {
+            deleteAnnotation(id, doc);
+          } else {
+            showAnnotationPopover(doc, annotationById(id), target);
+          }
         };
-        target.addEventListener("click", open);
+        target.addEventListener("click", activate, true);
         target.addEventListener("keydown", (event) => {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
-            open(event);
+            activate(event);
           }
-        });
-        target.dataset.readerNoteBound = "true";
+        }, true);
+        target.dataset.readerAnnotationBound = "true";
       }
       if (focusId && id === String(focusId) && !focusTarget) focusTarget = target;
     }
     if (focusTarget) {
       focusTarget.scrollIntoView({ behavior: "auto", block: "center" });
-      window.setTimeout(() => showAnnotationPopover(doc, annotationById(focusId), focusTarget), 120);
+      if (!isMobileReader() && !state.highlightMode) {
+        window.setTimeout(() => showAnnotationPopover(doc, annotationById(focusId), focusTarget), 120);
+      }
       state.pendingAnnotationId = "";
     }
   }
@@ -1783,7 +1880,7 @@
   }
 
   function forwardMobileReaderTap(event) {
-    if (state.highlightMode) return;
+    if (state.highlightMode || isReaderClickSuppressed()) return;
     try {
       const doc = elements.articleFrame.contentDocument;
       const frameRect = elements.articleFrame.getBoundingClientRect();
@@ -1839,7 +1936,9 @@
   }
 
   function bindArticleAnnotationInteractions(doc) {
-    if (!doc?.body || doc.documentElement.dataset.readerAnnotationsBound) return;
+    if (!doc?.body) return;
+    bindReaderSwipeTarget(doc);
+    if (doc.documentElement.dataset.readerAnnotationsBound) return;
     doc.documentElement.dataset.readerAnnotationsBound = "true";
     state.annotationObserver?.disconnect();
     state.annotationObserver = new MutationObserver((records) => {
@@ -1929,7 +2028,7 @@
         if (!embedTheme) {
           embedTheme = doc.createElement("link");
           embedTheme.rel = "stylesheet";
-          embedTheme.href = "/reader-assets/embed.css?v=12";
+          embedTheme.href = "/reader-assets/embed.css?v=13";
           embedTheme.dataset.readerEmbedTheme = "true";
           embedTheme.addEventListener("load", revealArticle, { once: true });
           embedTheme.addEventListener("error", revealArticle, { once: true });
@@ -2047,6 +2146,10 @@
       const bookmark = selectedBookmark();
       if (bookmark) setReadProgress(bookmark.id, Number(bookmark.read_progress || 0) >= 100 ? 0 : 100);
     });
+    elements.mobileHighlightMode.addEventListener("click", () => {
+      setHighlightMode(!state.highlightMode);
+      elements.readerActionsDialog.close();
+    });
     elements.mobileFontLarger.addEventListener("click", () => setFontSize(state.fontSize + 1));
     elements.mobileFontSmaller.addEventListener("click", () => setFontSize(state.fontSize - 1));
     elements.installApp.addEventListener("click", installReaderApp);
@@ -2156,7 +2259,9 @@
     bindArticleFrame();
   }
 
-  if (isMobileLayout() && !history.state?.readerView) {
+  // A reload starts without an in-memory selected article. Normalize any
+  // stale reader history entry so the next article always returns to its list.
+  if (isMobileLayout()) {
     history.replaceState({ readerView: "timeline" }, "");
   }
   state.fontSize = Math.max(12, Math.min(20, Number(localStorage.getItem(fontPreferenceKey())) || (isMobileReader() ? 14 : 17)));

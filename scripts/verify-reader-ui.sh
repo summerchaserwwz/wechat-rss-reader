@@ -92,10 +92,12 @@ grep -q 'readerParentScroll' "$ROOT_DIR/reader-ui/app.js" || die "Reader 手机�
 grep -q 'id="reader-more"' "$ROOT_DIR/reader-ui/index.html" || die "Reader 手机顶栏缺少更多操作入口"
 grep -q 'id="reader-actions-dialog"' "$ROOT_DIR/reader-ui/index.html" || die "Reader 缺少手机文章操作面板"
 grep -q 'id="mobile-font-size"' "$ROOT_DIR/reader-ui/index.html" || die "Reader 手机设置缺少字号控制"
+grep -q 'id="mobile-highlight-mode"' "$ROOT_DIR/reader-ui/index.html" || die "Reader 手机设置缺少划线模式入口"
 grep -q 'id="install-app"' "$ROOT_DIR/reader-ui/index.html" || die "Reader 手机设置缺少安装到桌面入口"
 grep -q 'id="edge-back-indicator"' "$ROOT_DIR/reader-ui/index.html" || die "Reader 缺少边缘返回提示"
-grep -q 'bindEdgeSwipeBack' "$ROOT_DIR/reader-ui/app.js" || die "Reader 缺少左边缘返回手势"
-grep -q 'elements.readerContent.setPointerCapture.*event.pointerId' "$ROOT_DIR/reader-ui/app.js" || die "Reader 左边缘滑动未在移动后捕获指针"
+grep -q 'bindEdgeSwipeBack' "$ROOT_DIR/reader-ui/app.js" || die "Reader 缺少正文左滑返回手势"
+grep -q 'Math.max(0, swipe.startX - event.clientX)' "$ROOT_DIR/reader-ui/app.js" || die "Reader 正文返回手势方向不是左滑"
+grep -q 'swipe.captureTarget.setPointerCapture.*event.pointerId' "$ROOT_DIR/reader-ui/app.js" || die "Reader 左滑返回未在移动后捕获指针"
 grep -q 'saveCurrentReadingProgress' "$ROOT_DIR/reader-ui/app.js" || die "Reader 返回前未保存阅读进度"
 grep -q 'function toggleArchive' "$ROOT_DIR/reader-ui/app.js" || die "Reader 缺少收藏旁的归档状态更新"
 grep -q 'data-reader-action="archive"' "$ROOT_DIR/reader-ui/app.js" || die "Reader 正文结尾缺少可点击归档操作"
@@ -120,8 +122,8 @@ grep -q 'border-radius: 0;' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 手�
 grep -q 'is-pane-swiping\[data-mobile-view="sources"\].*source-pane' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 手机列表缺少跟手横向位移"
 grep -q 'contain-intrinsic-size: 66px' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 手机文章列表仍不够紧凑"
 grep -q 'rel="manifest"' "$ROOT_DIR/reader-ui/index.html" || die "Reader 首页未声明 PWA manifest"
-grep -q 'styles.css?v=26' "$ROOT_DIR/reader-ui/index.html" || die "Reader 手机样式资源版本未刷新"
-grep -q 'app.js?v=30' "$ROOT_DIR/reader-ui/index.html" || die "Reader 手机交互资源版本未刷新"
+grep -q 'styles.css?v=27' "$ROOT_DIR/reader-ui/index.html" || die "Reader 手机样式资源版本未刷新"
+grep -q 'app.js?v=33' "$ROOT_DIR/reader-ui/index.html" || die "Reader 手机交互资源版本未刷新"
 grep -q '\.mobile-scroll-layer' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 缺少手机原生滚动触摸层样式"
 if grep -q 'addEventListener("touchmove"' "$ROOT_DIR/reader-ui/app.js"; then
   die "Reader 仍使用 JavaScript 接管 touchmove，手机惯性滚动会卡顿"
@@ -131,6 +133,10 @@ grep -q 'Shift+Enter 换行' "$ROOT_DIR/reader-ui/app.js" || die "Reader 快速�
 grep -q 'transparent.click()' "$ROOT_DIR/reader-ui/app.js" || die "Reader 未同步原生 annotator 的透明划线状态"
 grep -q 'rejectUnsafeArticleSelection' "$ROOT_DIR/reader-ui/app.js" || die "Reader 未阻止跨出正文的整篇误选"
 grep -q 'reader-pending-annotation' "$ROOT_DIR/reader-ui/embed.css" || die "Reader 缺少待确认划线预览"
+grep -q 'method: "DELETE"' "$ROOT_DIR/reader-ui/app.js" || die "Reader 点按划线未调用删除接口"
+grep -q '点按取消划线' "$ROOT_DIR/reader-ui/app.js" || die "Reader 划线缺少直接取消提示"
+grep -q 'targets.forEach(unwrapAnnotation)' "$ROOT_DIR/reader-ui/app.js" || die "Reader 取消划线仍需要刷新正文"
+grep -q 'isMobileReader() || state.highlightMode' "$ROOT_DIR/reader-ui/app.js" || die "Reader 手机划线仍可能弹出笔记框"
 grep -q 'data-reader-highlight-mode="false"' "$ROOT_DIR/reader-ui/embed.css" || die "Reader 阅读模式未阻止手机误选全文"
 grep -q 'annotator--colors' "$ROOT_DIR/reader-ui/embed.css" || die "Reader 未隐藏原生高亮颜色选择"
 grep -q 'env(safe-area-inset-bottom)' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 手机布局缺少底部安全区"
@@ -240,4 +246,4 @@ assert "cooldown_remaining_seconds" in payload
 assert "secret" not in json.dumps(payload).lower()
 PY
 
-printf 'Reader UI 验证通过：Android PWA 独立窗口、干净深色磨砂无圆角外壳、稳定作者彩色标签与柔和纯色谱线、公众号/文章列表双向滑动、正文左边缘返回并保存进度、未读默认与已读归档、手机无悬浮条、桌面划线与导出、受保护刷新状态机和 Access 边界均符合契约。\n'
+printf 'Reader UI 验证通过：Android PWA 独立窗口、干净深色磨砂无圆角外壳、稳定作者彩色标签与柔和纯色谱线、公众号/文章列表双向滑动、正文左滑返回并保存进度、选中即划线与点按取消、未读默认与已读归档、手机无悬浮条、桌面划线导出、受保护刷新状态机和 Access 边界均符合契约。\n'

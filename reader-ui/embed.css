@@ -56,11 +56,11 @@ html.reader-embed ::selection {
 
 html.reader-embed ::highlight(reader-pending-annotation) {
   color: var(--reader-body);
-  background: rgba(138, 212, 168, 0.14);
+  background: transparent;
   text-decoration-line: underline;
-  text-decoration-style: solid;
+  text-decoration-style: dashed;
   text-decoration-color: var(--reader-annotation);
-  text-decoration-thickness: 2px;
+  text-decoration-thickness: 1.5px;
   text-underline-offset: 0.24em;
 }
 
@@ -238,6 +238,11 @@ html.reader-embed :is(.rd-annotation, rd-annotation) {
 html.reader-embed :is(.rd-annotation, rd-annotation):focus-visible {
   outline: 2px solid rgba(47, 124, 246, 0.75);
   outline-offset: 3px;
+}
+
+html.reader-embed :is(.rd-annotation, rd-annotation)[data-reader-removing="true"] {
+  opacity: 0.42;
+  transition: opacity 120ms ease;
 }
 
 html.reader-embed .annotator--content {

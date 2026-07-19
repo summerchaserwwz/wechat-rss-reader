@@ -1499,7 +1499,7 @@ button:active,
     position: fixed;
     z-index: 9;
     top: 50%;
-    left: 0;
+    right: 0;
     display: grid;
     width: 36px;
     height: 48px;
@@ -1507,11 +1507,11 @@ button:active,
     color: #e6eefc;
     background: #243249;
     border: 1px solid #405778;
-    border-left: 0;
-    border-radius: 0 24px 24px 0;
+    border-right: 0;
+    border-radius: 24px 0 0 24px;
     opacity: 0;
     pointer-events: none;
-    transform: translate(calc(-100% + var(--edge-swipe-distance, 0px)), -50%);
+    transform: translate(calc(100% - var(--edge-swipe-distance, 0px)), -50%);
     transition: opacity 100ms ease, background 100ms ease, transform 60ms linear;
   }
   .edge-back-indicator svg { width: 17px; height: 17px; }
@@ -1573,6 +1573,11 @@ button:active,
 }
 .mobile-setting-action[hidden] { display: none; }
 .mobile-setting-action svg { width: 17px; height: 17px; }
+.mobile-setting-action.is-active {
+  color: #9bd8b2;
+  background: rgba(138, 212, 168, 0.07);
+  border-color: rgba(138, 212, 168, 0.24);
+}
 .mobile-font-section { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .mobile-font-section > span { color: #a8a8a8; font-size: 11px; font-weight: 600; }
 .mobile-font-control { display: grid; grid-template-columns: 42px 54px 42px; align-items: center; }

@@ -10,7 +10,7 @@
     <title>公众号阅读器</title>
     <link rel="manifest" href="/reader-assets/manifest.webmanifest" crossorigin="use-credentials">
     <link rel="icon" href="/reader-assets/icons/reader-192.png" sizes="192x192">
-    <link rel="stylesheet" href="/reader-assets/styles.css?v=26">
+    <link rel="stylesheet" href="/reader-assets/styles.css?v=27">
   </head>
   <body>
     <svg class="icon-sprite" aria-hidden="true">
@@ -225,6 +225,7 @@
           <button id="mobile-actions-close" class="icon-button" type="button" aria-label="关闭阅读设置">×</button>
         </header>
         <button id="mobile-reader-read" class="mobile-setting-action" type="button"><svg><use href="#i-check"/></svg><span>标为已读</span></button>
+        <button id="mobile-highlight-mode" class="mobile-setting-action" type="button" aria-pressed="false"><svg><use href="#i-highlight"/></svg><span>进入划线模式</span></button>
         <section class="mobile-font-section" aria-label="正文字号">
           <span>正文字号</span>
           <div class="mobile-font-control">
@@ -239,6 +240,6 @@
     </dialog>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="/reader-assets/app.js?v=30" defer></script>
+    <script src="/reader-assets/app.js?v=33" defer></script>
   </body>
 </html>
