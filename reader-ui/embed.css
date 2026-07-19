@@ -130,6 +130,60 @@ html.reader-embed .bookmark-header h1 {
   line-height: 1.2;
 }
 
+html.reader-embed [data-reader-end-actions] {
+  width: min(100%, 48rem);
+  margin: 1.5rem auto 0 !important;
+  padding-top: 1rem !important;
+  border-color: var(--reader-border) !important;
+}
+
+html.reader-embed [data-reader-end-actions] form {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+html.reader-embed [data-reader-action] {
+  display: inline-flex !important;
+  min-width: 0;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  margin: 0 !important;
+  padding: 0.65rem 0.8rem !important;
+  color: var(--reader-muted) !important;
+  background: rgba(255, 255, 255, 0.035) !important;
+  border: 1px solid rgba(255, 255, 255, 0.11) !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  font-size: 12px;
+  font-weight: 560;
+}
+
+html.reader-embed [data-reader-action] .svgicon,
+html.reader-embed [data-reader-action] svg {
+  width: 16px;
+  height: 16px;
+}
+
+html.reader-embed [data-reader-action]:active {
+  background: rgba(255, 255, 255, 0.075) !important;
+  transform: scale(0.98);
+}
+
+html.reader-embed [data-reader-action="favorite"].is-active {
+  color: #dfb775 !important;
+  background: rgba(223, 183, 117, 0.08) !important;
+  border-color: rgba(223, 183, 117, 0.26) !important;
+}
+
+html.reader-embed [data-reader-action="archive"].is-active {
+  color: #8dcbd0 !important;
+  background: rgba(141, 203, 208, 0.08) !important;
+  border-color: rgba(141, 203, 208, 0.26) !important;
+}
+
 html.reader-embed .bookmark-article .prose {
   color: var(--reader-body);
   font-size: var(--reader-font-size, 17px);

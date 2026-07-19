@@ -10,7 +10,7 @@
     <title>公众号阅读器</title>
     <link rel="manifest" href="/reader-assets/manifest.webmanifest" crossorigin="use-credentials">
     <link rel="icon" href="/reader-assets/icons/reader-192.png" sizes="192x192">
-    <link rel="stylesheet" href="/reader-assets/styles.css?v=22">
+    <link rel="stylesheet" href="/reader-assets/styles.css?v=23">
   </head>
   <body>
     <svg class="icon-sprite" aria-hidden="true">
@@ -122,6 +122,7 @@
             <button id="reader-focus" class="toolbar-button focus-button" type="button" aria-label="全屏阅读" aria-pressed="false" aria-keyshortcuts="F" title="全屏阅读"><svg><use href="#i-focus"/></svg><span>全屏阅读</span></button>
             <button id="reader-read" class="toolbar-button" type="button" aria-label="标为已读"><svg><use href="#i-check"/></svg><span>标为已读</span></button>
             <button id="reader-star" class="toolbar-button star-button" type="button" aria-label="收藏" aria-keyshortcuts="S"><svg><use href="#i-star"/></svg><span>收藏</span></button>
+            <button id="reader-archive" class="toolbar-button archive-button" type="button" aria-label="移至归档"><svg><use href="#i-inbox"/></svg><span>移至归档</span></button>
             <button id="reader-more" class="mobile-reader-more icon-button" type="button" aria-label="阅读设置"><svg><use href="#i-settings"/></svg></button>
           </header>
 
@@ -238,6 +239,6 @@
     </dialog>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="/reader-assets/app.js?v=25" defer></script>
+    <script src="/reader-assets/app.js?v=28" defer></script>
   </body>
 </html>

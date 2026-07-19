@@ -84,6 +84,7 @@
     readerMeta: $("#reader-meta"),
     readerRead: $("#reader-read"),
     readerStar: $("#reader-star"),
+    readerArchive: $("#reader-archive"),
     readerBack: $("#reader-back"),
     readerAutoStatus: $("#reader-auto-status"),
     readerFocus: $("#reader-focus"),
@@ -329,6 +330,7 @@
           doc.documentElement.classList.add("reader-embed", "dark");
           doc.documentElement.dataset.readerHighlightMode = String(state.highlightMode);
           doc.documentElement.style.setProperty("--reader-font-size", `${state.fontSize}px`);
+          configureArticleEndActions(doc);
           bindArticleScrolling(doc);
           configureMobileNativeScrolling(doc);
           bindArticleAnnotationInteractions(doc);
@@ -340,7 +342,7 @@
           if (!embedTheme) {
             embedTheme = doc.createElement("link");
             embedTheme.rel = "stylesheet";
-            embedTheme.href = "/reader-assets/embed.css?v=11";
+            embedTheme.href = "/reader-assets/embed.css?v=12";
             embedTheme.dataset.readerEmbedTheme = "true";
             embedTheme.addEventListener("load", revealArticle, { once: true });
             embedTheme.addEventListener("error", revealArticle, { once: true });
@@ -400,6 +402,15 @@
   function sourceName(bookmark) {
     const label = (bookmark.labels || []).find((item) => item.startsWith("公众号/"));
     return label ? label.slice(4) : bookmark.site_name || "未知公众号";
+  }
+
+  function tagTone(value) {
+    let hash = 2166136261;
+    for (const character of String(value || "")) {
+      hash ^= character.codePointAt(0);
+      hash = Math.imul(hash, 16777619);
+    }
+    return `tone-${(hash >>> 0) % 6}`;
   }
 
   function isHelperBookmark(bookmark) {
@@ -688,7 +699,7 @@
       `<button class="source-item" type="button" data-source="" aria-current="${state.activeSource === ""}">
         <span class="source-avatar">全</span><span class="source-name">全部公众号</span><span class="source-count">${totalUnread}</span>
       </button>`,
-      ...catalog.map((item) => `<button class="source-item" type="button" data-source="${escapeHtml(item.name)}" aria-current="${state.activeSource === item.name}">
+      ...catalog.map((item) => `<button class="source-item ${tagTone(item.name)}" type="button" data-source="${escapeHtml(item.name)}" aria-current="${state.activeSource === item.name}">
         <span class="source-avatar">${escapeHtml(item.name.trim().slice(0, 1) || "公")}</span>
         <span class="source-name">${escapeHtml(item.name)}</span><span class="source-count">${item.unread}</span>
       </button>`),
@@ -748,6 +759,8 @@
     const value = valueOf(bookmark);
     const topics = topicsOf(bookmark);
     const stateName = readState(bookmark);
+    const author = sourceName(bookmark);
+    const tone = tagTone(author);
     const progress = Number(bookmark.read_progress || 0);
     const progressLabel = stateName === "read" ? "已读" : stateName === "reading" ? `${progress}%` : "未读";
     const labels = [
@@ -755,10 +768,10 @@
       ...topics.slice(0, 2).map((topic) => `<span class="chip">${escapeHtml(topic)}</span>`),
     ].join("");
     const published = bookmark.published || bookmark.created;
-    return `<article class="entry-row is-${stateName}" data-id="${bookmark.id}" tabindex="0" aria-current="${state.selectedId === bookmark.id}">
+    return `<article class="entry-row is-${stateName} ${tone}" data-id="${bookmark.id}" tabindex="0" aria-current="${state.selectedId === bookmark.id}">
       <span class="entry-status"><i class="unread-dot" title="${stateName === "read" ? "已读" : stateName === "reading" ? `阅读 ${bookmark.read_progress}%` : "未读"}"></i></span>
       <div class="entry-body">
-        <div class="entry-meta"><span class="entry-source">${escapeHtml(sourceName(bookmark))}</span><span class="chip state-chip is-${stateName}">${progressLabel}</span><span class="entry-time">${shortTime(published)}</span></div>
+        <div class="entry-meta"><span class="entry-source">${escapeHtml(author)}</span><span class="chip state-chip is-${stateName}">${progressLabel}</span><span class="entry-time">${shortTime(published)}</span></div>
         <h2 class="entry-title">${escapeHtml(bookmark.title || "未命名文章")}</h2>
         <p class="entry-description">${escapeHtml(bookmark.description || "暂无摘要")}</p>
         <div class="entry-labels">${labels}</div>
@@ -770,7 +783,7 @@
   function subscriptionRows() {
     const catalog = sourceCatalog();
     if (!catalog.length) return `<div class="empty-list">尚未读取到公众号状态。</div>`;
-    return catalog.map((feed) => `<article class="subscription-row" data-feed="${escapeHtml(feed.name)}">
+    return catalog.map((feed) => `<article class="subscription-row ${tagTone(feed.name)}" data-feed="${escapeHtml(feed.name)}">
       <span class="source-avatar">${escapeHtml(feed.name.trim().slice(0, 1) || "公")}</span>
       <div><strong>${escapeHtml(feed.name)}</strong><p>最近抓取 ${fullTime(feed.latest)} · ${escapeHtml(feed.health)}</p></div>
       <div class="subscription-stats"><b>${feed.articles} 篇</b>${feed.unread} 未读</div>
@@ -1014,7 +1027,6 @@
           moved: false,
           width: Math.max(pane.element.clientWidth, window.innerWidth),
         };
-        pane.element.setPointerCapture?.(event.pointerId);
       });
 
       pane.element.addEventListener("pointermove", (event) => {
@@ -1029,6 +1041,7 @@
         }
         if (horizontal < 8 || Math.sign(rawX) !== swipe.direction) return;
         event.preventDefault();
+        if (!swipe.moved) pane.element.setPointerCapture?.(event.pointerId);
         swipe.moved = true;
         swipe.distance = swipe.direction < 0 ? Math.max(-swipe.width, rawX) : Math.min(swipe.width, rawX);
         state.suppressPaneClickUntil = performance.now() + 420;
@@ -1068,7 +1081,6 @@
         startY: event.clientY,
         distance: 0,
       };
-      elements.readerContent.setPointerCapture?.(event.pointerId);
     });
     elements.readerContent.addEventListener("pointermove", (event) => {
       const swipe = state.edgeSwipe;
@@ -1082,6 +1094,7 @@
       swipe.distance = distance;
       if (distance < 8) return;
       event.preventDefault();
+      elements.readerContent.setPointerCapture?.(event.pointerId);
       elements.readerContent.classList.add("is-edge-swiping");
       elements.readerContent.classList.toggle("is-edge-swipe-ready", distance >= 72);
       elements.readerContent.style.setProperty("--edge-swipe-distance", `${Math.min(36, distance * 0.5)}px`);
@@ -1116,6 +1129,9 @@
     elements.readerStar.classList.toggle("is-active", Boolean(bookmark.is_marked));
     elements.readerStar.querySelector("span").textContent = bookmark.is_marked ? "已收藏" : "收藏";
     elements.readerStar.setAttribute("aria-label", bookmark.is_marked ? "取消收藏" : "收藏");
+    elements.readerArchive.classList.toggle("is-active", Boolean(bookmark.is_archived));
+    elements.readerArchive.querySelector("span").textContent = bookmark.is_archived ? "移出归档" : "移至归档";
+    elements.readerArchive.setAttribute("aria-label", bookmark.is_archived ? "移出归档" : "移至归档");
     const isRead = Number(bookmark.read_progress || 0) >= 100;
     elements.readerRead.querySelector("span").textContent = isRead ? "标为未读" : "标为已读";
     elements.readerRead.setAttribute("aria-label", isRead ? "标为未读" : "标为已读");
@@ -1127,6 +1143,7 @@
     renderRating(bookmark);
     renderTopics(bookmark);
     renderMobileActions(bookmark);
+    syncArticleEndActions(elements.articleFrame.contentDocument, bookmark);
     renderFontSize();
   }
 
@@ -1329,6 +1346,27 @@
       bookmark.is_marked = previous;
       render();
       showToast(error.message || "收藏失败", true);
+    }
+  }
+
+  async function toggleArchive(id = state.selectedId) {
+    const bookmark = state.bookmarks.find((item) => item.id === id);
+    if (!bookmark) return;
+    const previousArchived = Boolean(bookmark.is_archived);
+    const previousProgress = Number(bookmark.read_progress || 0);
+    const archived = !previousArchived;
+    const progress = archived ? 100 : 0;
+    bookmark.is_archived = archived;
+    bookmark.read_progress = progress;
+    render();
+    try {
+      await patchBookmark(id, { is_archived: archived, read_progress: progress }, { rerender: false });
+      showToast(archived ? "已移至归档，并归入已读栏目" : "已移出归档，并恢复为未读");
+    } catch (error) {
+      bookmark.is_archived = previousArchived;
+      bookmark.read_progress = previousProgress;
+      render();
+      showToast(error.message || "归档状态保存失败", true);
     }
   }
 
@@ -1726,11 +1764,54 @@
       const doc = elements.articleFrame.contentDocument;
       const frameRect = elements.articleFrame.getBoundingClientRect();
       const target = doc?.elementFromPoint?.(event.clientX - frameRect.left, event.clientY - frameRect.top);
-      const actionable = target?.closest?.("a[href], rd-annotation, .rd-annotation");
+      const actionable = target?.closest?.("[data-reader-action], a[href], rd-annotation, .rd-annotation");
       actionable?.click();
     } catch {
       // Reading and native scrolling remain available if a target cannot be forwarded.
     }
+  }
+
+  function syncArticleEndActions(doc, bookmark = selectedBookmark()) {
+    if (!doc?.body || !bookmark) return;
+    const favorite = doc.querySelector('[data-reader-action="favorite"]');
+    const archive = doc.querySelector('[data-reader-action="archive"]');
+    if (!favorite || !archive) return;
+    favorite.classList.toggle("is-active", Boolean(bookmark.is_marked));
+    favorite.setAttribute("aria-label", bookmark.is_marked ? "取消收藏" : "收藏");
+    favorite.querySelector("[data-reader-action-label]").textContent = bookmark.is_marked ? "已收藏" : "收藏";
+    archive.classList.toggle("is-active", Boolean(bookmark.is_archived));
+    archive.setAttribute("aria-label", bookmark.is_archived ? "移出归档" : "移至归档");
+    archive.querySelector("[data-reader-action-label]").textContent = bookmark.is_archived ? "移出归档" : "移至归档";
+  }
+
+  function configureArticleEndActions(doc) {
+    if (!doc?.body) return;
+    const frame = doc.querySelector('[id^="bookmark-bottom-actions-"]');
+    const form = frame?.querySelector("form");
+    if (!frame || !form) return;
+    frame.closest(".mx-auto")?.setAttribute("data-reader-end-actions", "true");
+    form.dataset.readerEndActions = "true";
+    form.removeAttribute("data-controller");
+
+    const prepare = (button, action, handler) => {
+      if (!button || button.dataset.readerActionBound) return;
+      const glyph = button.querySelector(".svgicon")?.outerHTML || "";
+      button.type = "button";
+      button.removeAttribute("name");
+      button.removeAttribute("value");
+      button.dataset.readerAction = action;
+      button.dataset.readerActionBound = "true";
+      button.innerHTML = `${glyph}<span data-reader-action-label></span>`;
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        handler();
+      });
+    };
+
+    prepare(form.querySelector('[name="is_marked"]'), "favorite", () => toggleFavorite());
+    prepare(form.querySelector('[name="is_archived"]'), "archive", () => toggleArchive());
+    syncArticleEndActions(doc);
   }
 
   function bindArticleAnnotationInteractions(doc) {
@@ -1824,7 +1905,7 @@
         if (!embedTheme) {
           embedTheme = doc.createElement("link");
           embedTheme.rel = "stylesheet";
-          embedTheme.href = "/reader-assets/embed.css?v=11";
+          embedTheme.href = "/reader-assets/embed.css?v=12";
           embedTheme.dataset.readerEmbedTheme = "true";
           embedTheme.addEventListener("load", revealArticle, { once: true });
           embedTheme.addEventListener("error", revealArticle, { once: true });
@@ -1834,6 +1915,7 @@
           revealArticle();
         }
         doc.documentElement.style.setProperty("--reader-font-size", `${state.fontSize}px`);
+        configureArticleEndActions(doc);
         bindArticleScrolling(doc);
         configureMobileNativeScrolling(doc);
         bindArticleAnnotationInteractions(doc);
@@ -1928,6 +2010,7 @@
       elements.exportDialog.showModal();
     });
     elements.readerStar.addEventListener("click", () => toggleFavorite());
+    elements.readerArchive.addEventListener("click", () => toggleArchive());
     elements.readerMore.addEventListener("click", () => {
       renderMobileActions(selectedBookmark());
       elements.readerActionsDialog.showModal();
