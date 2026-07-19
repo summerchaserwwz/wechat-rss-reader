@@ -47,6 +47,7 @@
     mobilePaneSwipe: null,
     paneSwipeTimer: 0,
     suppressPaneClickUntil: 0,
+    sourceToneMap: new Map(),
   };
 
   const tabMeta = {
@@ -404,13 +405,35 @@
     return label ? label.slice(4) : bookmark.site_name || "未知公众号";
   }
 
-  function tagTone(value) {
+  const authorToneCount = 16;
+
+  function toneHash(value) {
     let hash = 2166136261;
     for (const character of String(value || "")) {
       hash ^= character.codePointAt(0);
       hash = Math.imul(hash, 16777619);
     }
-    return `tone-${(hash >>> 0) % 6}`;
+    return hash >>> 0;
+  }
+
+  function refreshSourceToneMap() {
+    const used = new Set();
+    const next = new Map();
+    const names = sourceCatalog().map((item) => item.name).sort((a, b) => a.localeCompare(b, "zh-CN"));
+    for (const name of names) {
+      let index = toneHash(name) % authorToneCount;
+      for (let offset = 0; used.has(index) && offset < authorToneCount; offset += 1) {
+        index = (index + 5) % authorToneCount;
+      }
+      used.add(index);
+      next.set(name, index);
+    }
+    state.sourceToneMap = next;
+  }
+
+  function tagTone(value) {
+    const name = String(value || "");
+    return `tone-${state.sourceToneMap.get(name) ?? toneHash(name) % authorToneCount}`;
   }
 
   function isHelperBookmark(bookmark) {
@@ -1197,6 +1220,7 @@
   }
 
   function render() {
+    refreshSourceToneMap();
     renderTabs();
     renderSources();
     renderTimeline();
