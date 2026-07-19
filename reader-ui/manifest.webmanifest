@@ -1,0 +1,35 @@
+{
+  "id": "/",
+  "name": "公众号阅读器",
+  "short_name": "公众号阅读",
+  "description": "未读优先的私人微信公众号阅读器",
+  "lang": "zh-CN",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#111111",
+  "theme_color": "#111111",
+  "categories": ["news", "productivity"],
+  "icons": [
+    {
+      "src": "/reader-assets/icons/reader-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/reader-assets/icons/reader-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "打开未读",
+      "short_name": "未读",
+      "url": "/#unread",
+      "icons": [{ "src": "/reader-assets/icons/reader-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

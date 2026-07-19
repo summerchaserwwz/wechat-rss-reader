@@ -6,7 +6,7 @@
     annotations: [],
     annotatedIds: new Set(),
     status: null,
-    activeTab: "inbox",
+    activeTab: "unread",
     activeSource: "",
     sourceQuery: "",
     selectedId: "",
@@ -26,13 +26,28 @@
     annotationTimer: 0,
     annotationObserver: null,
     pendingAnnotationId: "",
+    pendingAnnotationDocument: null,
+    pendingAnnotationRange: null,
     lastSelectionRect: null,
     fontSize: 17,
     exportDirectoryHandle: null,
+    timelineLimit: 60,
+    timelineBatch: 60,
+    sourceCollapsed: false,
+    focusMode: false,
+    nativeFullscreenActive: false,
+    prefetchedIds: new Set(),
+    articleLoadGeneration: 0,
+    articlePrimeTimer: 0,
+    articleResizeObserver: null,
+    articleStageScrollHandler: null,
+    highlightMode: false,
+    installPrompt: null,
+    edgeSwipe: null,
   };
 
   const tabMeta = {
-    inbox: ["收件箱", "按发布时间排列"],
+    inbox: ["已读", "读完后归档在这里"],
     unread: ["未读", "还没有读完的文章"],
     favorites: ["收藏", "准备继续处理的文章"],
     highlights: ["划线笔记", "摘录、批注与来源"],
@@ -43,6 +58,7 @@
   const $ = (selector) => document.querySelector(selector);
   const elements = {
     app: $("#app"),
+    sourceToggle: $("#source-toggle"),
     tabList: $("#tab-list"),
     sourceList: $("#source-list"),
     sourceSearch: $("#source-search"),
@@ -65,10 +81,18 @@
     readerStar: $("#reader-star"),
     readerBack: $("#reader-back"),
     readerAutoStatus: $("#reader-auto-status"),
+    readerFocus: $("#reader-focus"),
+    readerMore: $("#reader-more"),
+    readerStage: $(".reader-stage"),
     articleFrame: $("#article-frame"),
+    articleLoading: $("#article-loading"),
+    mobileScrollLayer: $("#mobile-scroll-layer"),
+    mobileScrollSpacer: $("#mobile-scroll-spacer"),
+    edgeBackIndicator: $("#edge-back-indicator"),
     fontLarger: $("#font-larger"),
     fontSmaller: $("#font-smaller"),
     fontSize: $("#font-size"),
+    highlightMode: $("#highlight-mode"),
     articleNotes: $("#article-notes"),
     ratingControl: $("#rating-control"),
     topicList: $("#topic-list"),
@@ -95,6 +119,14 @@
     chooseExportFolder: $("#choose-export-folder"),
     exportToFolder: $("#export-to-folder"),
     forgetExportFolder: $("#forget-export-folder"),
+    readerActionsDialog: $("#reader-actions-dialog"),
+    mobileActionsTitle: $("#mobile-actions-title"),
+    mobileActionsClose: $("#mobile-actions-close"),
+    mobileReaderRead: $("#mobile-reader-read"),
+    mobileFontLarger: $("#mobile-font-larger"),
+    mobileFontSmaller: $("#mobile-font-smaller"),
+    mobileFontSize: $("#mobile-font-size"),
+    installApp: $("#install-app"),
     toast: $("#toast"),
   };
 
@@ -117,6 +149,211 @@
     elements.toast.classList.add("is-visible");
     window.clearTimeout(showToast.timer);
     showToast.timer = window.setTimeout(() => elements.toast.classList.remove("is-visible"), 2600);
+  }
+
+  function resetTimelineWindow() {
+    state.timelineLimit = state.timelineBatch;
+  }
+
+  function isMobileReader() {
+    return window.matchMedia("(max-width: 760px), (pointer: coarse)").matches;
+  }
+
+  function isMobileLayout() {
+    return window.matchMedia("(max-width: 760px)").matches;
+  }
+
+  function fontPreferenceKey() {
+    return isMobileReader() ? "reader-font-size-mobile-codex" : "reader-font-size";
+  }
+
+  function applyHighlightModeToArticle(doc = elements.articleFrame.contentDocument) {
+    try {
+      if (!doc?.documentElement) return;
+      doc.documentElement.dataset.readerHighlightMode = String(state.highlightMode);
+      if (!state.highlightMode) {
+        doc.getSelection()?.removeAllRanges();
+        doc.querySelector(".annotator")?.classList.add("hidden");
+        clearPendingAnnotationPreview(doc);
+      }
+    } catch {
+      // The next same-origin article pass applies the mode.
+    }
+  }
+
+  function renderHighlightMode() {
+    elements.readerContent.dataset.highlightMode = String(state.highlightMode);
+    elements.highlightMode.classList.toggle("is-active", state.highlightMode);
+    elements.highlightMode.setAttribute("aria-pressed", String(state.highlightMode));
+    elements.highlightMode.setAttribute("aria-label", state.highlightMode ? "退出划线模式" : "进入划线模式");
+    elements.highlightMode.title = state.highlightMode ? "退出划线模式" : "进入划线模式";
+    applyHighlightModeToArticle();
+  }
+
+  function setHighlightMode(active, { quiet = false } = {}) {
+    state.highlightMode = Boolean(active);
+    renderHighlightMode();
+    if (!quiet) {
+      showToast(state.highlightMode
+        ? "已进入划线模式：拖选文字即保存，不记笔记"
+        : "已回到阅读模式：可以顺滑滚动，不会误选全文");
+    }
+  }
+
+  function applyLayoutState() {
+    elements.app.dataset.sourceCollapsed = String(state.sourceCollapsed);
+    elements.app.dataset.focusMode = String(state.focusMode);
+    elements.sourceToggle.setAttribute("aria-pressed", String(state.sourceCollapsed));
+    elements.sourceToggle.setAttribute("aria-label", state.sourceCollapsed ? "展开左侧栏" : "收起左侧栏");
+    elements.sourceToggle.title = state.sourceCollapsed ? "展开左侧栏" : "收起左侧栏";
+    elements.readerFocus.setAttribute("aria-pressed", String(state.focusMode));
+    elements.readerFocus.setAttribute("aria-label", state.focusMode ? "退出全屏阅读" : "全屏阅读");
+    elements.readerFocus.title = state.focusMode ? "退出全屏阅读" : "全屏阅读";
+    elements.readerFocus.querySelector("span").textContent = state.focusMode ? "退出全屏" : "全屏阅读";
+    renderHighlightMode();
+    if (selectedBookmark()) renderMobileActions(selectedBookmark());
+  }
+
+  function toggleSourcePane() {
+    state.sourceCollapsed = !state.sourceCollapsed;
+    localStorage.setItem("reader-source-collapsed", String(state.sourceCollapsed));
+    applyLayoutState();
+  }
+
+  async function setReaderFocus(active, { syncNative = true } = {}) {
+    if (active && !selectedBookmark()) {
+      showToast("先选择一篇文章，再进入全屏阅读");
+      return;
+    }
+    state.focusMode = Boolean(active);
+    applyLayoutState();
+    if (!syncNative) return;
+    try {
+      if (state.focusMode && !document.fullscreenElement && document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+      } else if (!state.focusMode && document.fullscreenElement && document.exitFullscreen) {
+        await document.exitFullscreen();
+      }
+    } catch {
+      if (state.focusMode) showToast("已进入沉浸阅读；浏览器未允许隐藏工具栏");
+    }
+  }
+
+  function setArticleLoading(active) {
+    elements.articleLoading.hidden = !active;
+    elements.articleFrame.classList.toggle("is-loading", active);
+  }
+
+  function prefetchArticle(id) {
+    if (!id || state.prefetchedIds.has(String(id))) return;
+    state.prefetchedIds.add(String(id));
+    const link = document.createElement("link");
+    link.rel = "prefetch";
+    link.as = "document";
+    link.href = `/bookmarks/${encodeURIComponent(id)}?reader=1`;
+    link.dataset.readerPrefetch = String(id);
+    document.head.append(link);
+    window.setTimeout(() => link.remove(), 30000);
+  }
+
+  function syncMobileArticleHeight(doc) {
+    if (!doc?.body || !doc.documentElement || !isMobileLayout()) return;
+    const stageHeight = elements.readerStage.clientHeight;
+    const documentHeight = Math.ceil(Math.max(
+      doc.body.scrollHeight,
+      doc.body.getBoundingClientRect().height,
+      doc.documentElement.scrollHeight,
+      stageHeight,
+    ));
+    const current = Number.parseFloat(elements.articleFrame.style.height) || 0;
+    if (Math.abs(current - documentHeight) > 1) {
+      elements.articleFrame.style.height = `${documentHeight}px`;
+    }
+    elements.mobileScrollSpacer.style.height = `${Math.max(0, documentHeight - stageHeight)}px`;
+    doc.documentElement.dataset.readerParentScroll = "true";
+  }
+
+  function configureMobileNativeScrolling(doc) {
+    if (!doc?.body || !isMobileLayout()) return;
+    syncMobileArticleHeight(doc);
+    if (doc.documentElement.dataset.readerParentScrollBound) return;
+    doc.documentElement.dataset.readerParentScrollBound = "true";
+    state.articleResizeObserver?.disconnect();
+    let heightFrame = 0;
+    const scheduleHeight = () => {
+      if (heightFrame) return;
+      heightFrame = doc.defaultView.requestAnimationFrame(() => {
+        heightFrame = 0;
+        syncMobileArticleHeight(doc);
+      });
+    };
+    if (doc.defaultView.ResizeObserver) {
+      state.articleResizeObserver = new doc.defaultView.ResizeObserver(scheduleHeight);
+      state.articleResizeObserver.observe(doc.body);
+    }
+    doc.addEventListener("load", scheduleHeight, { capture: true });
+    doc.fonts?.ready?.then(scheduleHeight).catch(() => {});
+    window.setTimeout(scheduleHeight, 80);
+    window.setTimeout(scheduleHeight, 500);
+  }
+
+  function refreshArticleLayout() {
+    const doc = elements.articleFrame.contentDocument;
+    if (!doc?.body) return;
+    if (isMobileLayout()) {
+      configureMobileNativeScrolling(doc);
+      syncMobileArticleHeight(doc);
+      return;
+    }
+    state.articleResizeObserver?.disconnect();
+    elements.articleFrame.style.removeProperty("height");
+    elements.mobileScrollSpacer.style.height = "0px";
+    doc.documentElement.dataset.readerParentScroll = "false";
+  }
+
+  function primeArticleFrame(generation, id) {
+    window.clearTimeout(state.articlePrimeTimer);
+    const startedAt = performance.now();
+    const poll = () => {
+      if (generation !== state.articleLoadGeneration || state.selectedId !== id) return;
+      try {
+        const doc = elements.articleFrame.contentDocument;
+        const path = elements.articleFrame.contentWindow?.location?.pathname || "";
+        const prose = doc?.querySelector?.(".bookmark-article .prose");
+        if (doc?.head && prose && path.includes(`/bookmarks/${id}`)) {
+          doc.documentElement.classList.add("reader-embed", "dark");
+          doc.documentElement.dataset.readerHighlightMode = String(state.highlightMode);
+          doc.documentElement.style.setProperty("--reader-font-size", `${state.fontSize}px`);
+          bindArticleScrolling(doc);
+          configureMobileNativeScrolling(doc);
+          bindArticleAnnotationInteractions(doc);
+          let embedTheme = doc.querySelector("link[data-reader-embed-theme]");
+          const revealArticle = () => {
+            if (generation !== state.articleLoadGeneration) return;
+            window.requestAnimationFrame(() => setArticleLoading(false));
+          };
+          if (!embedTheme) {
+            embedTheme = doc.createElement("link");
+            embedTheme.rel = "stylesheet";
+            embedTheme.href = "/reader-assets/embed.css?v=11";
+            embedTheme.dataset.readerEmbedTheme = "true";
+            embedTheme.addEventListener("load", revealArticle, { once: true });
+            embedTheme.addEventListener("error", revealArticle, { once: true });
+            doc.head.append(embedTheme);
+            window.setTimeout(revealArticle, 450);
+          } else {
+            revealArticle();
+          }
+          return;
+        }
+      } catch {
+        // The iframe is still swapping its initial document.
+      }
+      if (performance.now() - startedAt < 4000) {
+        state.articlePrimeTimer = window.setTimeout(poll, 32);
+      }
+    };
+    poll();
   }
 
   async function request(path, options = {}) {
@@ -158,6 +395,10 @@
   function sourceName(bookmark) {
     const label = (bookmark.labels || []).find((item) => item.startsWith("公众号/"));
     return label ? label.slice(4) : bookmark.site_name || "未知公众号";
+  }
+
+  function isHelperBookmark(bookmark) {
+    return (bookmark.labels || []).includes("Obsidian同步助手");
   }
 
   function valueOf(bookmark) {
@@ -376,7 +617,7 @@
 
   function counts() {
     return {
-      inbox: state.bookmarks.length,
+      inbox: state.bookmarks.filter((item) => Number(item.read_progress || 0) >= 100).length,
       unread: state.bookmarks.filter((item) => Number(item.read_progress || 0) < 100).length,
       favorites: state.bookmarks.filter((item) => item.is_marked).length,
       highlights: state.annotations.length,
@@ -406,6 +647,20 @@
         if (!item.latest || new Date(published) > new Date(item.latest)) item.latest = published;
       }
       byName.set(name, item);
+    }
+    const helperBookmarks = state.bookmarks.filter(isHelperBookmark);
+    if (helperBookmarks.length) {
+      const latest = helperBookmarks.reduce((value, bookmark) => {
+        const published = bookmark.published || bookmark.created || "";
+        return !value || new Date(published) > new Date(value) ? published : value;
+      }, "");
+      byName.set("Obsidian同步助手", {
+        name: "Obsidian同步助手",
+        articles: helperBookmarks.length,
+        unread: helperBookmarks.filter((item) => Number(item.read_progress || 0) < 100).length,
+        latest,
+        health: "自动同步",
+      });
     }
     return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name, "zh-CN"));
   }
@@ -437,7 +692,8 @@
     for (const button of elements.sourceList.querySelectorAll("[data-source]")) {
       button.addEventListener("click", () => {
         state.activeSource = button.dataset.source || "";
-        if (state.activeTab === "subscriptions") state.activeTab = "inbox";
+        if (state.activeTab === "subscriptions") state.activeTab = "unread";
+        resetTimelineWindow();
         elements.app.dataset.mobileView = "timeline";
         render();
       });
@@ -445,10 +701,13 @@
   }
 
   function filteredBookmarks() {
-    const sourceFiltered = state.activeSource
-      ? state.bookmarks.filter((item) => sourceName(item) === state.activeSource)
-      : state.bookmarks;
+    const sourceFiltered = state.activeSource === "Obsidian同步助手"
+      ? state.bookmarks.filter(isHelperBookmark)
+      : state.activeSource
+        ? state.bookmarks.filter((item) => sourceName(item) === state.activeSource)
+        : state.bookmarks;
     switch (state.activeTab) {
+      case "inbox": return sourceFiltered.filter((item) => Number(item.read_progress || 0) >= 100);
       case "unread": return sourceFiltered.filter((item) => Number(item.read_progress || 0) < 100);
       case "favorites": return sourceFiltered.filter((item) => item.is_marked);
       case "highlights": return sourceFiltered.filter((item) => state.annotatedIds.has(item.id));
@@ -459,7 +718,13 @@
 
   function filteredAnnotations() {
     return state.annotations
-      .filter((item) => !state.activeSource || annotationSource(item) === state.activeSource)
+      .filter((item) => {
+        if (!state.activeSource) return true;
+        if (state.activeSource === "Obsidian同步助手") {
+          return isHelperBookmark(state.bookmarks.find((bookmark) => bookmark.id === item.bookmark_id) || {});
+        }
+        return annotationSource(item) === state.activeSource;
+      })
       .sort((a, b) => new Date(b.created || 0) - new Date(a.created || 0));
   }
 
@@ -504,12 +769,26 @@
     </article>`).join("");
   }
 
+  function loadMoreTimeline() {
+    if (["subscriptions", "highlights"].includes(state.activeTab)) return;
+    const total = filteredBookmarks().length;
+    if (state.timelineLimit >= total) return;
+    const previousScrollTop = elements.timeline.scrollTop;
+    state.timelineLimit = Math.min(total, state.timelineLimit + state.timelineBatch);
+    renderTimeline();
+    elements.timeline.scrollTop = previousScrollTop;
+  }
+
   function bindTimelineRows() {
     for (const row of elements.timeline.querySelectorAll(".entry-row")) {
       const open = () => selectBookmark(row.dataset.id);
       row.addEventListener("click", (event) => {
         if (!event.target.closest("[data-star]")) open();
       });
+      row.addEventListener("pointerenter", (event) => {
+        if (event.pointerType !== "touch") prefetchArticle(row.dataset.id);
+      }, { once: true });
+      row.addEventListener("focusin", () => prefetchArticle(row.dataset.id), { once: true });
       row.addEventListener("keydown", (event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
@@ -526,7 +805,8 @@
     for (const row of elements.timeline.querySelectorAll("[data-feed]")) {
       row.addEventListener("click", () => {
         state.activeSource = row.dataset.feed;
-        state.activeTab = "inbox";
+        state.activeTab = "unread";
+        resetTimelineWindow();
         elements.app.dataset.mobileView = "timeline";
         render();
       });
@@ -541,6 +821,7 @@
         }
       });
     }
+    elements.timeline.querySelector("[data-load-more]")?.addEventListener("click", loadMoreTimeline);
   }
 
   function renderTimeline() {
@@ -567,8 +848,10 @@
       return;
     }
     const bookmarks = filteredBookmarks();
+    const visible = bookmarks.slice(0, state.timelineLimit);
+    const remaining = Math.max(0, bookmarks.length - visible.length);
     elements.timeline.innerHTML = bookmarks.length
-      ? bookmarks.map(entryRow).join("")
+      ? `${visible.map(entryRow).join("")}${remaining ? `<button class="timeline-more" type="button" data-load-more>继续加载 ${Math.min(state.timelineBatch, remaining)} 篇</button>` : ""}`
       : `<div class="empty-list">这个视图暂时没有文章。</div>`;
     bindTimelineRows();
   }
@@ -589,11 +872,22 @@
     }
   }
 
+  function renderMobileActions(bookmark) {
+    if (!bookmark) return;
+    const isRead = Number(bookmark.read_progress || 0) >= 100;
+    elements.mobileActionsTitle.textContent = bookmark.title || "未命名文章";
+    elements.mobileReaderRead.querySelector("span").textContent = isRead ? "标为未读" : "标为已读";
+  }
+
   function renderFontSize() {
     elements.fontSize.value = String(state.fontSize);
     elements.fontSize.textContent = `${state.fontSize}px`;
-    elements.fontSmaller.disabled = state.fontSize <= 15;
-    elements.fontLarger.disabled = state.fontSize >= 24;
+    elements.fontSmaller.disabled = state.fontSize <= 12;
+    elements.fontLarger.disabled = state.fontSize >= 20;
+    elements.mobileFontSize.value = String(state.fontSize);
+    elements.mobileFontSize.textContent = `${state.fontSize}px`;
+    elements.mobileFontSmaller.disabled = state.fontSize <= 12;
+    elements.mobileFontLarger.disabled = state.fontSize >= 20;
     try {
       elements.articleFrame.contentDocument?.documentElement.style.setProperty("--reader-font-size", `${state.fontSize}px`);
     } catch {
@@ -602,10 +896,111 @@
   }
 
   function setFontSize(value) {
-    state.fontSize = Math.max(15, Math.min(24, Number(value) || 17));
-    localStorage.setItem("reader-font-size", String(state.fontSize));
+    state.fontSize = Math.max(12, Math.min(20, Number(value) || (isMobileReader() ? 14 : 17)));
+    localStorage.setItem(fontPreferenceKey(), String(state.fontSize));
     renderFontSize();
     showToast(`正文字号 ${state.fontSize}px`);
+  }
+
+  function isStandaloneApp() {
+    return window.matchMedia("(display-mode: standalone), (display-mode: fullscreen)").matches;
+  }
+
+  function renderInstallAction() {
+    elements.installApp.hidden = isStandaloneApp();
+  }
+
+  async function installReaderApp() {
+    if (isStandaloneApp()) return;
+    if (!state.installPrompt) {
+      showToast("请在 Chrome 菜单中选择“安装应用”或“添加到主屏幕”");
+      return;
+    }
+    state.installPrompt.prompt();
+    const result = await state.installPrompt.userChoice;
+    state.installPrompt = null;
+    renderInstallAction();
+    if (result.outcome === "accepted") showToast("已安装到桌面，下次打开不显示地址栏");
+  }
+
+  function currentReadingProgress() {
+    const bookmark = selectedBookmark();
+    if (!bookmark) return 0;
+    let root = elements.readerStage;
+    if (!isMobileLayout()) {
+      const doc = elements.articleFrame.contentDocument;
+      root = doc?.scrollingElement || doc?.documentElement;
+    }
+    if (!root) return Number(bookmark.read_progress || 0);
+    const maxScroll = Math.max(1, root.scrollHeight - root.clientHeight);
+    const ratio = Math.min(1, Math.max(0, root.scrollTop / maxScroll));
+    const measured = ratio >= 0.8 ? 100 : Math.min(99, Math.max(1, Math.round(ratio * 100)));
+    return Math.max(Number(bookmark.read_progress || 0), measured);
+  }
+
+  async function saveCurrentReadingProgress() {
+    const bookmark = selectedBookmark();
+    if (!bookmark) return;
+    window.clearTimeout(state.progressTimer);
+    window.clearTimeout(state.progressStartTimer);
+    const progress = currentReadingProgress();
+    if (progress !== Number(bookmark.read_progress || 0)) {
+      await setReadProgress(bookmark.id, progress, true);
+    }
+  }
+
+  async function returnToTimeline({ fromHistory = false } = {}) {
+    await saveCurrentReadingProgress();
+    if (state.focusMode) await setReaderFocus(false);
+    if (!fromHistory && isMobileLayout() && history.state?.readerView === "reader") {
+      history.back();
+      return;
+    }
+    elements.app.dataset.mobileView = "timeline";
+  }
+
+  function resetEdgeSwipe() {
+    state.edgeSwipe = null;
+    elements.readerContent.classList.remove("is-edge-swiping", "is-edge-swipe-ready");
+    elements.readerContent.style.removeProperty("--edge-swipe-distance");
+  }
+
+  function bindEdgeSwipeBack() {
+    elements.readerContent.addEventListener("pointerdown", (event) => {
+      if (!isMobileLayout() || elements.app.dataset.mobileView !== "reader" || event.button !== 0 || event.clientX > 28) return;
+      state.edgeSwipe = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        distance: 0,
+      };
+      elements.readerContent.setPointerCapture?.(event.pointerId);
+    });
+    elements.readerContent.addEventListener("pointermove", (event) => {
+      const swipe = state.edgeSwipe;
+      if (!swipe || swipe.pointerId !== event.pointerId) return;
+      const distance = Math.max(0, event.clientX - swipe.startX);
+      const vertical = Math.abs(event.clientY - swipe.startY);
+      if (vertical > distance && vertical > 18) {
+        resetEdgeSwipe();
+        return;
+      }
+      swipe.distance = distance;
+      if (distance < 8) return;
+      event.preventDefault();
+      elements.readerContent.classList.add("is-edge-swiping");
+      elements.readerContent.classList.toggle("is-edge-swipe-ready", distance >= 72);
+      elements.readerContent.style.setProperty("--edge-swipe-distance", `${Math.min(36, distance * 0.5)}px`);
+    }, { passive: false });
+    const finish = (event) => {
+      const swipe = state.edgeSwipe;
+      if (!swipe || swipe.pointerId !== event.pointerId) return;
+      const shouldReturn = swipe.distance >= 72;
+      resetEdgeSwipe();
+      if (shouldReturn) returnToTimeline();
+    };
+    elements.readerContent.addEventListener("pointerup", finish);
+    elements.readerContent.addEventListener("pointercancel", resetEdgeSwipe);
   }
 
   function renderReader() {
@@ -626,8 +1021,10 @@
     elements.readerMeta.textContent = `${sourceName(bookmark)} · ${shortTime(bookmark.published || bookmark.created)} · ${bookmark.read_progress || 0}%`;
     elements.readerStar.classList.toggle("is-active", Boolean(bookmark.is_marked));
     elements.readerStar.querySelector("span").textContent = bookmark.is_marked ? "已收藏" : "收藏";
+    elements.readerStar.setAttribute("aria-label", bookmark.is_marked ? "取消收藏" : "收藏");
     const isRead = Number(bookmark.read_progress || 0) >= 100;
     elements.readerRead.querySelector("span").textContent = isRead ? "标为未读" : "标为已读";
+    elements.readerRead.setAttribute("aria-label", isRead ? "标为未读" : "标为已读");
     const progress = Number(bookmark.read_progress || 0);
     elements.readerAutoStatus.textContent = progress >= 100 ? "已自动记录 · 已读" : progress > 0 ? `自动记录 · ${progress}%` : "自动记录 · 未读";
     const noteCount = annotationsFor(bookmark.id).length;
@@ -635,6 +1032,7 @@
     elements.articleNotes.classList.toggle("has-notes", noteCount > 0);
     renderRating(bookmark);
     renderTopics(bookmark);
+    renderMobileActions(bookmark);
     renderFontSize();
   }
 
@@ -705,10 +1103,12 @@
     if (state.activeTab === "highlights") renderTimeline();
     renderReader();
     const newest = focusNewest ? annotations.find((item) => !previousIds.has(String(item.id))) : null;
-    enhanceArticleAnnotations(elements.articleFrame.contentDocument, newest?.id || state.pendingAnnotationId);
+    enhanceArticleAnnotations(elements.articleFrame.contentDocument, state.highlightMode ? state.pendingAnnotationId : newest?.id || state.pendingAnnotationId);
     if (newest) {
       state.pendingAnnotationId = "";
-      showToast("划线笔记已保存，并进入 Obsidian 自动同步队列");
+      showToast(state.highlightMode
+        ? "纯划线已保存，不含笔记"
+        : "划线笔记已保存，并进入 Obsidian 自动同步队列");
     }
   }
 
@@ -814,11 +1214,11 @@
     }
   }
 
-  async function patchBookmark(id, payload) {
+  async function patchBookmark(id, payload, { rerender = true } = {}) {
     const updated = await request(`/api/bookmarks/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
     const index = state.bookmarks.findIndex((item) => item.id === id);
     if (index >= 0) state.bookmarks[index] = { ...state.bookmarks[index], ...(updated || {}), ...payload };
-    render();
+    if (rerender) render();
     return state.bookmarks[index];
   }
 
@@ -829,7 +1229,7 @@
     bookmark.is_marked = !previous;
     render();
     try {
-      await patchBookmark(id, { is_marked: !previous });
+      await patchBookmark(id, { is_marked: !previous }, { rerender: false });
       showToast(!previous ? "已收藏，后续会同步到 Obsidian" : "已取消收藏");
     } catch (error) {
       bookmark.is_marked = previous;
@@ -849,8 +1249,8 @@
     renderTimeline();
     renderReader();
     try {
-      await patchBookmark(id, { read_progress: progress });
-      if (!quiet) showToast(progress >= 100 ? "已标为已读" : progress === 0 ? "已标为未读" : `阅读进度 ${progress}%`);
+      await patchBookmark(id, { read_progress: progress }, { rerender: false });
+      if (!quiet) showToast(progress >= 100 ? "已读，已归入已读栏目" : progress === 0 ? "已标为未读" : `阅读进度 ${progress}%`);
     } catch (error) {
       bookmark.read_progress = previous;
       render();
@@ -913,6 +1313,56 @@
     return { top: rect.top, right: rect.right, bottom: rect.bottom, left: rect.left, width: rect.width, height: rect.height };
   }
 
+  function clearPendingAnnotationPreview(doc = state.pendingAnnotationDocument) {
+    try {
+      doc?.defaultView?.CSS?.highlights?.delete("reader-pending-annotation");
+    } catch {
+      // Custom Highlight is progressive enhancement; saving still uses Readeck.
+    }
+    if (!doc || doc === state.pendingAnnotationDocument) {
+      state.pendingAnnotationDocument = null;
+      state.pendingAnnotationRange = null;
+    }
+  }
+
+  function showPendingAnnotationPreview(doc, range) {
+    if (!doc || !range || range.collapsed) return;
+    clearPendingAnnotationPreview();
+    state.pendingAnnotationDocument = doc;
+    state.pendingAnnotationRange = range.cloneRange();
+    try {
+      const HighlightCtor = doc.defaultView?.Highlight;
+      if (HighlightCtor && doc.defaultView.CSS?.highlights) {
+        doc.defaultView.CSS.highlights.set("reader-pending-annotation", new HighlightCtor(state.pendingAnnotationRange));
+      }
+    } catch {
+      // Browsers without the Custom Highlight API retain the native selection.
+    }
+  }
+
+  function selectionWithinArticle(doc) {
+    const selection = doc?.getSelection?.();
+    if (!selection || selection.rangeCount !== 1 || selection.isCollapsed) return true;
+    const root = doc.querySelector(".bookmark-article .prose");
+    const range = selection.getRangeAt(0);
+    if (!root || !root.contains(range.startContainer) || !root.contains(range.endContainer)) return false;
+    const selectedLength = selection.toString().trim().length;
+    const articleLength = root.textContent.trim().length;
+    const maxLength = state.highlightMode ? 1200 : 2500;
+    const maxRatio = state.highlightMode ? 0.25 : 0.45;
+    return selectedLength <= maxLength && !(articleLength > 400 && selectedLength > articleLength * maxRatio);
+  }
+
+  function rejectUnsafeArticleSelection(doc) {
+    const selection = doc?.getSelection?.();
+    if (!selection || selection.isCollapsed || selectionWithinArticle(doc)) return false;
+    selection.removeAllRanges();
+    doc.querySelector(".annotator")?.classList.add("hidden");
+    clearPendingAnnotationPreview(doc);
+    showToast("已阻止整篇误选，请只划选正文中的一段文字");
+    return true;
+  }
+
   function placeFloatingElement(element, anchor, doc, preferredWidth = 320) {
     if (!element || !anchor || !doc?.defaultView) return;
     const viewportWidth = doc.defaultView.innerWidth;
@@ -920,12 +1370,16 @@
     const margin = 14;
     const gap = 12;
     const width = Math.min(preferredWidth, viewportWidth - margin * 2);
-    element.style.setProperty("position", "fixed", "important");
-    element.style.setProperty("width", `${width}px`, "important");
-    element.style.setProperty("max-width", `${width}px`, "important");
-    element.style.setProperty("transform", "none", "important");
-    element.style.setProperty("right", "auto", "important");
-    element.style.setProperty("bottom", "auto", "important");
+    const setImportant = (name, value) => {
+      if (element.style.getPropertyValue(name) === value && element.style.getPropertyPriority(name) === "important") return;
+      element.style.setProperty(name, value, "important");
+    };
+    setImportant("position", "fixed");
+    setImportant("width", `${width}px`);
+    setImportant("max-width", `${width}px`);
+    setImportant("transform", "none");
+    setImportant("right", "auto");
+    setImportant("bottom", "auto");
     const height = Math.min(element.offsetHeight || 180, viewportHeight - margin * 2);
 
     let left;
@@ -941,8 +1395,8 @@
       const below = anchor.bottom + gap;
       top = below + height <= viewportHeight - margin ? below : Math.max(margin, anchor.top - height - gap);
     }
-    element.style.setProperty("left", `${Math.round(left)}px`, "important");
-    element.style.setProperty("top", `${Math.round(top)}px`, "important");
+    setImportant("left", `${Math.round(left)}px`);
+    setImportant("top", `${Math.round(top)}px`);
   }
 
   function positionNativeAnnotator(doc) {
@@ -952,6 +1406,141 @@
     if (!anchor) return;
     annotator.classList.add("reader-positioned-annotator");
     placeFloatingElement(annotator, anchor, doc, 340);
+  }
+
+  function configureNativeAnnotator(doc) {
+    const annotator = doc?.querySelector?.(".annotator");
+    if (!annotator || getComputedStyle(annotator).display === "none") return;
+    const transparent = annotator.querySelector('input[name="color"][value="none"]');
+    // Readeck keeps its own colorValue. A property assignment only changes the
+    // radio UI and would still save the controller's default yellow value.
+    if (transparent && !transparent.checked) transparent.click();
+    const textarea = annotator.querySelector("textarea");
+    const action = [...annotator.querySelectorAll('button[data-action*="annotations#"]')]
+      .find((button) => !button.classList.contains("hidden") && /annotations#(?:create|update)/.test(button.dataset.action || ""));
+    if (state.highlightMode) {
+      if (textarea) {
+        textarea.value = "";
+        textarea.blur();
+      }
+      if (action && !annotator.dataset.readerAutoHighlightQueued) {
+        annotator.dataset.readerAutoHighlightQueued = "true";
+        window.setTimeout(() => {
+          if (!state.highlightMode || getComputedStyle(annotator).display === "none" || rejectUnsafeArticleSelection(doc)) return;
+          action.click();
+          window.setTimeout(() => {
+            doc.getSelection()?.removeAllRanges();
+            clearPendingAnnotationPreview(doc);
+          }, 80);
+        }, 24);
+      }
+      return;
+    }
+    if (!textarea) return;
+    textarea.placeholder = "输入笔记（可留空），回车确认 · Shift+Enter 换行";
+    textarea.setAttribute("aria-label", "快速笔记");
+    if (!textarea.dataset.readerQuickNoteBound) {
+      textarea.addEventListener("keydown", (event) => {
+        if (event.isComposing || event.key !== "Enter" || event.shiftKey) return;
+        event.preventDefault();
+        const noteAction = [...annotator.querySelectorAll('button[data-action*="annotations#"]')]
+          .find((button) => !button.classList.contains("hidden") && /annotations#(?:create|update)/.test(button.dataset.action || ""));
+        noteAction?.click();
+      });
+      textarea.dataset.readerQuickNoteBound = "true";
+    }
+    if (doc.activeElement !== textarea && !textarea.dataset.readerFocusQueued) {
+      textarea.dataset.readerFocusQueued = "true";
+      // A real text drag is followed by a click. Readeck's outside-click
+      // handler checks the selection in a zero-delay timer; focusing here
+      // synchronously would collapse it first and immediately close the form.
+      window.setTimeout(() => {
+        delete textarea.dataset.readerFocusQueued;
+        if (getComputedStyle(annotator).display !== "none" && doc.activeElement !== textarea) {
+          textarea.focus({ preventScroll: true });
+        }
+      }, 48);
+    }
+  }
+
+  function enhanceNativeAnnotator(doc) {
+    configureNativeAnnotator(doc);
+    if (!state.highlightMode) positionNativeAnnotator(doc);
+  }
+
+  function nestedScrollCanConsume(target, delta, doc) {
+    let node = target?.nodeType === 1 ? target : target?.parentElement;
+    while (node && node !== doc.body && node !== doc.documentElement) {
+      const style = doc.defaultView.getComputedStyle(node);
+      const scrollable = /(auto|scroll)/.test(style.overflowY) && node.scrollHeight > node.clientHeight + 1;
+      if (scrollable && ((delta > 0 && node.scrollTop < node.scrollHeight - node.clientHeight - 1) || (delta < 0 && node.scrollTop > 0))) return true;
+      node = node.parentElement;
+    }
+    return false;
+  }
+
+  function bindArticleScrolling(doc) {
+    if (!doc?.defaultView || doc.documentElement.dataset.readerScrollBound) return;
+    doc.documentElement.dataset.readerScrollBound = "true";
+    const root = doc.scrollingElement || doc.documentElement;
+    doc.body.tabIndex = -1;
+    doc.addEventListener("pointerup", (event) => {
+      if (event.pointerType === "touch") return;
+      if (event.target.matches?.("input, textarea, select, button, a, [contenteditable='true']")) return;
+      if (doc.getSelection()?.isCollapsed) doc.body.focus({ preventScroll: true });
+    }, { passive: true });
+    doc.addEventListener("wheel", (event) => {
+      if (event.ctrlKey || !event.deltaY || Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
+      const unit = event.deltaMode === 1 ? 18 : event.deltaMode === 2 ? root.clientHeight : 1;
+      const delta = event.deltaY * unit;
+      if (nestedScrollCanConsume(event.target, delta, doc)) return;
+      const next = Math.max(0, Math.min(root.scrollHeight - root.clientHeight, root.scrollTop + delta));
+      if (next === root.scrollTop) return;
+      event.preventDefault();
+      root.scrollTop = next;
+    }, { passive: false });
+    doc.addEventListener("keydown", (event) => {
+      if (event.target.matches?.("input, textarea, select, button, [contenteditable='true']")) return;
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "a") {
+        event.preventDefault();
+        event.stopPropagation();
+        showToast("为避免整篇误划线，阅读区不执行全选");
+        return;
+      }
+      if (event.key === "Escape" && state.highlightMode) {
+        event.preventDefault();
+        event.stopPropagation();
+        setHighlightMode(false);
+        return;
+      }
+      if (event.key === "Escape" && state.focusMode) {
+        event.preventDefault();
+        event.stopPropagation();
+        setReaderFocus(false);
+        return;
+      }
+      if (event.key.toLowerCase() === "f") {
+        event.preventDefault();
+        event.stopPropagation();
+        setReaderFocus(!state.focusMode);
+        return;
+      }
+      const amount = Math.max(120, root.clientHeight * 0.82);
+      const moves = { PageDown: amount, PageUp: -amount, ArrowDown: 56, ArrowUp: -56, " ": event.shiftKey ? -amount : amount };
+      if (event.key === "Home") {
+        event.preventDefault();
+        event.stopPropagation();
+        root.scrollTop = 0;
+      } else if (event.key === "End") {
+        event.preventDefault();
+        event.stopPropagation();
+        root.scrollTop = root.scrollHeight;
+      } else if (Object.hasOwn(moves, event.key)) {
+        event.preventDefault();
+        event.stopPropagation();
+        root.scrollTop += moves[event.key];
+      }
+    }, { capture: true });
   }
 
   function showAnnotationPopover(doc, item, target) {
@@ -1037,13 +1626,87 @@
     enhanceArticleAnnotations(elements.articleFrame.contentDocument, notes[0].id);
   }
 
-  function selectBookmark(id) {
+  function forwardMobileReaderTap(event) {
+    if (state.highlightMode) return;
+    try {
+      const doc = elements.articleFrame.contentDocument;
+      const frameRect = elements.articleFrame.getBoundingClientRect();
+      const target = doc?.elementFromPoint?.(event.clientX - frameRect.left, event.clientY - frameRect.top);
+      const actionable = target?.closest?.("a[href], rd-annotation, .rd-annotation");
+      actionable?.click();
+    } catch {
+      // Reading and native scrolling remain available if a target cannot be forwarded.
+    }
+  }
+
+  function bindArticleAnnotationInteractions(doc) {
+    if (!doc?.body || doc.documentElement.dataset.readerAnnotationsBound) return;
+    doc.documentElement.dataset.readerAnnotationsBound = "true";
+    state.annotationObserver?.disconnect();
+    state.annotationObserver = new MutationObserver((records) => {
+      const annotationChanged = records.some((record) => [...record.addedNodes, ...record.removedNodes].some((node) => node.nodeType === 1 && (node.matches?.("rd-annotation, .rd-annotation") || node.querySelector?.("rd-annotation, .rd-annotation"))));
+      const annotatorChanged = records.some((record) => record.target?.matches?.(".annotator") || [...record.addedNodes].some((node) => node.nodeType === 1 && (node.matches?.(".annotator") || node.querySelector?.(".annotator"))));
+      if (annotatorChanged) {
+        window.requestAnimationFrame(() => {
+          const annotator = doc.querySelector(".annotator");
+          const active = Boolean(annotator && getComputedStyle(annotator).display !== "none");
+          elements.readerContent.dataset.annotating = String(active && !state.highlightMode);
+          if (!active) {
+            if (annotator) delete annotator.dataset.readerAutoHighlightQueued;
+            clearPendingAnnotationPreview(doc);
+          } else {
+            enhanceNativeAnnotator(doc);
+          }
+        });
+      }
+      if (!annotationChanged) return;
+      clearPendingAnnotationPreview(doc);
+      window.clearTimeout(state.annotationTimer);
+      state.annotationTimer = window.setTimeout(() => refreshAnnotations({ focusNewest: true }).catch(() => {}), 500);
+    });
+    state.annotationObserver.observe(doc.body, { attributes: true, attributeFilter: ["class", "style", "hidden"], childList: true, subtree: true });
+    const nativeAnnotator = doc.querySelector(".annotator");
+    elements.readerContent.dataset.annotating = String(Boolean(nativeAnnotator && getComputedStyle(nativeAnnotator).display !== "none" && !state.highlightMode));
+    enhanceNativeAnnotator(doc);
+    enhanceArticleAnnotations(doc, state.pendingAnnotationId);
+
+    const captureSelection = () => {
+      if (!selectionWithinArticle(doc)) return;
+      const rect = selectionRect(doc);
+      if (rect) {
+        state.lastSelectionRect = rect;
+        const selection = doc.getSelection();
+        if (selection?.rangeCount === 1) showPendingAnnotationPreview(doc, selection.getRangeAt(0));
+        doc.querySelector(".reader-note-popover")?.remove();
+      }
+      window.setTimeout(() => enhanceNativeAnnotator(doc), 0);
+    };
+    doc.addEventListener("selectionchange", captureSelection);
+    // Readeck resolves the selection in a microtask after pointerup. Guard
+    // invalid endpoints in capture phase so dragging outside the article
+    // cannot be normalized into an accidental whole-document annotation.
+    doc.addEventListener("pointerup", () => rejectUnsafeArticleSelection(doc), { capture: true });
+    doc.addEventListener("pointerup", captureSelection);
+  }
+
+  function selectBookmark(id, { pushHistory = true } = {}) {
     if (!state.bookmarks.some((item) => item.id === id)) return;
     state.selectedId = id;
+    elements.readerContent.dataset.annotating = "false";
     elements.app.dataset.mobileView = "reader";
+    if (pushHistory && isMobileLayout() && history.state?.bookmarkId !== id) {
+      history.pushState({ readerView: "reader", bookmarkId: id }, "");
+    }
     render();
     if (!elements.articleFrame.src.includes(`/bookmarks/${id}?reader=1`)) {
+      state.articleResizeObserver?.disconnect();
+      elements.readerStage.scrollTop = 0;
+      elements.articleFrame.style.removeProperty("height");
+      elements.mobileScrollSpacer.style.height = "0px";
+      state.articleLoadGeneration += 1;
+      setArticleLoading(true);
       elements.articleFrame.src = `/bookmarks/${id}?reader=1`;
+      primeArticleFrame(state.articleLoadGeneration, id);
     }
   }
 
@@ -1055,43 +1718,37 @@
         const doc = elements.articleFrame.contentDocument;
         const frameWindow = elements.articleFrame.contentWindow;
         if (!doc || !frameWindow) return;
+        clearPendingAnnotationPreview();
+        const loadGeneration = state.articleLoadGeneration;
         doc.documentElement.classList.add("reader-embed", "dark");
-        if (!doc.querySelector("link[data-reader-embed-theme]")) {
-          const embedTheme = doc.createElement("link");
+        doc.documentElement.dataset.readerHighlightMode = String(state.highlightMode);
+        let embedTheme = doc.querySelector("link[data-reader-embed-theme]");
+        const revealArticle = () => {
+          if (loadGeneration !== state.articleLoadGeneration) return;
+          window.requestAnimationFrame(() => setArticleLoading(false));
+        };
+        if (!embedTheme) {
+          embedTheme = doc.createElement("link");
           embedTheme.rel = "stylesheet";
-          embedTheme.href = "/reader-assets/embed.css?v=3";
+          embedTheme.href = "/reader-assets/embed.css?v=11";
           embedTheme.dataset.readerEmbedTheme = "true";
+          embedTheme.addEventListener("load", revealArticle, { once: true });
+          embedTheme.addEventListener("error", revealArticle, { once: true });
           doc.head.append(embedTheme);
+          window.setTimeout(revealArticle, 900);
+        } else {
+          revealArticle();
         }
         doc.documentElement.style.setProperty("--reader-font-size", `${state.fontSize}px`);
-        state.annotationObserver?.disconnect();
-        state.annotationObserver = new MutationObserver((records) => {
-          const annotationChanged = records.some((record) => [...record.addedNodes, ...record.removedNodes].some((node) => node.nodeType === 1 && (node.matches?.("rd-annotation, .rd-annotation") || node.querySelector?.("rd-annotation, .rd-annotation"))));
-          const annotatorChanged = records.some((record) => record.target?.matches?.(".annotator") || [...record.addedNodes].some((node) => node.nodeType === 1 && (node.matches?.(".annotator") || node.querySelector?.(".annotator"))));
-          if (annotatorChanged) window.requestAnimationFrame(() => positionNativeAnnotator(doc));
-          if (!annotationChanged) return;
-          window.clearTimeout(state.annotationTimer);
-          state.annotationTimer = window.setTimeout(() => refreshAnnotations({ focusNewest: true }).catch(() => {}), 500);
-        });
-        state.annotationObserver.observe(doc.body, { attributes: true, attributeFilter: ["class", "style", "hidden"], childList: true, subtree: true });
-        enhanceArticleAnnotations(doc, state.pendingAnnotationId);
-
-        const captureSelection = () => {
-          const rect = selectionRect(doc);
-          if (rect) {
-            state.lastSelectionRect = rect;
-            doc.querySelector(".reader-note-popover")?.remove();
-          }
-          window.setTimeout(() => positionNativeAnnotator(doc), 0);
-        };
-        doc.addEventListener("selectionchange", captureSelection);
-        doc.addEventListener("pointerup", captureSelection);
+        bindArticleScrolling(doc);
+        configureMobileNativeScrolling(doc);
+        bindArticleAnnotationInteractions(doc);
 
         let lastProgress = Number(bookmark.read_progress || 0);
         const updateProgress = () => {
           const current = selectedBookmark();
           if (!current || current.id !== bookmark.id) return;
-          const root = doc.scrollingElement || doc.documentElement;
+          const root = isMobileLayout() ? elements.readerStage : doc.scrollingElement || doc.documentElement;
           const maxScroll = Math.max(1, root.scrollHeight - root.clientHeight);
           const ratio = Math.min(1, Math.max(0, root.scrollTop / maxScroll));
           let next = Math.min(99, Math.max(1, Math.round(ratio * 100)));
@@ -1102,10 +1759,22 @@
           window.clearTimeout(state.progressTimer);
           state.progressTimer = window.setTimeout(() => setReadProgress(bookmark.id, next, true), 900);
         };
-        frameWindow.addEventListener("scroll", () => {
+        let progressFrame = 0;
+        const trackProgress = () => {
           doc.querySelector(".reader-note-popover")?.remove();
-          updateProgress();
-        }, { passive: true });
+          if (progressFrame) return;
+          progressFrame = window.requestAnimationFrame(() => {
+            progressFrame = 0;
+            updateProgress();
+          });
+        };
+        if (isMobileLayout()) {
+          if (state.articleStageScrollHandler) elements.readerStage.removeEventListener("scroll", state.articleStageScrollHandler);
+          state.articleStageScrollHandler = trackProgress;
+          elements.readerStage.addEventListener("scroll", trackProgress, { passive: true });
+        } else {
+          doc.addEventListener("scroll", trackProgress, { passive: true, capture: true });
+        }
         frameWindow.addEventListener("resize", () => doc.querySelector(".reader-note-popover")?.remove(), { passive: true });
         window.clearTimeout(state.progressStartTimer);
         state.progressStartTimer = window.setTimeout(() => {
@@ -1121,6 +1790,7 @@
   function switchTab(tab) {
     if (!tabMeta[tab]) return;
     state.activeTab = tab;
+    resetTimelineWindow();
     if (tab === "subscriptions") {
       elements.app.dataset.mobileView = "reader";
     } else if (window.matchMedia("(max-width: 760px)").matches) {
@@ -1156,6 +1826,7 @@
       state.sourceQuery = elements.sourceSearch.value.trim();
       renderSources();
     });
+    elements.sourceToggle.addEventListener("click", toggleSourcePane);
     elements.refresh.addEventListener("click", () => checkForNewArticles());
     elements.notesDownload.addEventListener("click", downloadMarkdown);
     elements.notesFolder.addEventListener("click", () => {
@@ -1163,6 +1834,23 @@
       elements.exportDialog.showModal();
     });
     elements.readerStar.addEventListener("click", () => toggleFavorite());
+    elements.readerMore.addEventListener("click", () => {
+      renderMobileActions(selectedBookmark());
+      elements.readerActionsDialog.showModal();
+    });
+    elements.mobileActionsClose.addEventListener("click", () => elements.readerActionsDialog.close());
+    elements.readerActionsDialog.addEventListener("click", (event) => {
+      if (event.target === elements.readerActionsDialog) elements.readerActionsDialog.close();
+    });
+    elements.mobileReaderRead.addEventListener("click", () => {
+      const bookmark = selectedBookmark();
+      if (bookmark) setReadProgress(bookmark.id, Number(bookmark.read_progress || 0) >= 100 ? 0 : 100);
+    });
+    elements.mobileFontLarger.addEventListener("click", () => setFontSize(state.fontSize + 1));
+    elements.mobileFontSmaller.addEventListener("click", () => setFontSize(state.fontSize - 1));
+    elements.installApp.addEventListener("click", installReaderApp);
+    elements.mobileScrollLayer.addEventListener("click", forwardMobileReaderTap);
+    elements.readerFocus.addEventListener("click", () => setReaderFocus(!state.focusMode));
     elements.readerRead.addEventListener("click", () => {
       const bookmark = selectedBookmark();
       if (bookmark) setReadProgress(bookmark.id, Number(bookmark.read_progress || 0) >= 100 ? 0 : 100);
@@ -1173,12 +1861,22 @@
     });
     elements.fontLarger.addEventListener("click", () => setFontSize(state.fontSize + 1));
     elements.fontSmaller.addEventListener("click", () => setFontSize(state.fontSize - 1));
+    elements.highlightMode.addEventListener("click", () => setHighlightMode(!state.highlightMode));
     elements.articleNotes.addEventListener("click", showCurrentArticleNotes);
     elements.chooseExportFolder.addEventListener("click", chooseExportDirectory);
     elements.exportToFolder.addEventListener("click", exportToDirectory);
     elements.forgetExportFolder.addEventListener("click", forgetDirectoryHandle);
-    elements.readerBack.addEventListener("click", () => { elements.app.dataset.mobileView = "timeline"; });
+    elements.readerBack.addEventListener("click", () => returnToTimeline());
     elements.timelineBack.addEventListener("click", () => { elements.app.dataset.mobileView = "sources"; });
+    let timelineLoadQueued = false;
+    elements.timeline.addEventListener("scroll", () => {
+      if (timelineLoadQueued || elements.timeline.scrollHeight - elements.timeline.scrollTop - elements.timeline.clientHeight > 260) return;
+      timelineLoadQueued = true;
+      window.requestAnimationFrame(() => {
+        timelineLoadQueued = false;
+        loadMoreTimeline();
+      });
+    }, { passive: true });
     for (const button of [elements.addFeed, elements.subscriptionAdd]) {
       button.addEventListener("click", () => {
         prepareFeedDialog();
@@ -1188,6 +1886,19 @@
     document.addEventListener("keydown", (event) => {
       const editable = event.target.matches?.("input, textarea, [contenteditable='true']");
       if (editable) return;
+      if (event.key === "Escape" && state.highlightMode) {
+        setHighlightMode(false);
+        return;
+      }
+      if (event.key === "Escape" && state.focusMode) {
+        setReaderFocus(false);
+        return;
+      }
+      if (event.key.toLowerCase() === "f" && state.selectedId) {
+        event.preventDefault();
+        setReaderFocus(!state.focusMode);
+        return;
+      }
       if (/^[1-6]$/.test(event.key)) {
         const tab = Object.keys(tabMeta)[Number(event.key) - 1];
         switchTab(tab);
@@ -1209,13 +1920,50 @@
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) loadRefreshControl();
     });
+    window.addEventListener("beforeinstallprompt", (event) => {
+      event.preventDefault();
+      state.installPrompt = event;
+      renderInstallAction();
+    });
+    window.addEventListener("appinstalled", () => {
+      state.installPrompt = null;
+      renderInstallAction();
+    });
+    window.addEventListener("popstate", (event) => {
+      if (!isMobileLayout()) return;
+      if (event.state?.readerView === "reader" && event.state.bookmarkId) {
+        selectBookmark(event.state.bookmarkId, { pushHistory: false });
+        return;
+      }
+      if (elements.app.dataset.mobileView === "reader") returnToTimeline({ fromHistory: true });
+    });
+    let layoutResizeTimer = 0;
+    window.addEventListener("resize", () => {
+      window.clearTimeout(layoutResizeTimer);
+      layoutResizeTimer = window.setTimeout(refreshArticleLayout, 80);
+    }, { passive: true });
+    document.addEventListener("fullscreenchange", () => {
+      if (document.fullscreenElement) {
+        state.nativeFullscreenActive = true;
+      } else if (state.nativeFullscreenActive) {
+        state.nativeFullscreenActive = false;
+        if (state.focusMode) setReaderFocus(false, { syncNative: false });
+      }
+    });
+    bindEdgeSwipeBack();
     bindArticleFrame();
   }
 
-  state.fontSize = Math.max(15, Math.min(24, Number(localStorage.getItem("reader-font-size")) || 17));
+  if (isMobileLayout() && !history.state?.readerView) {
+    history.replaceState({ readerView: "timeline" }, "");
+  }
+  state.fontSize = Math.max(12, Math.min(20, Number(localStorage.getItem(fontPreferenceKey())) || (isMobileReader() ? 14 : 17)));
+  state.sourceCollapsed = localStorage.getItem("reader-source-collapsed") === "true";
+  applyLayoutState();
   bindEvents();
   render();
   renderFontSize();
+  renderInstallAction();
   loadDirectoryHandle();
   refreshData();
   loadRefreshControl();

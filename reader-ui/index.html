@@ -4,9 +4,13 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="color-scheme" content="dark">
-    <meta name="theme-color" content="#070b14">
+    <meta name="theme-color" content="#111111">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="公众号阅读">
     <title>公众号阅读器</title>
-    <link rel="stylesheet" href="/reader-assets/styles.css?v=10">
+    <link rel="manifest" href="/reader-assets/manifest.webmanifest" crossorigin="use-credentials">
+    <link rel="icon" href="/reader-assets/icons/reader-192.png" sizes="192x192">
+    <link rel="stylesheet" href="/reader-assets/styles.css?v=19">
   </head>
   <body>
     <svg class="icon-sprite" aria-hidden="true">
@@ -14,6 +18,9 @@
       <symbol id="i-unread" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/></symbol>
       <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z"/></symbol>
       <symbol id="i-highlight" viewBox="0 0 24 24"><path d="m6 15 8.5-8.5 3 3L9 18H6zM5 20h14"/></symbol>
+      <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none"/></symbol>
+      <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1A8 8 0 0 0 14.8 6L14.5 3h-5L9.2 6a8 8 0 0 0-1.7 1.1l-2.4-1-2 3.4 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1A8 8 0 0 0 9.2 18l.3 3h5l.3-3a8 8 0 0 0 1.7-1.1l2.4 1 2-3.4-2-1.5a7 7 0 0 0 .1-1z"/></symbol>
+      <symbol id="i-focus" viewBox="0 0 24 24"><path d="M9 4H4v5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></symbol>
       <symbol id="i-value" viewBox="0 0 24 24"><path d="M12 3 4.5 7.2v9.6L12 21l7.5-4.2V7.2zM9 12.2l2 2 4-4"/></symbol>
       <symbol id="i-feeds" viewBox="0 0 24 24"><path d="M5 5h14v4H5zM5 11h14v8H5zM8 14h8M8 17h5"/></symbol>
       <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 4 4"/></symbol>
@@ -29,7 +36,7 @@
       <symbol id="i-note" viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></symbol>
     </svg>
 
-    <div id="app" class="app-shell" data-mobile-view="timeline">
+    <div id="app" class="app-shell" data-mobile-view="timeline" data-source-collapsed="false" data-focus-mode="false">
       <aside class="source-pane" aria-label="公众号与筛选">
         <header class="brand-row">
           <div class="brand-mark">R</div>
@@ -59,14 +66,17 @@
       </aside>
 
       <header class="top-tabs" aria-label="阅读视图">
+        <button id="source-toggle" class="icon-button source-toggle" type="button" aria-label="收起左侧栏" aria-pressed="false" title="收起左侧栏">
+          <svg><use href="#i-back"/></svg>
+        </button>
         <div class="mobile-brand">公众号阅读器</div>
         <nav id="tab-list" class="tab-list">
-          <button type="button" data-tab="inbox" aria-keyshortcuts="1"><svg><use href="#i-inbox"/></svg><span>收件箱</span><b>0</b></button>
-          <button type="button" data-tab="unread" aria-keyshortcuts="2"><svg><use href="#i-unread"/></svg><span>未读</span><b>0</b></button>
-          <button type="button" data-tab="favorites" aria-keyshortcuts="3"><svg><use href="#i-star"/></svg><span>收藏</span><b>0</b></button>
-          <button type="button" data-tab="highlights" aria-keyshortcuts="4"><svg><use href="#i-highlight"/></svg><span>划线笔记</span><b>0</b></button>
-          <button type="button" data-tab="valuable" aria-keyshortcuts="5"><svg><use href="#i-value"/></svg><span>高价值</span><b>0</b></button>
-          <button type="button" data-tab="subscriptions" aria-keyshortcuts="6"><svg><use href="#i-feeds"/></svg><span>订阅</span><b>0</b></button>
+          <button type="button" data-tab="inbox" aria-label="已读" aria-keyshortcuts="1"><svg><use href="#i-check"/></svg><span>已读</span><b>0</b></button>
+          <button type="button" data-tab="unread" aria-label="未读" aria-keyshortcuts="2"><svg><use href="#i-unread"/></svg><span>未读</span><b>0</b></button>
+          <button type="button" data-tab="favorites" aria-label="收藏" aria-keyshortcuts="3"><svg><use href="#i-star"/></svg><span>收藏</span><b>0</b></button>
+          <button type="button" data-tab="highlights" aria-label="划线笔记" aria-keyshortcuts="4"><svg><use href="#i-highlight"/></svg><span>划线笔记</span><b>0</b></button>
+          <button type="button" data-tab="valuable" aria-label="高价值" aria-keyshortcuts="5"><svg><use href="#i-value"/></svg><span>高价值</span><b>0</b></button>
+          <button type="button" data-tab="subscriptions" aria-label="订阅" aria-keyshortcuts="6"><svg><use href="#i-feeds"/></svg><span>订阅</span><b>0</b></button>
         </nav>
         <div class="refresh-cluster">
           <div class="refresh-copy" aria-live="polite">
@@ -83,8 +93,8 @@
         <header class="timeline-heading">
           <button id="timeline-back" class="mobile-back icon-button" type="button" aria-label="返回公众号列表"><svg><use href="#i-back"/></svg></button>
           <div>
-            <h1 id="timeline-title">收件箱</h1>
-            <p id="timeline-subtitle">按发布时间排列</p>
+            <h1 id="timeline-title">未读</h1>
+            <p id="timeline-subtitle">默认只显示还没有读完的文章</p>
           </div>
           <div id="notes-actions" class="notes-actions" hidden>
             <button id="notes-download" class="icon-button" type="button" title="下载全部划线笔记 Markdown" aria-label="下载全部划线笔记 Markdown"><svg><use href="#i-download"/></svg></button>
@@ -98,7 +108,7 @@
         <section id="reader-empty" class="reader-empty">
           <div class="empty-mark">R</div>
           <h2>选择一篇文章开始阅读</h2>
-          <p>左侧筛选来源，中间处理未读与收藏，右侧保留正文上下文。</p>
+          <p>默认只看未读；读到正文 80% 后自动归入已读。</p>
         </section>
 
         <section id="reader-content" class="reader-content" hidden>
@@ -109,8 +119,10 @@
               <span id="reader-meta"></span>
             </div>
             <span id="reader-auto-status" class="reader-auto-status">自动记录阅读进度</span>
-            <button id="reader-read" class="toolbar-button" type="button"><svg><use href="#i-check"/></svg><span>标为已读</span></button>
-            <button id="reader-star" class="toolbar-button star-button" type="button" aria-keyshortcuts="S"><svg><use href="#i-star"/></svg><span>收藏</span></button>
+            <button id="reader-focus" class="toolbar-button focus-button" type="button" aria-label="全屏阅读" aria-pressed="false" aria-keyshortcuts="F" title="全屏阅读"><svg><use href="#i-focus"/></svg><span>全屏阅读</span></button>
+            <button id="reader-read" class="toolbar-button" type="button" aria-label="标为已读"><svg><use href="#i-check"/></svg><span>标为已读</span></button>
+            <button id="reader-star" class="toolbar-button star-button" type="button" aria-label="收藏" aria-keyshortcuts="S"><svg><use href="#i-star"/></svg><span>收藏</span></button>
+            <button id="reader-more" class="mobile-reader-more icon-button" type="button" aria-label="阅读设置"><svg><use href="#i-settings"/></svg></button>
           </header>
 
           <section class="value-toolbar" aria-label="价值与主题">
@@ -126,13 +138,23 @@
           </section>
 
           <div class="reader-stage">
-            <iframe id="article-frame" class="article-frame" title="文章正文"></iframe>
+            <div id="mobile-scroll-layer" class="mobile-scroll-layer" aria-hidden="true"></div>
+            <iframe id="article-frame" class="article-frame" title="文章正文" loading="eager" scrolling="yes"></iframe>
+            <div id="mobile-scroll-spacer" class="mobile-scroll-spacer" aria-hidden="true"></div>
+            <div id="edge-back-indicator" class="edge-back-indicator" aria-hidden="true"><svg><use href="#i-back"/></svg></div>
+            <div id="article-loading" class="article-loading" role="status" aria-live="polite" hidden>
+              <span class="article-loading-line is-title"></span>
+              <span class="article-loading-line"></span>
+              <span class="article-loading-line is-short"></span>
+              <span class="article-loading-copy">正在打开正文</span>
+            </div>
             <aside class="reading-dock" aria-label="阅读设置">
               <span class="reading-dock-label">字体</span>
               <button id="font-larger" type="button" aria-label="增大正文字号" title="增大正文字号">A+</button>
               <output id="font-size" aria-live="polite">17</output>
               <button id="font-smaller" type="button" aria-label="减小正文字号" title="减小正文字号">A−</button>
               <span class="dock-divider"></span>
+              <button id="highlight-mode" class="highlight-mode" type="button" aria-label="进入划线模式" aria-pressed="false" title="进入划线模式"><svg><use href="#i-highlight"/></svg></button>
               <button id="article-notes" type="button" aria-label="查看本文划线笔记" title="查看本文划线笔记"><svg><use href="#i-note"/></svg><b>0</b></button>
             </aside>
           </div>
@@ -195,7 +217,27 @@
       </form>
     </dialog>
 
+    <dialog id="reader-actions-dialog" class="mobile-actions-dialog">
+      <div class="mobile-actions-sheet">
+        <header>
+          <div><strong>阅读设置</strong><span id="mobile-actions-title"></span></div>
+          <button id="mobile-actions-close" class="icon-button" type="button" aria-label="关闭阅读设置">×</button>
+        </header>
+        <button id="mobile-reader-read" class="mobile-setting-action" type="button"><svg><use href="#i-check"/></svg><span>标为已读</span></button>
+        <section class="mobile-font-section" aria-label="正文字号">
+          <span>正文字号</span>
+          <div class="mobile-font-control">
+            <button id="mobile-font-smaller" type="button" aria-label="减小正文字号">A−</button>
+            <output id="mobile-font-size" aria-live="polite">14px</output>
+            <button id="mobile-font-larger" type="button" aria-label="增大正文字号">A+</button>
+          </div>
+        </section>
+        <p class="mobile-read-hint">阅读进度会自动保存；到达正文 80% 后归入“已读”。</p>
+        <button id="install-app" class="mobile-setting-action" type="button" hidden><svg><use href="#i-download"/></svg><span>安装到桌面，无地址栏打开</span></button>
+      </div>
+    </dialog>
+
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="/reader-assets/app.js?v=11" defer></script>
+    <script src="/reader-assets/app.js?v=23" defer></script>
   </body>
 </html>
