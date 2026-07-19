@@ -110,17 +110,17 @@ grep -q '\.reading-dock { display: none; }' "$ROOT_DIR/reader-ui/styles.css" || 
 grep -q -- '--panel-radius: 0px' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 手机最外层仍有圆角包围"
 grep -q -- '--card-radius: 8px' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 手机内部行未使用克制 8px 圆角"
 grep -q 'border-radius: 4px' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 手机标签未使用 4px 圆角"
-grep -q 'backdrop-filter: blur(34px) saturate(142%)' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 手机外壳未使用半透明极光磨砂"
+grep -q 'backdrop-filter: blur(24px) saturate(108%)' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 手机外壳未使用克制的半透明磨砂"
 grep -q 'function tagTone' "$ROOT_DIR/reader-ui/app.js" || die "Reader 未按作者稳定分配彩虹色"
 grep -q 'authorToneCount = 16' "$ROOT_DIR/reader-ui/app.js" || die "Reader 作者彩谱不足以区分当前公众号"
 grep -q '\.tone-15' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 缺少完整的十六色作者彩谱"
-grep -q 'linear-gradient(180deg, transparent 0%, var(--tone-shift)' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 文章行缺少两端渐隐的柔和作者谱线"
-grep -q 'background: linear-gradient(90deg, var(--tone-soft) 0' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 文章行缺少作者色柔和铺底"
+grep -q 'background: var(--tone-ink);' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 文章行缺少柔和纯色作者谱线"
+grep -q 'body::after { display: none; }' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 手机底色仍包含大面积极光装饰"
 grep -q 'border-radius: 0;' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 手机文章列表仍保留外框圆角"
 grep -q 'is-pane-swiping\[data-mobile-view="sources"\].*source-pane' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 手机列表缺少跟手横向位移"
 grep -q 'contain-intrinsic-size: 66px' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 手机文章列表仍不够紧凑"
 grep -q 'rel="manifest"' "$ROOT_DIR/reader-ui/index.html" || die "Reader 首页未声明 PWA manifest"
-grep -q 'styles.css?v=25' "$ROOT_DIR/reader-ui/index.html" || die "Reader 手机样式资源版本未刷新"
+grep -q 'styles.css?v=26' "$ROOT_DIR/reader-ui/index.html" || die "Reader 手机样式资源版本未刷新"
 grep -q 'app.js?v=30' "$ROOT_DIR/reader-ui/index.html" || die "Reader 手机交互资源版本未刷新"
 grep -q '\.mobile-scroll-layer' "$ROOT_DIR/reader-ui/styles.css" || die "Reader 缺少手机原生滚动触摸层样式"
 if grep -q 'addEventListener("touchmove"' "$ROOT_DIR/reader-ui/app.js"; then
@@ -240,4 +240,4 @@ assert "cooldown_remaining_seconds" in payload
 assert "secret" not in json.dumps(payload).lower()
 PY
 
-printf 'Reader UI 验证通过：Android PWA 独立窗口、B 极光磨砂无圆角外壳、稳定作者彩虹标签与柔和谱线、公众号/文章列表双向滑动、正文左边缘返回并保存进度、未读默认与已读归档、手机无悬浮条、桌面划线与导出、受保护刷新状态机和 Access 边界均符合契约。\n'
+printf 'Reader UI 验证通过：Android PWA 独立窗口、干净深色磨砂无圆角外壳、稳定作者彩色标签与柔和纯色谱线、公众号/文章列表双向滑动、正文左边缘返回并保存进度、未读默认与已读归档、手机无悬浮条、桌面划线与导出、受保护刷新状态机和 Access 边界均符合契约。\n'
