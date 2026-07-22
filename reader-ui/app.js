@@ -21,6 +21,9 @@
     },
     refreshPollTimer: 0,
     refreshGeneration: 0,
+    wechatAuthPollTimer: 0,
+    wechatAuthGeneration: 0,
+    resumeRefreshAfterAuth: false,
     progressTimer: 0,
     progressStartTimer: 0,
     annotationTimer: 0,
@@ -30,9 +33,18 @@
     pendingAnnotationRange: null,
     lastSelectionRect: null,
     fontSize: 17,
+    readingPreset: "focus",
     exportDirectoryHandle: null,
     timelineLimit: 60,
     timelineBatch: 60,
+    pageSize: 100,
+    nextBookmarkOffset: 0,
+    bookmarksExhausted: false,
+    bookmarkPageLoading: false,
+    nextAnnotationOffset: 0,
+    annotationsExhausted: false,
+    annotationHydrationQueued: false,
+    dataGeneration: 0,
     sourceCollapsed: false,
     focusMode: false,
     nativeFullscreenActive: false,
@@ -58,6 +70,12 @@
     highlights: ["划线笔记", "摘录、批注与来源"],
     valuable: ["高价值", "价值评分为 4-5 的文章"],
     subscriptions: ["订阅", "公众号来源与抓取状态"],
+  };
+
+  const readingPresets = {
+    focus: "深色专注",
+    graphite: "石墨笔记",
+    paper: "浅色稿纸",
   };
 
   const $ = (selector) => document.querySelector(selector);
@@ -87,6 +105,7 @@
     readerRead: $("#reader-read"),
     readerStar: $("#reader-star"),
     readerArchive: $("#reader-archive"),
+    readerOriginal: $("#reader-original"),
     readerBack: $("#reader-back"),
     readerAutoStatus: $("#reader-auto-status"),
     readerFocus: $("#reader-focus"),
@@ -100,6 +119,7 @@
     fontLarger: $("#font-larger"),
     fontSmaller: $("#font-smaller"),
     fontSize: $("#font-size"),
+    readingPreset: $("#reading-preset"),
     highlightMode: $("#highlight-mode"),
     articleNotes: $("#article-notes"),
     ratingControl: $("#rating-control"),
@@ -127,14 +147,24 @@
     chooseExportFolder: $("#choose-export-folder"),
     exportToFolder: $("#export-to-folder"),
     forgetExportFolder: $("#forget-export-folder"),
+    wechatAuthDialog: $("#wechat-auth-dialog"),
+    wechatAuthClose: $("#wechat-auth-close"),
+    wechatAuthStage: $("#wechat-auth-stage"),
+    wechatAuthQr: $("#wechat-auth-qr"),
+    wechatAuthPlaceholder: $("#wechat-auth-placeholder"),
+    wechatAuthStatus: $("#wechat-auth-status"),
+    wechatAuthRetry: $("#wechat-auth-retry"),
+    wechatAuthCancel: $("#wechat-auth-cancel"),
     readerActionsDialog: $("#reader-actions-dialog"),
     mobileActionsTitle: $("#mobile-actions-title"),
     mobileActionsClose: $("#mobile-actions-close"),
     mobileReaderRead: $("#mobile-reader-read"),
+    mobileReaderOriginal: $("#mobile-reader-original"),
     mobileHighlightMode: $("#mobile-highlight-mode"),
     mobileFontLarger: $("#mobile-font-larger"),
     mobileFontSmaller: $("#mobile-font-smaller"),
     mobileFontSize: $("#mobile-font-size"),
+    mobileReadingPreset: $("#mobile-reading-preset"),
     installApp: $("#install-app"),
     toast: $("#toast"),
   };
@@ -174,6 +204,30 @@
 
   function fontPreferenceKey() {
     return isMobileReader() ? "reader-font-size-mobile-codex" : "reader-font-size";
+  }
+
+  function applyReadingPresetToArticle(doc = elements.articleFrame.contentDocument) {
+    try {
+      if (doc?.documentElement) doc.documentElement.dataset.readerPreset = state.readingPreset;
+    } catch {
+      // The next same-origin article pass applies the preference.
+    }
+  }
+
+  function renderReadingPreset() {
+    elements.readerContent.dataset.readingPreset = state.readingPreset;
+    elements.readingPreset.value = state.readingPreset;
+    elements.mobileReadingPreset.value = state.readingPreset;
+    applyReadingPresetToArticle();
+  }
+
+  function setReadingPreset(value, { quiet = false } = {}) {
+    if (!readingPresets[value]) return;
+    state.readingPreset = value;
+    localStorage.setItem("reader-reading-preset", value);
+    renderReadingPreset();
+    refreshArticleLayout();
+    if (!quiet) showToast(`已切换为${readingPresets[value]}`);
   }
 
   function applyHighlightModeToArticle(doc = elements.articleFrame.contentDocument) {
@@ -336,7 +390,9 @@
         if (doc?.head && prose && path.includes(`/bookmarks/${id}`)) {
           doc.documentElement.classList.add("reader-embed", "dark");
           doc.documentElement.dataset.readerHighlightMode = String(state.highlightMode);
+          applyReadingPresetToArticle(doc);
           doc.documentElement.style.setProperty("--reader-font-size", `${state.fontSize}px`);
+          configureArticleOriginalCallout(doc, selectedBookmark());
           configureArticleEndActions(doc);
           bindArticleScrolling(doc);
           configureMobileNativeScrolling(doc);
@@ -349,7 +405,7 @@
           if (!embedTheme) {
             embedTheme = doc.createElement("link");
             embedTheme.rel = "stylesheet";
-            embedTheme.href = "/reader-assets/embed.css?v=13";
+            embedTheme.href = "/reader-assets/embed.css?v=16";
             embedTheme.dataset.readerEmbedTheme = "true";
             embedTheme.addEventListener("load", revealArticle, { once: true });
             embedTheme.addEventListener("error", revealArticle, { once: true });
@@ -370,6 +426,38 @@
     poll();
   }
 
+  async function parseResponsePayload(response) {
+    if (response.status === 204) return null;
+    const text = await response.text();
+    if (!text) return null;
+    const type = response.headers.get("content-type") || "";
+    if (type.includes("json") || /^[\s]*[\[{]/.test(text)) {
+      try {
+        return JSON.parse(text);
+      } catch {
+        return null;
+      }
+    }
+    return text;
+  }
+
+  function responseErrorMessage(payload, status) {
+    if (payload && typeof payload === "object") {
+      const detail = payload.detail;
+      const candidates = [
+        payload.message,
+        typeof detail === "string" ? detail : detail?.message,
+        payload.error?.message,
+      ];
+      const message = candidates.find((value) => typeof value === "string" && value.trim());
+      if (message) return message.trim();
+    }
+    if (typeof payload === "string" && payload.length <= 160 && !/[\[{<]/.test(payload)) {
+      return payload.trim();
+    }
+    return status >= 500 ? "服务暂时不可用，请稍后重试" : `请求失败（${status}）`;
+  }
+
   async function request(path, options = {}) {
     const response = await fetch(path, {
       credentials: "same-origin",
@@ -381,26 +469,32 @@
         ...(options.headers || {}),
       },
     });
+    const payload = await parseResponsePayload(response);
     if (response.status === 401 || response.status === 403) {
       throw new Error("当前会话没有阅读库访问权限，请重新完成 Cloudflare 邮箱验证。");
     }
     if (!response.ok) {
-      const detail = (await response.text()).slice(0, 240);
-      throw new Error(`阅读库请求失败（${response.status}）${detail ? `：${detail}` : ""}`);
+      const error = new Error(responseErrorMessage(payload, response.status));
+      error.status = response.status;
+      error.payload = payload;
+      throw error;
     }
-    if (response.status === 204) return null;
-    const type = response.headers.get("content-type") || "";
-    return type.includes("json") ? response.json() : response.text();
+    return payload;
+  }
+
+  async function fetchPage(path, offset = 0, limit = state.pageSize) {
+    const join = path.includes("?") ? "&" : "?";
+    const items = await request(`${path}${join}limit=${limit}&offset=${offset}`);
+    return Array.isArray(items) ? items : [];
   }
 
   async function fetchPaged(path) {
     const result = [];
     let offset = 0;
     while (true) {
-      const join = path.includes("?") ? "&" : "?";
-      const items = await request(`${path}${join}limit=100&offset=${offset}`);
-      result.push(...(items || []));
-      if (!items || items.length < 100) break;
+      const items = await fetchPage(path, offset);
+      result.push(...items);
+      if (items.length < state.pageSize) break;
       offset += items.length;
     }
     return result;
@@ -742,6 +836,7 @@
         resetTimelineWindow();
         elements.app.dataset.mobileView = "timeline";
         render();
+        if (!filteredBookmarks().length && !state.bookmarksExhausted) void loadMoreTimeline();
       });
     }
   }
@@ -819,13 +914,98 @@
     </article>`).join("");
   }
 
-  function loadMoreTimeline() {
+  function mergeBookmarks(items) {
+    const existingIds = new Set(state.bookmarks.map((item) => String(item.id)));
+    for (const item of items) {
+      if (!existingIds.has(String(item.id))) state.bookmarks.push(item);
+    }
+  }
+
+  function applyAnnotations(items, { append = false } = {}) {
+    if (!append) {
+      state.annotations = items;
+    } else {
+      const existingIds = new Set(state.annotations.map((item) => String(item.id)));
+      state.annotations.push(...items.filter((item) => !existingIds.has(String(item.id))));
+    }
+    state.annotatedIds = new Set(state.annotations.map((item) => item.bookmark_id));
+  }
+
+  function renderLoadedData() {
+    refreshSourceToneMap();
+    renderTabs();
+    renderSources();
+    renderTimeline();
+  }
+
+  async function loadMoreBookmarks() {
+    if (state.bookmarkPageLoading || state.bookmarksExhausted) return false;
+    state.bookmarkPageLoading = true;
+    const generation = state.dataGeneration;
+    const offset = state.nextBookmarkOffset;
+    try {
+      const items = await fetchPage("/api/bookmarks?sort=-published", offset);
+      if (generation !== state.dataGeneration) return false;
+      mergeBookmarks(items);
+      state.nextBookmarkOffset += items.length;
+      state.bookmarksExhausted = items.length < state.pageSize;
+      return items.length > 0;
+    } catch (error) {
+      showToast(error.message || "无法加载更多文章", true);
+      return false;
+    } finally {
+      if (generation === state.dataGeneration) state.bookmarkPageLoading = false;
+    }
+  }
+
+  function scheduleAnnotationHydration(generation = state.dataGeneration) {
+    if (state.annotationsExhausted || state.annotationHydrationQueued) return;
+    state.annotationHydrationQueued = true;
+    const run = () => {
+      state.annotationHydrationQueued = false;
+      loadMoreAnnotations(generation).catch(() => {});
+    };
+    if (window.requestIdleCallback) {
+      window.requestIdleCallback(run, { timeout: 1200 });
+    } else {
+      window.setTimeout(run, 320);
+    }
+  }
+
+  async function loadMoreAnnotations(generation = state.dataGeneration) {
+    if (generation !== state.dataGeneration || state.annotationsExhausted) return;
+    const offset = state.nextAnnotationOffset;
+    try {
+      const items = await fetchPage("/api/bookmarks/annotations?", offset);
+      if (generation !== state.dataGeneration) return;
+      applyAnnotations(items, { append: true });
+      state.nextAnnotationOffset += items.length;
+      state.annotationsExhausted = items.length < state.pageSize;
+      renderTabs();
+      if (state.activeTab === "highlights") renderTimeline();
+      renderReader();
+      scheduleAnnotationHydration(generation);
+    } catch {
+      // Annotation hydration is non-blocking. The next explicit refresh retries it.
+    }
+  }
+
+  async function loadMoreTimeline() {
     if (["subscriptions", "highlights"].includes(state.activeTab)) return;
     const total = filteredBookmarks().length;
-    if (state.timelineLimit >= total) return;
+    if (state.timelineLimit < total) {
+      const previousScrollTop = elements.timeline.scrollTop;
+      state.timelineLimit = Math.min(total, state.timelineLimit + state.timelineBatch);
+      renderTimeline();
+      elements.timeline.scrollTop = previousScrollTop;
+      return;
+    }
+    if (state.bookmarksExhausted) return;
     const previousScrollTop = elements.timeline.scrollTop;
-    state.timelineLimit = Math.min(total, state.timelineLimit + state.timelineBatch);
-    renderTimeline();
+    const loaded = await loadMoreBookmarks();
+    if (!loaded) return;
+    state.timelineLimit = Math.min(filteredBookmarks().length, state.timelineLimit + state.timelineBatch);
+    renderLoadedData();
     elements.timeline.scrollTop = previousScrollTop;
   }
 
@@ -862,6 +1042,7 @@
         resetTimelineWindow();
         elements.app.dataset.mobileView = "timeline";
         render();
+        if (!filteredBookmarks().length && !state.bookmarksExhausted) void loadMoreTimeline();
       });
     }
     for (const row of elements.timeline.querySelectorAll(".annotation-row")) {
@@ -908,8 +1089,10 @@
     const visible = bookmarks.slice(0, state.timelineLimit);
     const remaining = Math.max(0, bookmarks.length - visible.length);
     elements.timeline.innerHTML = bookmarks.length
-      ? `${visible.map(entryRow).join("")}${remaining ? `<button class="timeline-more" type="button" data-load-more>继续加载 ${Math.min(state.timelineBatch, remaining)} 篇</button>` : ""}`
-      : `<div class="empty-list">这个视图暂时没有文章。</div>`;
+      ? `${visible.map(entryRow).join("")}${remaining ? `<button class="timeline-more" type="button" data-load-more>继续加载 ${Math.min(state.timelineBatch, remaining)} 篇</button>` : !state.bookmarksExhausted ? `<button class="timeline-more" type="button" data-load-more>继续加载更多文章</button>` : ""}`
+      : !state.bookmarksExhausted
+        ? `<button class="timeline-more" type="button" data-load-more>继续加载更多文章</button>`
+        : `<div class="empty-list">这个视图暂时没有文章。</div>`;
     bindTimelineRows();
   }
 
@@ -934,6 +1117,77 @@
     const isRead = Number(bookmark.read_progress || 0) >= 100;
     elements.mobileActionsTitle.textContent = bookmark.title || "未命名文章";
     elements.mobileReaderRead.querySelector("span").textContent = isRead ? "标为未读" : "标为已读";
+    elements.mobileReaderOriginal.hidden = !originalArticleUrl(bookmark);
+  }
+
+  function originalArticleUrl(bookmark = selectedBookmark()) {
+    try {
+      const url = new URL(String(bookmark?.url || ""), window.location.origin);
+      return ["http:", "https:"].includes(url.protocol) ? url.href : "";
+    } catch {
+      return "";
+    }
+  }
+
+  function openOriginalArticle(bookmark = selectedBookmark()) {
+    const url = originalArticleUrl(bookmark);
+    if (!url) {
+      showToast("这篇文章没有可打开的原文链接");
+      return;
+    }
+    const link = document.createElement("a");
+    link.href = url;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.click();
+  }
+
+  function configureArticleOriginalCallout(doc, bookmark = selectedBookmark()) {
+    const prose = doc?.querySelector?.(".bookmark-article .prose");
+    if (!prose) return;
+    const url = originalArticleUrl(bookmark);
+    const existing = prose.querySelector(":scope > .reader-original-callout");
+    if (!url) {
+      existing?.remove();
+      return;
+    }
+
+    let host = "";
+    try {
+      host = new URL(url).hostname.toLowerCase();
+    } catch {
+      existing?.remove();
+      return;
+    }
+    const isWeChat = host === "mp.weixin.qq.com" || host.endsWith(".mp.weixin.qq.com");
+    const callout = existing || doc.createElement("aside");
+    callout.className = "reader-original-callout";
+    callout.setAttribute("aria-label", isWeChat ? "微信原文媒体入口" : "文章原网页入口");
+
+    let heading = callout.querySelector("strong");
+    let description = callout.querySelector("span");
+    let link = callout.querySelector("a");
+    if (!heading) {
+      heading = doc.createElement("strong");
+      callout.append(heading);
+    }
+    if (!description) {
+      description = doc.createElement("span");
+      callout.append(description);
+    }
+    if (!link) {
+      link = doc.createElement("a");
+      callout.append(link);
+    }
+    heading.textContent = isWeChat ? "原文与动态媒体" : "阅读原网页";
+    description.textContent = isWeChat
+      ? "视频和视频化动图需在微信原文中播放；普通 GIF 会保留在阅读版。"
+      : "互动组件或动态媒体需在原网页中查看。";
+    link.href = url;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.textContent = isWeChat ? "打开微信原文" : "打开原网页";
+    if (!existing) prose.prepend(callout);
   }
 
   function renderFontSize() {
@@ -1006,14 +1260,21 @@
     }
   }
 
-  async function returnToTimeline({ fromHistory = false } = {}) {
-    await saveCurrentReadingProgress();
-    if (state.focusMode) await setReaderFocus(false);
+  async function returnToTimeline({ fromHistory = false, skipProgress = false, clearSelection = false, immediate = false } = {}) {
+    if (!skipProgress) await saveCurrentReadingProgress();
+    if (clearSelection) {
+      state.selectedId = "";
+      state.articleLoadGeneration += 1;
+      setArticleLoading(false);
+    }
+    elements.app.dataset.mobileView = "timeline";
+    const exitFocus = state.focusMode ? setReaderFocus(false) : null;
     if (!fromHistory && isMobileLayout() && history.state?.readerView === "reader") {
+      if (!immediate) await exitFocus;
       history.back();
       return;
     }
-    elements.app.dataset.mobileView = "timeline";
+    if (!immediate) await exitFocus;
   }
 
   function resetEdgeSwipe() {
@@ -1206,6 +1467,7 @@
     elements.readerArchive.classList.toggle("is-active", Boolean(bookmark.is_archived));
     elements.readerArchive.querySelector("span").textContent = bookmark.is_archived ? "移出归档" : "移至归档";
     elements.readerArchive.setAttribute("aria-label", bookmark.is_archived ? "移出归档" : "移至归档");
+    elements.readerOriginal.hidden = !originalArticleUrl(bookmark);
     const isRead = Number(bookmark.read_progress || 0) >= 100;
     elements.readerRead.querySelector("span").textContent = isRead ? "标为未读" : "标为已读";
     elements.readerRead.setAttribute("aria-label", isRead ? "标为未读" : "标为已读");
@@ -1283,8 +1545,9 @@
   async function refreshAnnotations({ focusNewest = false } = {}) {
     const previousIds = new Set(state.annotations.map((item) => String(item.id)));
     const annotations = await fetchPaged("/api/bookmarks/annotations?");
-    state.annotations = annotations;
-    state.annotatedIds = new Set(annotations.map((item) => item.bookmark_id));
+    applyAnnotations(annotations);
+    state.nextAnnotationOffset = annotations.length;
+    state.annotationsExhausted = true;
     renderTabs();
     if (state.activeTab === "highlights") renderTimeline();
     renderReader();
@@ -1301,26 +1564,50 @@
 
   async function refreshData({ quiet = false } = {}) {
     if (state.loading) return;
+    const generation = ++state.dataGeneration;
     state.loading = true;
+    state.bookmarkPageLoading = false;
+    state.annotationHydrationQueued = false;
     if (!quiet) renderTimeline();
     try {
-      const [bookmarks, annotations, status] = await Promise.all([
-        fetchPaged("/api/bookmarks?sort=-published"),
-        fetchPaged("/api/bookmarks/annotations?"),
-        fetch("/reader-runtime/status.json", { credentials: "same-origin", cache: "no-store" }).then((response) => response.ok ? response.json() : null).catch(() => null),
-      ]);
+      const statusRequest = fetch("/reader-runtime/status.json", { credentials: "same-origin", cache: "no-store" })
+        .then((response) => response.ok ? response.json() : null)
+        .catch(() => null);
+      const annotationsRequest = fetchPage("/api/bookmarks/annotations?", 0);
+      const bookmarks = await fetchPage("/api/bookmarks?sort=-published", 0);
+      if (generation !== state.dataGeneration) return;
       state.bookmarks = bookmarks;
-      state.annotations = annotations;
-      state.annotatedIds = new Set(annotations.map((item) => item.bookmark_id));
-      state.status = status;
+      state.nextBookmarkOffset = bookmarks.length;
+      state.bookmarksExhausted = bookmarks.length < state.pageSize;
       if (state.selectedId && !selectedBookmark()) state.selectedId = "";
       if (!quiet) showToast(`已刷新 ${bookmarks.length} 篇文章`);
+      statusRequest.then((status) => {
+        if (generation !== state.dataGeneration) return;
+        state.status = status;
+        refreshSourceToneMap();
+        renderSources();
+        renderHealth();
+        if (state.activeTab === "subscriptions") renderSubscriptionStatus();
+      });
+      annotationsRequest.then((annotations) => {
+        if (generation !== state.dataGeneration) return;
+        applyAnnotations(annotations);
+        state.nextAnnotationOffset = annotations.length;
+        state.annotationsExhausted = annotations.length < state.pageSize;
+        renderTabs();
+        if (state.activeTab === "highlights") renderTimeline();
+        renderReader();
+        scheduleAnnotationHydration(generation);
+      }).catch(() => {});
     } catch (error) {
+      if (generation !== state.dataGeneration) return;
       showToast(error.message || "刷新失败", true);
       elements.timeline.innerHTML = `<div class="empty-list">${escapeHtml(error.message || "无法读取阅读库")}</div>`;
     } finally {
-      state.loading = false;
-      render();
+      if (generation === state.dataGeneration) {
+        state.loading = false;
+        render();
+      }
     }
   }
 
@@ -1338,6 +1625,93 @@
     if (state.activeTab === "subscriptions") renderSubscriptionStatus();
   }
 
+  function authMessage(value) {
+    if (!value) return "";
+    if (typeof value === "string") return value;
+    if (value instanceof Error) {
+      return authMessage(value.payload) || value.message || "";
+    }
+    if (typeof value === "object") {
+      return String(value.message || value.detail?.message || "");
+    }
+    return "";
+  }
+
+  function needsWeChatAuth(value) {
+    const message = authMessage(value);
+    return /微信授权.*(失效|恢复)|重新扫码|扫码授权/.test(message);
+  }
+
+  function renderWeChatAuthorization(payload = {}) {
+    const phase = String(payload.phase || "auth_preparing");
+    const waiting = phase === "auth_waiting" && Boolean(payload.qr_image);
+    elements.wechatAuthStage.dataset.phase = phase;
+    elements.wechatAuthStatus.textContent = payload.message || (
+      phase === "auth_failed" ? "二维码生成失败，请重新尝试" : "正在生成微信授权二维码"
+    );
+    elements.wechatAuthQr.hidden = !waiting;
+    elements.wechatAuthPlaceholder.hidden = waiting;
+    elements.wechatAuthRetry.hidden = phase !== "auth_failed";
+    if (waiting && elements.wechatAuthQr.src !== payload.qr_image) {
+      elements.wechatAuthQr.src = payload.qr_image;
+    }
+  }
+
+  function closeWeChatAuthorization({ cancelResume = true } = {}) {
+    state.wechatAuthGeneration += 1;
+    window.clearTimeout(state.wechatAuthPollTimer);
+    if (cancelResume) state.resumeRefreshAfterAuth = false;
+    if (elements.wechatAuthDialog.open) elements.wechatAuthDialog.close();
+  }
+
+  function completeWeChatAuthorization(generation) {
+    if (generation !== state.wechatAuthGeneration) return;
+    const shouldResume = state.resumeRefreshAfterAuth;
+    state.resumeRefreshAfterAuth = false;
+    showToast("微信验证成功，正在继续检查新文章");
+    window.setTimeout(() => {
+      if (generation !== state.wechatAuthGeneration) return;
+      closeWeChatAuthorization({ cancelResume: false });
+      if (shouldResume) checkForNewArticles();
+    }, 500);
+  }
+
+  async function pollWeChatAuthorization(generation) {
+    window.clearTimeout(state.wechatAuthPollTimer);
+    if (generation !== state.wechatAuthGeneration) return;
+    try {
+      const payload = await refreshControlRequest("auth_status");
+      if (generation !== state.wechatAuthGeneration) return;
+      renderWeChatAuthorization(payload);
+      if (payload.phase === "auth_complete") {
+        completeWeChatAuthorization(generation);
+        return;
+      }
+      if (payload.phase === "auth_failed") return;
+      state.wechatAuthPollTimer = window.setTimeout(() => pollWeChatAuthorization(generation), 1200);
+    } catch (error) {
+      if (generation !== state.wechatAuthGeneration) return;
+      renderWeChatAuthorization({ phase: "auth_failed", message: error.message || "微信授权服务暂时不可用" });
+    }
+  }
+
+  async function beginWeChatAuthorization({ resumeRefresh = true } = {}) {
+    const generation = ++state.wechatAuthGeneration;
+    window.clearTimeout(state.wechatAuthPollTimer);
+    state.resumeRefreshAfterAuth = resumeRefresh || state.resumeRefreshAfterAuth;
+    renderWeChatAuthorization({ phase: "auth_preparing", message: "正在生成微信授权二维码" });
+    if (!elements.wechatAuthDialog.open) elements.wechatAuthDialog.showModal();
+    try {
+      const payload = await refreshControlRequest("auth_start");
+      if (generation !== state.wechatAuthGeneration) return;
+      renderWeChatAuthorization(payload);
+      state.wechatAuthPollTimer = window.setTimeout(() => pollWeChatAuthorization(generation), 500);
+    } catch (error) {
+      if (generation !== state.wechatAuthGeneration) return;
+      renderWeChatAuthorization({ phase: "auth_failed", message: error.message || "二维码生成失败，请重新尝试" });
+    }
+  }
+
   async function pollRefreshControl(generation) {
     window.clearTimeout(state.refreshPollTimer);
     if (generation !== state.refreshGeneration) return;
@@ -1348,6 +1722,10 @@
       const terminal = ["complete", "cooldown", "failed", "idle"].includes(payload.phase);
       if (!terminal) {
         state.refreshPollTimer = window.setTimeout(() => pollRefreshControl(generation), 1800);
+        return;
+      }
+      if (payload.phase === "failed" && needsWeChatAuth(payload)) {
+        await beginWeChatAuthorization({ resumeRefresh: true });
         return;
       }
       await refreshData({ quiet: true });
@@ -1383,6 +1761,14 @@
         showToast(payload.message || "检查新文章失败", true);
       }
     } catch (error) {
+      if (needsWeChatAuth(error)) {
+        const payload = error.payload && typeof error.payload === "object"
+          ? error.payload
+          : { phase: "failed", message: authMessage(error) };
+        setRefreshControl(payload);
+        await beginWeChatAuthorization({ resumeRefresh: true });
+        return;
+      }
       setRefreshControl({ phase: "failed", message: error.message || "检查新文章失败" });
       showToast(error.message || "检查新文章失败", true);
     }
@@ -1430,10 +1816,16 @@
     if (!bookmark) return;
     const previousArchived = Boolean(bookmark.is_archived);
     const previousProgress = Number(bookmark.read_progress || 0);
+    const wasSelected = state.selectedId === id;
+    const previousMobileView = elements.app.dataset.mobileView;
     const archived = !previousArchived;
     const progress = archived ? 100 : 0;
     bookmark.is_archived = archived;
     bookmark.read_progress = progress;
+    if (archived && wasSelected) {
+      // Return before the network round trip so archiving always feels instantaneous.
+      void returnToTimeline({ skipProgress: true, clearSelection: true, immediate: true });
+    }
     render();
     try {
       await patchBookmark(id, { is_archived: archived, read_progress: progress }, { rerender: false });
@@ -1441,6 +1833,13 @@
     } catch (error) {
       bookmark.is_archived = previousArchived;
       bookmark.read_progress = previousProgress;
+      if (archived && wasSelected) {
+        state.selectedId = id;
+        elements.app.dataset.mobileView = previousMobileView;
+        if (isMobileLayout() && history.state?.readerView !== "reader") {
+          history.pushState({ readerView: "reader", bookmarkId: id }, "");
+        }
+      }
       render();
       showToast(error.message || "归档状态保存失败", true);
     }
@@ -2020,6 +2419,8 @@
         const loadGeneration = state.articleLoadGeneration;
         doc.documentElement.classList.add("reader-embed", "dark");
         doc.documentElement.dataset.readerHighlightMode = String(state.highlightMode);
+        applyReadingPresetToArticle(doc);
+        configureArticleOriginalCallout(doc, bookmark);
         let embedTheme = doc.querySelector("link[data-reader-embed-theme]");
         const revealArticle = () => {
           if (loadGeneration !== state.articleLoadGeneration) return;
@@ -2028,7 +2429,7 @@
         if (!embedTheme) {
           embedTheme = doc.createElement("link");
           embedTheme.rel = "stylesheet";
-          embedTheme.href = "/reader-assets/embed.css?v=13";
+          embedTheme.href = "/reader-assets/embed.css?v=16";
           embedTheme.dataset.readerEmbedTheme = "true";
           embedTheme.addEventListener("load", revealArticle, { once: true });
           embedTheme.addEventListener("error", revealArticle, { once: true });
@@ -2096,6 +2497,7 @@
       elements.app.dataset.mobileView = "timeline";
     }
     render();
+    if (!filteredBookmarks().length && !state.bookmarksExhausted) void loadMoreTimeline();
   }
 
   function prepareFeedDialog() {
@@ -2127,6 +2529,16 @@
     });
     elements.sourceToggle.addEventListener("click", toggleSourcePane);
     elements.refresh.addEventListener("click", () => checkForNewArticles());
+    elements.wechatAuthClose.addEventListener("click", () => closeWeChatAuthorization());
+    elements.wechatAuthCancel.addEventListener("click", () => closeWeChatAuthorization());
+    elements.wechatAuthRetry.addEventListener("click", () => beginWeChatAuthorization({ resumeRefresh: state.resumeRefreshAfterAuth }));
+    elements.wechatAuthDialog.addEventListener("cancel", (event) => {
+      event.preventDefault();
+      closeWeChatAuthorization();
+    });
+    elements.wechatAuthDialog.addEventListener("click", (event) => {
+      if (event.target === elements.wechatAuthDialog) closeWeChatAuthorization();
+    });
     elements.notesDownload.addEventListener("click", downloadMarkdown);
     elements.notesFolder.addEventListener("click", () => {
       renderExportTarget();
@@ -2134,6 +2546,7 @@
     });
     elements.readerStar.addEventListener("click", () => toggleFavorite());
     elements.readerArchive.addEventListener("click", () => toggleArchive());
+    elements.readerOriginal.addEventListener("click", () => openOriginalArticle());
     elements.readerMore.addEventListener("click", () => {
       renderMobileActions(selectedBookmark());
       elements.readerActionsDialog.showModal();
@@ -2146,12 +2559,18 @@
       const bookmark = selectedBookmark();
       if (bookmark) setReadProgress(bookmark.id, Number(bookmark.read_progress || 0) >= 100 ? 0 : 100);
     });
+    elements.mobileReaderOriginal.addEventListener("click", () => {
+      openOriginalArticle();
+      elements.readerActionsDialog.close();
+    });
     elements.mobileHighlightMode.addEventListener("click", () => {
       setHighlightMode(!state.highlightMode);
       elements.readerActionsDialog.close();
     });
     elements.mobileFontLarger.addEventListener("click", () => setFontSize(state.fontSize + 1));
     elements.mobileFontSmaller.addEventListener("click", () => setFontSize(state.fontSize - 1));
+    elements.readingPreset.addEventListener("change", () => setReadingPreset(elements.readingPreset.value));
+    elements.mobileReadingPreset.addEventListener("change", () => setReadingPreset(elements.mobileReadingPreset.value));
     elements.installApp.addEventListener("click", installReaderApp);
     elements.mobileScrollLayer.addEventListener("click", forwardMobileReaderTap);
     elements.readerFocus.addEventListener("click", () => setReaderFocus(!state.focusMode));
@@ -2265,11 +2684,14 @@
     history.replaceState({ readerView: "timeline" }, "");
   }
   state.fontSize = Math.max(12, Math.min(20, Number(localStorage.getItem(fontPreferenceKey())) || (isMobileReader() ? 14 : 17)));
+  const savedReadingPreset = localStorage.getItem("reader-reading-preset");
+  state.readingPreset = readingPresets[savedReadingPreset] ? savedReadingPreset : "focus";
   state.sourceCollapsed = localStorage.getItem("reader-source-collapsed") === "true";
   applyLayoutState();
   bindEvents();
   render();
   renderFontSize();
+  renderReadingPreset();
   renderInstallAction();
   loadDirectoryHandle();
   refreshData();

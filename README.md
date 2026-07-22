@@ -22,7 +22,7 @@
 
 | 你要的能力 | 由谁负责 | 结果 |
 | --- | --- | --- |
-| 公众号持续更新与全文抓取 | WeRSS | 每小时自动检查，也可在 Reader 主动刷新 |
+| 公众号持续更新与全文抓取 | Cloudflare Workflow + WeRSS | Cloudflare 定时触发，也可在 Reader 主动刷新 |
 | 干净的三栏阅读体验 | 自定义 Reader + Readeck | 未读、收藏、价值、标签、字号、移动端 |
 | 划线、摘录与批注 | Readeck + Reader | 淡绿虚线不遮字，保存后原位显示笔记 |
 | Markdown 与知识沉淀 | reading-sync + Obsidian | 精选原文、摘录、批注和人工笔记安全共存 |
@@ -36,7 +36,11 @@ flowchart LR
   WX["微信公众号运营授权"] --> W["WeRSS<br/>抓取正文与订阅源"]
   W --> R["Readeck<br/>全文、收藏、进度、批注"]
   R --> UI["Glass Reader<br/>三栏阅读与划线笔记"]
-  UI --> S["reading-sync<br/>每 5 分钟幂等同步"]
+  H["Obsidian 同步助手<br/>文章 + 微信消息"] --> S["reading-sync<br/>本机幂等执行器"]
+  CFW["Cloudflare Workflow<br/>5 分钟调度 + 持久重试"] --> CTRL["Access + Tunnel<br/>机器身份入口"]
+  CTRL --> S
+  CTRL --> W
+  UI --> S
   S --> O["Obsidian Archive<br/>原文 + 摘录 + 我的笔记"]
   CF["Cloudflare Access"] --> UI
   CF --> W
@@ -76,10 +80,10 @@ awk -F= '$1 == "WERSS_ADMIN_USERNAME" || $1 == "WERSS_BOOTSTRAP_PASSWORD" { prin
 ## 你最终怎么用
 
 1. 在 WeRSS 完成运营者扫码，添加公众号，并启用每小时任务。
-2. 在 Reader 浏览所有完整文章；打开后自动记录阅读进度，滚动到 80% 自动已读。
-3. 值得保留的文章点收藏；拖选文字即可高亮和批注，弹层会自动避开选区。
+2. 在 Reader 浏览所有完整文章；左上箭头可收起左侧栏，正文工具栏的“全屏阅读”或 `F` 键可进入沉浸模式；滚动到 80% 自动已读。
+3. 值得保留的文章点收藏；拖选文字后直接在磨砂输入框写笔记，按 Enter 保存，Shift+Enter 换行。
 4. 顶部“划线笔记”集中显示摘录、笔记、文章与来源；可下载 Markdown 或直接选择 Obsidian 目录。
-5. 后台同步器每 5 分钟把收藏或含划线的文章写入 `OBSIDIAN_INBOX_DIR`。
+5. Cloudflare Workflow 每 5 分钟调用本机同步器，把新增微信消息送入 Reader，并把收藏或含划线的文章写入 `OBSIDIAN_INBOX_DIR`。
 6. Obsidian 中人工 frontmatter 和“我的笔记”永不被后续同步覆盖。
 
 <table>
@@ -105,6 +109,8 @@ awk -F= '$1 == "WERSS_ADMIN_USERNAME" || $1 == "WERSS_BOOTSTRAP_PASSWORD" { prin
 </table>
 
 当前维护者部署已用 12 个公众号和 100+ 篇真实文章验证全量同步、收藏、自动已读、划线批注、Markdown/Obsidian 入库和重复同步不覆盖。完整操作见 [图文教程](docs/Readeck与Obsidian图文教程.md)，部署细节见 [部署指南](docs/DEPLOYMENT.md)。
+
+新版 Reader 已统一桌面与手机视觉，增加三套正文排版、全屏阅读、纯划线模式、微信原文媒体入口，并优化首屏渲染和归档返回。查看[新版更新实录](docs/wechat/公众号阅读器新版更新实录.md)，或直接播放[桌面版录屏](docs/media/reader-v2/reader-v2-desktop.mp4)与[手机版录屏](docs/media/reader-v2/reader-v2-mobile.mp4)。
 
 ## 服务地址和访问方式
 
@@ -132,7 +138,7 @@ awk -F= '$1 == "READECK_ADMIN_PASSWORD" { print $2 }' .env
 ## 1. 资格和限制
 
 - 必须能在微信扫码时选择自己管理的公众号或服务号；普通个人微信关注列表不能直接授权 WeRSS。
-- 微信没有文章 webhook。本方案的“实时”是安全近实时：WeRSS 每小时第 17 分钟抓取，同步器每 5 分钟搬运。通常延迟为几分钟到一小时多，不能承诺秒级。
+- 微信没有文章 webhook。本方案的“实时”是安全近实时：Cloudflare Workflow 每小时第 17 分钟触发 WeRSS 抓取、每 5 分钟调用本机同步器。通常延迟为几分钟到一小时多，不能承诺秒级。
 - 微信风控出现 `200013` 时应暂停搜索和添加，不要高频重试。
 - Mac 睡眠或关机时不会抓取。若要求全天稳定，应把同一 Compose 与数据迁移到 NAS 或常开服务器。
 - WeRSS 固定上游镜像虽然声明 ARM64，实际层仍是 AMD64，目前通过 Rosetta 运行；Readeck 是原生 `aarch64`。
@@ -185,6 +191,8 @@ docker compose ps
 
 5. 添加后回到阅读器点“检查新文章”。不要相信 WeRSS 接口里偶发的“执行 0 个订阅号”文案，应以任务队列、文章数量和正文状态为准。
 
+部署包会在固定摘要镜像启动时校验并修正 WeRSS 的定时任务，使日常抓取使用独立的 `WERSS_REFRESH_MAX_PAGE`，默认值为 `1`。`WERSS_MAX_PAGE` 默认 `2`，只控制首次添加公众号时读取的历史页数。历史回填应分批执行，避免触发微信频控。
+
 本机 Feed 仍可用于其他阅读器：
 
 ```text
@@ -199,7 +207,7 @@ http://127.0.0.1:8001/feed/<公众号ID>.atom
 - WeRSS → Readeck：所有已经抓到完整正文的文章都会进入 Readeck。
 - Readeck → Obsidian：默认只导出“已收藏”或“含高亮/批注”的文章，避免 Obsidian 变成全文垃圾场。
 
-同步器安装：
+同步器安装。尚未配置 Cloudflare 时默认保留本机 5 分钟兜底：
 
 ```bash
 ./scripts/install-reading-sync.sh
@@ -225,6 +233,12 @@ launchctl print gui/$UID/com.summer.wechat-rss-reading-sync
 ```
 
 日志示例中的正常幂等结果应为“新入 Readeck 0 篇、Obsidian 更新 0 篇”。
+
+Cloudflare Workflow 完成在线验收后，按第 6 节切换调度权；只安装执行器并停用本机定时器：
+
+```bash
+./scripts/install-reading-sync.sh --cloudflare-driven
+```
 
 ## 5. Obsidian 笔记结构
 
@@ -254,6 +268,8 @@ reviewed_at:
 
 ## 划线与批注
 
+在正文中拖选文字后会立即显示淡绿划线预览和快速笔记框。笔记可以留空：直接按 Enter 保存纯划线；输入笔记后按 Enter 保存划线与笔记；只有 `Shift+Enter` 会在笔记内换行。阅读区会拒绝跨出正文或覆盖近半篇文章的误选，避免意外把整篇保存成黄色高亮。
+
 > ==从 Readeck 同步的高亮==
 > 批注：从 Readeck 同步的批注
 
@@ -273,6 +289,22 @@ reviewed_at:
 原文始终留在 Archive。值得进入 `03_Knowledge` 或 `04_Output` 时，创建新的综合条目并引用原文，不移动或公开整篇公众号文章。
 
 v1 不把全部图片复制进 Vault；Markdown 图片仍引用 Readeck 资源地址。Cloudflare 配好后跨设备可加载这些图片，但资源 URL 本身相当于不可猜测链接。只有评级 4–5 或准备输出的文章，再单独做附件本地化。
+
+### 可选：把“笔记同步助手”内容加入 Reader
+
+如果你使用第三方“笔记同步助手”把微信收藏同步成 Obsidian Markdown，可让同一个 `reading-sync` 扫描它的专用目录，并在 Reader 左侧生成独立的“Obsidian同步助手”分组：
+
+```dotenv
+OBSIDIAN_HELPER_VAULT=/absolute/path/to/obs-wechat-syn/Obsidian同步助手
+```
+
+保存 `.env` 后重新安装同步任务：
+
+```bash
+./scripts/install-reading-sync.sh
+```
+
+同步器同时处理两类内容：`文章/` 里的原文链接继续交给 Readeck 抓取；`微信消息/` 里的每日 Markdown 会按消息块拆分，即使没有 URL 也会作为独立 Reader 条目保存。消息使用稳定内容指纹去重，文件新增消息时只增量导入，不覆盖 Reader 中的收藏、划线或批注。URL 重定向通过本机状态库去重，Markdown 图片和已知图片 CDN 不会被误当成文章。原始 Markdown、附件和第三方插件密钥仍只留在专用 Vault；`data.json` 权限应为 `600`，不得写入本仓库。插件安装与路径模板请以[官方教程](https://www.bijitongbu.site/tutorials/obsidian-tutorial/)为准。
 
 ## 6. Cloudflare 外网阅读
 
@@ -308,6 +340,24 @@ https://werss.example.com/
 ```
 
 验收契约是：已授权设备无需 Readeck 用户名和密码；无 Cookie 的请求不能读取文章；未授权 Reader、API 和 Feed 都被 Access 拦截。WeRSS 管理端只通过独立 Access 应用进入，匿名根路径和 API 均被边缘拦截，源站仍只监听回环地址。
+
+### Cloudflare Workflow 驱动同步
+
+本机 Obsidian 文件不能由 Cloudflare 直接读取，因此 Workflow 只负责调度、持久状态和重试；实际文件读取仍由只监听回环地址的 `reading-sync` 完成。机器链路固定为：`Workflow → Access Service Token → Tunnel → Reader Caddy → 127.0.0.1:8787`。
+
+在 Reader Access Application 中创建 Service Token，并增加只允许该 Token 的 `Service Auth` policy。随后按 [`cloudflare/reader-sync-scheduler/README.md`](cloudflare/reader-sync-scheduler/README.md) 设置三个 Worker secret 并部署。确认至少一次 `sync` 和一次 `start` Workflow 实例成功后，再执行切换：
+
+```bash
+./scripts/set-werss-native-schedule.sh cloudflare
+./scripts/install-reading-sync.sh --cloudflare-driven
+```
+
+第一条停用 WeRSS 自带 Cron，避免它与 Workflow 在同一分钟重复抓取；受保护的 Reader 手工刷新和 Workflow 仍可按任务 ID 执行。不要在 Workflow 验收前停用两个本机兜底，否则 Access 策略或 Tunnel 配置错误会造成同步空窗。回滚时执行：
+
+```bash
+./scripts/set-werss-native-schedule.sh enable
+./scripts/install-reading-sync.sh
+```
 
 ![Cloudflare 公网 Reader 实机](docs/images/07-cloudflare-公网阅读器.png)
 
@@ -352,20 +402,33 @@ https://werss.example.com/
 
 ## 9. 常见问题
 
-系统还安装了一个为期 8 天的 Codex 只读巡检 `wechat-rss-stability-watch`，每天记录容器、文章计数、最新发布时间和同步状态到被 Git 忽略的 `observations/readeck-stability.tsv`。它不会读取或输出密钥，也不会自行修改 Cloudflare、DNS 或账号权限。
+运行时抓取和同步不依赖 Codex。若另行启用了 Codex 只读稳定性巡检，它只读取脱敏计数并写 observation，不参与调度、抓取或同步；生产调度权属于 Cloudflare Workflow。
 
 ### 为什么新公众号文章不全？
 
 WeRSS 首次只抓有限历史页，并受公众号授权范围、微信风控和正文抓取成功率影响。先检查：
 
 1. 公众号是否已加入 WeRSS。
-2. 全部公众号更新任务是否执行完成。
-3. 文章是否已经 `has_content=1`；正文未就绪的文章不会进入 Readeck。
-4. Mac 在计划执行时间是否处于唤醒状态。
+2. Reader 刷新状态是否提示“微信授权已失效”；出现该提示时必须打开 WeRSS 重新扫码，任务队列的 `completed` 不能证明微信上游返回了文章。
+3. 全部公众号更新任务是否执行完成，并确认最新文章时间或总数确实前进。
+4. 文章是否已经 `has_content=1`；正文未就绪的文章不会进入 Readeck。
+5. Mac 在计划执行时间是否处于唤醒状态。
+
+`.env` 中的 `WERSS_MAX_PAGE` 控制首次添加时的历史页数，默认 `2`；`WERSS_REFRESH_MAX_PAGE` 控制日常刷新页数，默认 `1`。提高刷新页数会显著增加请求量与执行时间，不要把历史补抓页数作为永久的每小时配置。
 
 ### 怎么追加新的公众号？
 
 在阅读器左侧公众号标题旁点 `+`，打开 Access 保护的 WeRSS 管理后台，搜索并添加公众号，再回到阅读器点“检查新文章”。手机和外网设备也可以完成，不再要求回到部署 Mac。
+
+### 怎么收起侧栏或全屏阅读？
+
+桌面端点顶部最左侧箭头可收起或展开左侧公众号栏，选择文章后点“全屏阅读”会同时隐藏公众号栏、文章列表和顶部导航，并请求浏览器全屏。再次点击、按 `F` 或按 Esc 可退出。
+
+### 为什么有些动图或视频不能在 Reader 里播放？
+
+普通 GIF 会由 Readeck 缓存并在 Reader 中继续播放。微信公众号视频、视频化动图和互动组件通常依赖微信页面脚本、临时签名地址或登录状态，抓取后的安全正文不会执行这些脚本，因此不能保证在 Reader 内还原。每篇有原始网页地址的文章会在正文开头显示“原文与动态媒体”，点击即可在新窗口打开微信原文播放；桌面顶栏和手机“阅读设置”也保留同一入口。
+
+Reader 会尽量保留公众号原文的标题层级、段落、图片、普通 GIF、表格和引用，但不会直接执行整页微信 HTML、脚本和追踪代码。完整复刻原页面会破坏划线、滚动和安全边界，也会受微信页面结构与签名地址变化影响。
 
 ### 为什么 Readeck 有文章，Obsidian 没有？
 

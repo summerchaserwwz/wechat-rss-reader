@@ -33,8 +33,52 @@
 
 - P1：固定 WeRSS 摘要的 arm64 manifest 实际为 AMD64 文件系统；本机功能可通过 Rosetta 运行，但 RG-002 原生 ARM64 硬门禁失败。需要用户选择接受模拟运行或授权维护自建原生镜像。
 - P1：公众号资格/授权、12 个来源和每小时任务已完成；72 小时/7 天近实时观察仍是时间门禁。
-- P1：Reader 的“新增公众号”安全入口与自动出现逻辑已实现，但 Goal 指定的“新增一个用户选定公众号，来源 N→N+1”仍需用户给出目标公众号并在本机 WeRSS 完成受控添加。
+- P1：Reader 的“新增公众号”安全入口和 12→13 来源自动出现已完成；新增来源的长期稳定性继续纳入 72 小时/7 天观察。
+- P1：Cloudflare Workflow 的实现、dry-run 与本机机器链路通过；Access Service Token/Service Auth policy、live deploy 和双 Cron 切换仍需 Access 写权限，在此之前保留本机兜底。
 - P2：Docker Desktop 为 Caddy 发布回环端口需要非 internal bridge，因此 Caddy 具备出站能力；已用只读根、`no-new-privileges`、仅保留 `NET_BIND_SERVICE` 和固定无动态上游的 Caddyfile 降低风险。
+
+### [2026-07-20 03:46] - 手机列表 awesome-design 小圆角与双向滑动
+
+- 做了什么：依据用户手机截图撤掉公众号页、文章列表和底部导航的 18-20px 大圆角、玻璃渐变、发光阴影与宽松卡片间距；按用户点名的 `awesome-design-md` Cursor 参考改为 4px 标签、6px 紧凑行、8px 输入/按钮、10px 主面板的克制层级，保留近黑底、细边框和无阴影。公众号行压到 42px，普通文章行压到 66-78px。新增公众号列表向左滑进入文章列表、文章列表向右滑返回公众号列表的跟手交互，64px 阈值过滤误触，正文既有左边缘返回不变。
+- 验证结果：412×915 Chromium 实测主面板/底栏 10px、行 6px、标签 4px；双向滑动过程 transform 分别达到 `+120px/-125px` 并完成 `timeline -> sources -> timeline`；纵向 124px 动作保持在 timeline；普通文章行 66-78px。23 个 Python 单测、Node、Shell、Compose、Reader UI、公网 Access、安全映射和 Harness 全部通过。
+- 下一步：用户在 Android Chrome/PWA 实际确认视觉密度和手势手感；项目级时间与架构 residual 不变。
+- 证据：screenshot:output/playwright/android-reader/awesome-rounded-sources.png:awesome-design 公众号列表；screenshot:output/playwright/android-reader/awesome-rounded-timeline.png:小圆角紧凑标签文章列表；command:Playwright 412x915 pane swipe/vertical guard/layout metrics:pass；command:unittest+static+verify-reader-ui+reader-public+harness:pass
+
+### [2026-07-20 03:02] - Android 应用式全屏阅读收口
+
+- 做了什么：按用户最终取舍把手机端收敛为阅读、收藏和已读管理；默认进入“未读”，100% 文章归入“已读”。正文顶栏固定显示返回、全屏、收藏、设置四个小图标；移除手机右下角字号/划线悬浮条，把字号与“标为已读”放进设置。新增 Android 可安装 Web App manifest 与 192/512 图标，独立窗口不显示地址栏；正文支持左边缘滑动返回，并在返回前保存当前进度，列表不绑定滑动手势。
+- 验证结果：412×915 真实 Chromium 中四个顶栏入口可见，Fullscreen API 返回 `fullscreen=true`，手机阅读 Dock 为 `display:none`；从正文左缘滑动返回时间线，拦截到离开前提交 `read_progress=58`。23 个 Python 单测、Shell、Compose、Node、manifest/图标、Reader UI、本机/公网 Access 边界和 Harness 全部通过。
+- 下一步：用户在 Android Chrome 从“阅读设置 → 安装到桌面”完成一次安装并确认系统级返回手势手感；项目级时间与架构 residual 不变。
+- 证据：command:Playwright 412x915 fullscreen/edge-swipe/progress probe:fullscreen true、dock hidden、read_progress 58、returned timeline；screenshot:output/playwright/android-reader/immersive-mobile.png:Android 沉浸正文；command:unittest+shell+compose+verify-reader-ui+verify reader-public+harness:pass；diff:reader-ui/index.html,styles.css,app.js,manifest.webmanifest,icons,scripts/verify-reader-ui.sh:Android app-like reader
+
+### [2026-07-17 16:29] - 微信消息原文回填与 Cloudflare Workflow 调度链
+
+- 做了什么：核对同步助手 Vault 后确认旧同步器只导入微信消息里的外链，不导入消息原文。新增按消息块拆分、稳定内容指纹、安全 HTML 渲染和独立状态映射；把 140 条微信消息回填 Reader。新增 Cloudflare Workflow：5 分钟 `sync`、每小时第 17 分钟 `start`、持久轮询与指数退避；Caddy 增加 Access JWT + 独立调度密钥的机器入口，刷新控制端增加不触发 WeRSS 的同步动作。补齐 WeRSS 原生 Cron/本机 LaunchAgent 安全切换与回滚脚本。
+- 验证结果：140 条消息、140 个唯一 key、空内容 0；live Readeck 首轮新入 140、失败 0，第二轮新入 0；本机模拟 Access Service Token 经 Reader Caddy 触发 `syncing_reader -> complete`，回环端口不变。修复同步助手外链先于 WeRSS 出现时缺正式来源标签的升级路径后，14 个公众号、160 篇可用正文全部且唯一映射。23 个 Python 单测、4 个 Node Workflow 测试、Shell、Compose、Caddy validate、Reader/WeRSS 公网安全验证、Harness 和 Wrangler 4.111.0 dry-run 通过。当前 Wrangler 身份无 Access policy 写权限，未部署会立即启用的 live schedule，也未停用本机两个兜底。
+- 下一步：用具备 Access 写权限的控制台/API 创建 Service Token 和 `Service Auth` policy；设置三个 Worker secret，部署并验证一次 `sync`/`start`，再停用 WeRSS 原生 Cron 与本机 5 分钟 LaunchAgent。
+- 证据：command:reading-sync live + Readeck API:140/140 imported、rerun created 0；command:local Caddy machine smoke:syncing_reader -> complete；command:python/node/shell/compose/caddy/wrangler dry-run:pass；diff:reading-sync、refresh-control、Caddy、Workflow、tests、docs
+- No-commit reason：工作树已有本轮开始前的 Reader UI、同步助手与任务账本重叠改动；未替用户混合 stage/commit，Harness 保持 dirty-state 警告。
+
+### [2026-07-17 15:36] - Reader 划线消失、黄色全选与纯划线修复
+
+- 做了什么：沿 Readeck 压缩后的原生 annotator 控制器定位三处交互缺陷：视觉勾选透明 radio 不会更新内部 `colorValue`；选区从正文拖出时会被扩到正文末尾；真实鼠标拖选后的 click 会在 textarea 过早聚焦后误关弹窗。改为触发原生透明选项、在原生微任务前拒绝越界或覆盖近半篇的选区、用 Custom Highlight 保留淡绿待确认划线，并延后 48ms 自动聚焦。笔记可留空，Enter 确认纯划线或划线加笔记，Shift+Enter 只换行。
+- 验证结果：真实鼠标拖选 13 字后 annotator 保持 `display:flex`、textarea 已聚焦、待确认 Highlight 为 1；空笔记 Enter 的拦截请求为 `color:none,note:""`。笔记场景 Shift+Enter 后请求数仍为 0且 textarea 保留换行，随后 Enter 请求为 `color:none,note:"一条笔记\n"`。构造从正文跨到 body 的 3718 字误选后选区归零、annotator 不显示且无 pending Highlight。左栏收起后正文 716→968px，滚轮 0→680、PageDown →1249，全屏为 1440×900。全部 POST/PATCH 在浏览器层拦截，未写真实数据。
+- 下一步：等待用户在公网 Reader 实际拖选确认手感；项目级 72 小时/7 天、WeRSS 原生 ARM64 和最终人工确认门禁不变。
+- 证据：command:Playwright real mouse drag/empty-note/note/unsafe-range/layout/scroll/fullscreen probes:pass；diff:reader-ui/app.js,embed.css,index.html,scripts/verify-reader-ui.sh:annotation interaction fix
+
+### [2026-07-17 14:59] - Reader 滚动、性能与沉浸阅读修复
+
+- 做了什么：用真实 Playwright 构造正文滚轮红线，确认 iframe 有 5170px 内容但滚轮和 PageDown 后仍停在 0；修复 iframe 纵向输入链，加入鼠标、PageDown/PageUp、方向键、空格、Home/End 支持。把初始时间线从全部 218 篇改为 60 篇渐进加载，移除滚动面板 blur，加入 hover/focus 正文预取和无闪烁骨架。新增公众号栏折叠、本地记忆、应用沉浸模式与浏览器全屏。批注框隐藏 5 个颜色选项、标签和按钮，默认透明划线，自动聚焦输入框，Enter 调用 Readeck 原生保存，Shift+Enter 换行。
+- 验证结果：同一浏览器红线由“滚轮后 0”变为 720；折叠后正文宽度 556→808，浏览器全屏后正文为 1280×720 且两栏隐藏；快速批注颜色区/按钮 `display:none`、透明项选中、Enter 命中原生 create。390×844 的外层 `scrollWidth=390`，iframe 无横向溢出且可滚动。18 个 unittest、Node、Shell、Compose、diff、`verify-reader-ui.sh`、公网 Access 回归和 Harness 通过。`verify.sh --local` 只在既有 WeRSS x86_64/Rosetta 硬门禁失败，与本切片无关且继续保留为 P1 residual。
+- 下一步：等待用户在公网 Reader 实际阅读确认手感；项目级 72 小时/7 天、WeRSS 原生 ARM64 和最终人工确认门禁不变。
+- 证据：command:Playwright iframe scroll/layout/annotation/mobile probes:0→720、60 DOM、fullscreen true、Enter native create、390px no overflow；command:node+shell+compose+diff+18 unittest+verify-reader-ui+reader-public+harness:pass；diff:reader-ui/index.html,styles.css,embed.css,app.js,scripts/verify-reader-ui.sh:immersive reader slice
+
+### [2026-07-17 14:22] - 笔记同步助手接入 Reader 独立分组
+
+- 做了什么：核对第三方官方教程和 v3.1.2 安装包，完成静态安全审计后在独立 `obs-wechat-syn` Vault 安装并启用插件；配置专用文章、微信消息、附件与图片目录、5 分钟自动同步和启动同步。为避开 macOS LaunchAgent 对 Documents 的后台权限限制，将完整 Vault 迁移到 `/Users/summer/Obsidian/obs-wechat-syn`。扩展 `reading-sync`，只读取 Markdown 外部链接并在 Reader 建立“Obsidian同步助手”虚拟分组，不改 WeRSS SQLite。
+- 验证结果：插件密钥已配置但未进入 Git，配置文件权限 `600`；初次云同步完成 195 篇，当前落盘 69 个 Markdown 和 514 张图片，图片补齐由插件继续重试。同步器最终从消息与文章笔记提取 74 个真实文章链接，Reader 74/74 loaded；清理导入调试期间的 14 个重复副本和 66 个图片 CDN 条目。增加原始 URL 持久映射、重定向幂等和图片过滤后，重复运行扫描 85 条引用时新增 0、补标签 0、失败 0。Playwright 实页点击分组后显示 74 张卡片；11 个同步单测、Node、Shell、Compose、Reader UI、公网 Access、diff 与 13 个公众号/148 篇合格正文映射检查通过。
+- 下一步：第三方插件按 5 分钟周期继续补齐剩余图片；项目级 72 小时/7 天、WeRSS 原生 ARM64 和最终人工确认门禁不变。
+- 证据：command:plugin checksum/static audit + Obsidian config inspection:enabled、key configured、mode 600、300s/startup；command:reading-sync idempotency rerun:85 scanned、0 created、0 labeled、0 failed；command:Readeck API:74 helper bookmarks、74 loaded；command:Playwright Reader filter:Obsidian同步助手 74、74 article cards；command:python3 unittest:11 pass
 
 ### [2026-07-15 19:06] - Petdex 半透明磨砂视觉重构
 
@@ -280,3 +324,69 @@
 - 验证结果：新 WeRSS 账号实际登录成功，旧用户名拒绝；本机 Compose 和 `.env.example` Compose 均通过；14 个 unittest、Shell、Node、4 个 plist、Reader UI、公网 Reader/WeRSS、README 22 个本地链接、Harness 与秘密扫描通过；最终备份 `20260716-155105` 和独立恢复 `20260716-155153` 通过，恢复出 118 篇文章、收藏、4 篇含批注、双 Access Caddy、主动刷新和同步状态。提交 `f414553` 已推到功能分支和默认 `main`；远端 README、部署、安全、Reader 和同步文件已读取核验，两个 GitHub CI run 均成功。
 - 下一步：72 小时/7 天时间门禁继续；完成后执行最终对抗审查、walkthrough 和人工确认。
 - 证据：repository:https://github.com/summerchaserwwz/wechat-rss-reader；commit:f414553；actions:29481551970,29481511814 success；command:secret scan + full test matrix + backup/restore:pass
+
+### [2026-07-20 04:36] - Android 极光磨砂、作者谱线与归档操作
+
+- 做了什么：手机来源/文章列表改为无圆角外壳的半透明极光磨砂，内部保持 8px 紧凑行；公众号名称稳定哈希到六组低饱和彩虹色，文章行加入两端渐隐的柔和作者谱线；正文右上角新增归档，结尾收藏/归档改为等宽并排。
+- 验证结果：Playwright 412×915 实机尺寸验证来源、时间线、正文顶栏和结尾操作；同一作者颜色稳定，外层 `border-radius=0`、`backdrop-filter=blur(34px)`；原失败点击坐标仍命中透明滚动层，但已转发为 `PATCH /api/bookmarks/{id}`，载荷为 `is_archived=true, read_progress=100`；HTTPS Origin 同值 PATCH 返回 200。23 个 unittest、Reader UI、公网 Reader、Shell/Node/Compose、Harness 均通过。
+- 下一步：整个项目时间门禁继续。
+- 证据：commit:ae47a46；actions:29702882151 success；screenshots:output/playwright/android-reader/aurora-spectrum-{sources,timeline,reader-end-actions}.png；command:Playwright archive regression + curl HTTPS-Origin PATCH + verify-reader-ui + verify --reader-public + harness:pass
+
+### [2026-07-20 06:41] - Taste 无卡片彩谱列表纠偏
+
+- 做了什么：按真实手机截图撤除文章行与公众号行的描边圆角卡片，改为开放式连续列表、彩色渐隐分隔和柔和左侧谱线；作者色从六组扩展为十六组，并在当前十六个来源中做碰撞消解；静态资源提升到 CSS v25 / JS v30，避免手机继续命中同版本旧缓存。
+- 验证结果：Playwright 412×915 实测文章列表右滑进入公众号列表、公众号列表左滑返回文章列表；当前 16 个来源得到 16 个不同 tone；来源外壳、文章外壳、来源行和文章行圆角均为 0px，文章行边框为 0px。23 个 unittest、Reader UI、公网 Reader、Shell/Node/Compose、Harness 均通过。
+- 提交边界：只提交 `reader-ui/{app.js,index.html,styles.css}` 与 `scripts/verify-reader-ui.sh`；本文件已有其他未提交改动，因此本条随工作区保留，不混入 UI 提交。
+- 证据：commit:f649ec6；actions:29706629156 success；screenshots:output/playwright/android-reader/taste-rainbow-{sources,timeline}-final-v2.png；command:Playwright swipe/computed-style audit + verify-reader-ui + verify --reader-public + harness:pass
+
+### [2026-07-20 06:49] - 干净底色与柔和纯色谱线
+
+- 做了什么：移除手机底色的极光径向渐变、文章与来源行的彩色铺底、底栏彩色短线；保留十六色作者 Tag，将来源与文章谱线改为 2px 低透明度纯色短线，无渐变、无光晕；CSS 缓存版本提升到 v26。
+- 验证结果：Playwright 412×915 计算样式确认 `bodyBackgroundImage=none`、`rowBackgroundImage=none`、`lineBackgroundImage=none`、`lineBoxShadow=none`、线宽 2px/透明度 0.46；文章与来源截图均为干净深色底。23 个 unittest、Reader UI、公网 Reader、Shell/Node/Compose、Harness 均通过。
+- 提交边界：本条随已有 dirty Harness 主账本保留；Git 提交只包含 Reader 样式、缓存版本和相应回归断言。
+- 证据：screenshots:output/playwright/android-reader/clean-frost-{timeline,sources}.png；command:Playwright computed-style audit + verify-reader-ui + verify --reader-public + harness:pass
+
+### [2026-07-20 07:14] - 正文左滑返回与手机纯划线闭环
+
+- 做了什么：正文返回手势改为从右向左滑动，超过 72px 后保存当前进度并回到文章列表；修正重载后遗留 Reader history 导致回到旧文章的问题。手机阅读设置新增划线模式，拖选文字自动保存为绿色虚线；点按已有划线直接删除并就地还原正文，不再弹笔记框。划线模式中间区域优先文字选择，只在最右侧 32px 保留返回手势。
+- 验证结果：Playwright 412×915 实测左滑进入 ready 状态并回到 `timeline`，history 同步归一为列表；手机设置入口可开启划线模式并自动收起；模拟删除精确命中当前 annotation、DOM 原位解除包裹且无 popover。经 Reader Access 实际链路创建一条临时纯划线后，DELETE 返回 204 并完成清理。23 个 unittest、Reader UI、公网 Reader、Shell/Node/Compose、Harness 均通过。
+- 提交边界：本条随已有 dirty Harness 主账本保留；Git 提交只包含 Reader UI 与对应验证脚本。
+- 证据：command:Playwright swipe/history/selection-conflict/delete audit；command:Reader Access temporary annotation create/delete 204；command:unittest + verify-reader-ui + verify --reader-public + harness:pass
+
+### [2026-07-21 14:40] - Cloudflare 免费调度上线与长队列修复
+
+- 做了什么：创建 Reader 专用 Access Service Token 与 `Service Auth` policy，设置三个 Worker secret 并部署 `wechat-reader-sync-scheduler`。Cloudflare 免费计划不支持 Workflow 原生 schedule，改用两个免费 Cron Trigger 创建幂等 Workflow 实例：每 5 分钟 `sync`，每小时第 17 分钟 `start`。控制端把总等待上限提升到 6 小时，并以队列进展而非固定 30 分钟判断停滞；普通失败不再永久暂停。微信授权失效保留 `auth_required`，网页刷新会拉起二维码，扫码后继续抓取。WeRSS 原生 Cron 已停放到闰年表达式，保留机器和手工受保护调用。
+- 验证结果：Access Service Token 经 Tunnel、Reader Caddy 和 `127.0.0.1:8787` 返回 200；live `start` Workflow `dd4ee30a-a036-46a1-83e8-bc1ff2105c2d` 持续轮询 5 分钟后成功，新增 2 篇文章；后续自动 `start` 实例与 5 分钟 `sync` 连续成功。Reader 从 1083 增至 1089。12 个刷新控制 Python 测试、7 个 Worker Node 测试、Reader UI、本机/公网 Access、WeRSS 公网与 Harness 通过。临时 Access 管理 API Token 已从 Cloudflare 和本机撤销；运行时 Service Token/policy 文件为 600。
+- residual：`verify.sh --local` 仍会因上游 WeRSS arm64 manifest 实际装入 AMD64 filesystem 而返回失败；该已知 Rosetta 性能风险不影响本次 Cloudflare 调度功能。72 小时/7 天观察与最终人工确认仍需真实时间。
+- 证据：command:Wrangler deploy/instances describe；command:machine Access POST 200；command:task queue 8→0；command:verify-reader-ui/reader-public/werss-public/harness；command:sqlite/Reader counters。
+
+### [2026-07-21 14:20] - Reader 首屏按需分页与即时归档返回
+
+- 做了什么：首屏从“追随全部书签/批注分页后再渲染”改为只读取最新 100 篇书签并立即呈现；列表到达底部或进入尚未命中的来源/筛选时才继续请求下一页。批注首批独立读取，后续空闲补齐。归档改为本地乐观更新后即时关闭正文并回到列表，远端 PATCH 失败才回滚。JavaScript 资源版本提升到 v37，避免移动端命中旧缓存。
+- 验证结果：隔离浏览器重放 1,100 篇、每页 120ms 延迟时，修复前首屏需要 12 个书签分页请求；修复后首屏稳定为 60 行和 1 个书签请求，显式加载后才产生第 2 个请求。390×844 无横向溢出、列表可滚动；手机尺寸下打开第一篇并归档后，`mobileView=timeline`、正文隐藏、列表直接显示第二篇。现有 Reader UI 静态与模拟 Access 运行时验证通过，运行中 Reader Caddy 已提供新逻辑。
+- 证据：command:Playwright fixture pagination/mobile archive regression；command:./scripts/verify-reader-ui.sh；command:node --check reader-ui/app.js；command:bash -n scripts/verify-reader-ui.sh。
+
+### [2026-07-21 15:00] - Reader Markdown 排版预设
+
+- 做了什么：右侧正文新增可持久化的三套排版预设，桌面顶栏和手机“阅读设置”均可切换。深色专注保留紧凑低干扰阅读，石墨笔记使用宋体型正文和较舒展行距，浅色稿纸采用低对比纸面、较窄行宽和安静的编辑器式层级。预设同步调整 Markdown 标题、段落、引文、代码块、表格、图片边界与批注颜色，不改变原有划线、滚动或阅读进度逻辑。
+- 验证结果：隔离真实文章结构的 iframe 中确认预设属性会同步写入父界面与正文文档；石墨笔记正文宽度 768px、宋体型字体和 1.8 行距生效，浅色稿纸宽度 704px、纸面背景和顶栏选择器深色文字均通过实际截图复核。390×844 手机设置可切换预设，正文无横向溢出且父级滚动保持可用。Reader UI 静态与模拟 Access 运行时验证通过。
+- 证据：command:Playwright desktop/mobile preset switch and computed-style audit；screenshot:.playwright-cli/page-2026-07-21T15-00-09-759Z.png；command:./scripts/verify-reader-ui.sh；command:node --check reader-ui/app.js。
+
+### [2026-07-22 01:33] - 微信视频与动态媒体原文回退
+
+- 做了什么：排查 WeRSS 原始正文、Readeck 归档和 Reader CSP 后，确认已缓存 GIF 可同源播放，而微信脚本驱动的视频/视频化动图在 `content_html` 净化阶段丢失。桌面正文顶栏新增“原文”，手机“阅读设置”新增“打开微信原文，播放视频和动图”；只接受 `http/https` URL，并用 `target=_blank` 与 `rel=noopener` 安全打开原始文章。
+- 验证结果：1167 个 Readeck 归档中检出 254 个 GIF，抽样 Reader 资源返回 `200 image/gif`；WeRSS 原始正文有 186 篇 `<video>`、净化正文为 0 篇。Playwright 在真实 Reader 数据上验证桌面和 390×844 手机入口均打开对应 `mp.weixin.qq.com` 标签页，且没有“浏览器阻止新窗口”误报。静态资源提升为 JS v40，运行中 Reader Caddy 已回读新版本。
+- 证据：command:SQLite raw/sanitized media counts + archive MIME probe；command:Playwright desktop/mobile original-media action；screenshot:.playwright-cli/page-2026-07-21T17-32-11-646Z.png；command:node --check + bash -n + ./scripts/verify-reader-ui.sh。
+
+### [2026-07-22 16:24] - 正文首屏原文媒体入口
+
+- 做了什么：把原文媒体入口从顶栏和手机设置进一步前移到每篇正文标题后的第一屏；微信文章明确提示视频和视频化动图需在原文播放，普通 GIF 继续留在阅读版。非微信网页使用通用“打开原网页”文案。入口只接受现有 `http/https` 原始地址，使用新窗口与 `noopener`，不放宽 Reader 的外域脚本或媒体 CSP。
+- 验证结果：回归检查先稳定失败于“正文开头没有原文媒体入口”，实现后通过。最新 WeRSS 1048 篇中原始 HTML 含视频 190 篇、优先入库 HTML 为 0；Readeck 归档包含 263 个 GIF、视频文件为 0，GIF 抽样经 Reader 返回 `200 image/gif`。Playwright 在真实微信文章 iframe 中确认提示位于标题之后、正文之前，链接准确指向对应 `mp.weixin.qq.com` 原文；412px 手机截图无横向溢出。JavaScript 提升到 v41，嵌入样式提升到 v16。
+- 证据：command:WeRSS SQLite media count + Readeck ZIP inventory + Reader GIF MIME probe；command:Playwright real iframe snapshot；screenshot:output/playwright/android-reader/.playwright-cli/page-2026-07-22T08-22-24-372Z.png；command:node --check + ./scripts/verify-reader-ui.sh + git diff --check。
+
+### [2026-07-22 17:35] - 新版双端演示素材与公众号更新稿
+
+- 做了什么：基于真实 Reader 数据完成桌面版与 390×844 手机版的新版截图和完整操作录屏，覆盖三栏阅读、全屏、排版预设、图片/GIF、视频原文入口与手机阅读设置；使用公众号技术文章写作规范整理《我把公众号阅读器重做了一遍》，正文内嵌演示图片并链接双端视频，同时从 README 增加统一入口。
+- 验证结果：桌面 MP4 为 1440×900、60.2 秒，手机 MP4 为 390×844、52.87 秒；两段 H.264 视频均完成逐帧解码检查，全部文章相对媒体链接存在，截图尺寸与视觉内容经联系表复核。Reader UI、29 个 Python 单元测试、7 个 Cloudflare Worker 测试、Shell/Compose/Harness 均通过；`verify.sh --local` 仅保留既有 WeRSS AMD64/Rosetta 架构门禁。
+- residual：本次只生成公众号成稿，不代替人工登录公众号后台发布；72 小时/7 天观察与最终人工确认仍需真实时间。
+- 证据：article:docs/wechat/公众号阅读器新版更新实录.md；media:docs/media/reader-v2/；command:ffprobe + ffmpeg full decode + link existence audit + project verification matrix。

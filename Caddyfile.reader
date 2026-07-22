@@ -56,10 +56,30 @@
 		header Cf-Access-Authenticated-User-Email {$CF_ACCESS_EMAIL:disabled@example.invalid}
 		header Cf-Access-Jwt-Assertion *
 	}
+	@machine_refresh {
+		host {$READER_PUBLIC_HOST:reader.example.com}
+		method POST
+		path /reader-control/refresh
+		header Cf-Access-Jwt-Assertion *
+		header X-Reader-Scheduler-Secret {$READER_SCHEDULER_SECRET:disabled}
+	}
+	handle @machine_refresh {
+		rewrite * /refresh
+		reverse_proxy http://host.docker.internal:8787 {
+			header_up Host {http.request.host}
+			header_up -Origin
+			header_up -Cf-Access-Authenticated-User-Email
+			header_up -X-Reader-Scheduler-Secret
+			header_up X-Reader-Automation cloudflare
+			header_up X-Reader-Control-Secret {$READER_REFRESH_SECRET:disabled}
+		}
+	}
 	handle @public_refresh {
 		rewrite * /refresh
 		reverse_proxy http://host.docker.internal:8787 {
 			header_up Host {http.request.host}
+			header_up -X-Reader-Automation
+			header_up -X-Reader-Scheduler-Secret
 			header_up X-Reader-Control-Secret {$READER_REFRESH_SECRET:disabled}
 		}
 	}

@@ -10,7 +10,7 @@
     <title>公众号阅读器</title>
     <link rel="manifest" href="/reader-assets/manifest.webmanifest" crossorigin="use-credentials">
     <link rel="icon" href="/reader-assets/icons/reader-192.png" sizes="192x192">
-    <link rel="stylesheet" href="/reader-assets/styles.css?v=27">
+    <link rel="stylesheet" href="/reader-assets/styles.css?v=31">
   </head>
   <body>
     <svg class="icon-sprite" aria-hidden="true">
@@ -119,7 +119,16 @@
               <span id="reader-meta"></span>
             </div>
             <span id="reader-auto-status" class="reader-auto-status">自动记录阅读进度</span>
+            <label class="reader-preset-control" for="reading-preset">
+              <span>排版</span>
+              <select id="reading-preset" aria-label="正文排版预设">
+                <option value="focus">深色专注</option>
+                <option value="graphite">石墨笔记</option>
+                <option value="paper">浅色稿纸</option>
+              </select>
+            </label>
             <button id="reader-focus" class="toolbar-button focus-button" type="button" aria-label="全屏阅读" aria-pressed="false" aria-keyshortcuts="F" title="全屏阅读"><svg><use href="#i-focus"/></svg><span>全屏阅读</span></button>
+            <button id="reader-original" class="toolbar-button original-button" type="button" aria-label="打开微信原文" title="打开微信原文，播放视频和动图" hidden><svg><use href="#i-external"/></svg><span>原文</span></button>
             <button id="reader-read" class="toolbar-button" type="button" aria-label="标为已读"><svg><use href="#i-check"/></svg><span>标为已读</span></button>
             <button id="reader-star" class="toolbar-button star-button" type="button" aria-label="收藏" aria-keyshortcuts="S"><svg><use href="#i-star"/></svg><span>收藏</span></button>
             <button id="reader-archive" class="toolbar-button archive-button" type="button" aria-label="移至归档"><svg><use href="#i-inbox"/></svg><span>移至归档</span></button>
@@ -218,6 +227,27 @@
       </form>
     </dialog>
 
+    <dialog id="wechat-auth-dialog" class="feed-dialog wechat-auth-dialog" aria-labelledby="wechat-auth-title">
+      <div class="dialog-card wechat-auth-card">
+        <button id="wechat-auth-close" class="dialog-close icon-button" type="button" aria-label="关闭微信验证"><svg><use href="#i-close"/></svg></button>
+        <span class="eyebrow">微信授权</span>
+        <h2 id="wechat-auth-title">扫码恢复公众号抓取</h2>
+        <p>当前微信登录已失效。请用微信扫描下面的二维码，验证成功后会自动继续刚才的“检查新文章”。</p>
+        <div id="wechat-auth-stage" class="wechat-auth-stage" data-phase="auth_idle">
+          <img id="wechat-auth-qr" alt="WeRSS 微信授权二维码" hidden>
+          <div id="wechat-auth-placeholder" class="wechat-auth-placeholder">
+            <svg><use href="#i-refresh"/></svg>
+            <span>正在准备二维码</span>
+          </div>
+        </div>
+        <p id="wechat-auth-status" class="wechat-auth-status" role="status" aria-live="polite">正在连接微信授权服务</p>
+        <div class="dialog-actions wechat-auth-actions">
+          <button id="wechat-auth-retry" class="primary-button" type="button" hidden><svg><use href="#i-refresh"/></svg>重新生成二维码</button>
+          <button id="wechat-auth-cancel" class="secondary-button" type="button">稍后验证</button>
+        </div>
+      </div>
+    </dialog>
+
     <dialog id="reader-actions-dialog" class="mobile-actions-dialog">
       <div class="mobile-actions-sheet">
         <header>
@@ -225,6 +255,7 @@
           <button id="mobile-actions-close" class="icon-button" type="button" aria-label="关闭阅读设置">×</button>
         </header>
         <button id="mobile-reader-read" class="mobile-setting-action" type="button"><svg><use href="#i-check"/></svg><span>标为已读</span></button>
+        <button id="mobile-reader-original" class="mobile-setting-action" type="button" hidden><svg><use href="#i-external"/></svg><span>打开微信原文，播放视频和动图</span></button>
         <button id="mobile-highlight-mode" class="mobile-setting-action" type="button" aria-pressed="false"><svg><use href="#i-highlight"/></svg><span>进入划线模式</span></button>
         <section class="mobile-font-section" aria-label="正文字号">
           <span>正文字号</span>
@@ -234,12 +265,20 @@
             <button id="mobile-font-larger" type="button" aria-label="增大正文字号">A+</button>
           </div>
         </section>
+        <label class="mobile-preset-section" for="mobile-reading-preset">
+          <span>正文排版</span>
+          <select id="mobile-reading-preset" aria-label="正文排版预设">
+            <option value="focus">深色专注</option>
+            <option value="graphite">石墨笔记</option>
+            <option value="paper">浅色稿纸</option>
+          </select>
+        </label>
         <p class="mobile-read-hint">阅读进度会自动保存；到达正文 80% 后归入“已读”。</p>
         <button id="install-app" class="mobile-setting-action" type="button" hidden><svg><use href="#i-download"/></svg><span>安装到桌面，无地址栏打开</span></button>
       </div>
     </dialog>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="/reader-assets/app.js?v=33" defer></script>
+    <script src="/reader-assets/app.js?v=41" defer></script>
   </body>
 </html>

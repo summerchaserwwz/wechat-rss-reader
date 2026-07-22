@@ -9,6 +9,7 @@ backups/
 downloads/
 observations/
 .playwright-cli/
+.wrangler/
 output/playwright/
 readeck-data/
 sync-state/

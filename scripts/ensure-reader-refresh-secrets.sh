@@ -12,6 +12,7 @@ runtime_dir="$HOME/.local/share/wechat-rss"
 secret_file="$runtime_dir/reader_refresh_secret"
 credentials_file="$runtime_dir/werss_refresh_credentials.json"
 config_file="$runtime_dir/reader_refresh_config.json"
+admin_env_file="$runtime_dir/werss_admin.env"
 mkdir -p "$runtime_dir"
 chmod 700 "$runtime_dir"
 
@@ -32,11 +33,48 @@ printf '%s\n' "$refresh_secret" >"$secret_file"
 chmod 600 "$secret_file"
 set_env_value READER_REFRESH_SECRET "$refresh_secret"
 
+scheduler_secret="$(env_value READER_SCHEDULER_SECRET)"
+if [[ -z "$scheduler_secret" ]]; then
+  scheduler_secret="$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')"
+fi
+[[ ${#scheduler_secret} -ge 48 ]] || die "READER_SCHEDULER_SECRET 长度不足"
+set_env_value READER_SCHEDULER_SECRET "$scheduler_secret"
+
 allowed_host="$(env_value READECK_PUBLIC_HOSTNAME reader.example.com)"
 allowed_email="$(env_value CF_ACCESS_EMAIL)"
 [[ "$allowed_host" =~ ^[a-z0-9.-]+$ ]] || die "READECK_PUBLIC_HOSTNAME 格式异常"
 [[ "$allowed_email" =~ ^[^[:space:]@]+@[^[:space:]@]+$ ]] || die "CF_ACCESS_EMAIL 格式异常"
-python3 - "$config_file" "$allowed_host" "$allowed_email" <<'PY'
+python3 - "$ENV_FILE" "$admin_env_file" <<'PY'
+import os
+import sys
+from pathlib import Path
+
+source = Path(sys.argv[1])
+target = Path(sys.argv[2])
+values = {}
+for raw in source.read_text(encoding="utf-8").splitlines():
+    line = raw.strip()
+    if not line or line.startswith("#") or "=" not in line:
+        continue
+    key, value = line.split("=", 1)
+    values[key.strip()] = value.strip().strip('"').strip("'")
+
+username = values.get("WERSS_ADMIN_USERNAME", "werss_admin")
+password = values.get("WERSS_BOOTSTRAP_PASSWORD", "")
+if not password:
+    raise SystemExit(".env 缺少 WERSS_BOOTSTRAP_PASSWORD")
+
+temp = target.with_suffix(".tmp")
+temp.write_text(
+    f"WERSS_ADMIN_USERNAME={username}\nWERSS_BOOTSTRAP_PASSWORD={password}\n",
+    encoding="utf-8",
+)
+os.chmod(temp, 0o600)
+temp.replace(target)
+os.chmod(target, 0o600)
+PY
+
+python3 - "$config_file" "$allowed_host" "$allowed_email" "$admin_env_file" <<'PY'
 import json
 import os
 import sys
@@ -45,7 +83,15 @@ from pathlib import Path
 path = Path(sys.argv[1])
 temp = path.with_suffix(".tmp")
 temp.write_text(
-    json.dumps({"allowed_host": sys.argv[2], "allowed_email": sys.argv[3]}, ensure_ascii=False, indent=2) + "\n",
+    json.dumps(
+        {
+            "allowed_host": sys.argv[2],
+            "allowed_email": sys.argv[3],
+            "admin_env_file": sys.argv[4],
+        },
+        ensure_ascii=False,
+        indent=2,
+    ) + "\n",
     encoding="utf-8",
 )
 os.chmod(temp, 0o600)

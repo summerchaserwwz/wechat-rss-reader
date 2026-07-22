@@ -9,6 +9,12 @@ RUNTIME_DIR="$HOME/.local/share/wechat-rss"
 PLIST_DIR="$HOME/Library/LaunchAgents"
 PLIST_PATH="$PLIST_DIR/$LABEL.plist"
 DOMAIN="gui/$(id -u)"
+MODE="${1:-local-schedule}"
+
+if [[ "$MODE" != "local-schedule" && "$MODE" != "--cloudflare-driven" ]]; then
+  echo "用法：$0 [--cloudflare-driven]" >&2
+  exit 2
+fi
 
 [[ -f "$RUNTIME_DIR/readeck_api_token" ]] || {
   echo "缺少 $RUNTIME_DIR/readeck_api_token；请先在 Readeck 创建最小权限 API 令牌" >&2
@@ -23,11 +29,19 @@ install -m 0755 "$ROOT_DIR/scripts/reading-sync.py" "$RUNTIME_DIR/reading-sync.p
 install -m 0644 "$ROOT_DIR/config/$LABEL.plist" "$PLIST_PATH"
 obsidian_inbox="$(awk -F= '$1 == "OBSIDIAN_INBOX_DIR" { sub(/^[^=]*=/, ""); print; exit }' "$ROOT_DIR/.env")"
 [[ -n "$obsidian_inbox" ]] || obsidian_inbox="$HOME/Documents/Obsidian/reading/readeck_inbox"
-/usr/bin/sed -i '' "s|__HOME__|$HOME|g; s|__OBSIDIAN_INBOX_DIR__|$obsidian_inbox|g" "$PLIST_PATH"
+obsidian_helper_vault="$(awk -F= '$1 == "OBSIDIAN_HELPER_VAULT" { sub(/^[^=]*=/, ""); print; exit }' "$ROOT_DIR/.env")"
+[[ -n "$obsidian_helper_vault" ]] || obsidian_helper_vault="$HOME/Documents/obs-wechat-syn/Obsidian同步助手"
+/usr/bin/sed -i '' \
+  "s|__HOME__|$HOME|g; s|__OBSIDIAN_INBOX_DIR__|$obsidian_inbox|g; s|__OBSIDIAN_HELPER_VAULT__|$obsidian_helper_vault|g" \
+  "$PLIST_PATH"
 plutil -lint "$PLIST_PATH" >/dev/null
 
 launchctl bootout "$DOMAIN/$OLD_LABEL" >/dev/null 2>&1 || true
 launchctl bootout "$DOMAIN/$LABEL" >/dev/null 2>&1 || true
+if [[ "$MODE" == "--cloudflare-driven" ]]; then
+  echo "reading-sync 已安装；本机定时任务已停用，等待 Cloudflare Workflow 调用。"
+  exit 0
+fi
 launchctl bootstrap "$DOMAIN" "$PLIST_PATH"
 launchctl kickstart -k "$DOMAIN/$LABEL"
 

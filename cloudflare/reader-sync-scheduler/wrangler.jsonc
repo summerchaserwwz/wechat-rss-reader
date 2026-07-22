@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "wechat-reader-sync-scheduler",
+  "main": "src/index.js",
+  "compatibility_date": "2026-07-17",
+  "vars": {
+    "READER_REFRESH_URL": "https://reader.sumerchaser.top/reader-control/refresh"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "triggers": {
+    "crons": [
+      "*/5 * * * *",
+      "17 * * * *"
+    ]
+  },
+  "workflows": [
+    {
+      "name": "wechat-reader-sync-scheduler",
+      "binding": "READER_SYNC_WORKFLOW",
+      "class_name": "ReaderSyncWorkflow"
+    }
+  ]
+}

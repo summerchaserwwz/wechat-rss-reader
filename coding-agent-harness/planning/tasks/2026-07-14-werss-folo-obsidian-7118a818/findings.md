@@ -2,6 +2,29 @@
 
 ## 研究发现
 
+### 手机阅读库应使用克制的小圆角层级，不应使用玻璃大卡片或全直角
+
+- 截图中的主要视觉负担不是颜色，而是四层重复容器：页面边距、圆角面板、圆角列表卡片、圆角底栏。手机宽度下每层边界都在争夺注意力，也让同屏文章数过低。
+- 全部改成 0px 直角会让触控界面显得僵硬。最终按 `awesome-design-md` Cursor 参考使用 4/6/8/10px 半径阶梯：标签最小、紧凑行次之、输入和按钮再大一级、主面板最大，但不超过 10px。深度只用背景差和 1px hairline，不使用阴影或玻璃材质。
+- 公众号列表与文章列表是同级浏览状态，适合完整的双向横滑；正文是更深一层的阅读状态，只保留左边缘返回并先保存进度。将两种手势分域后，列表横滑不会侵入正文，正文手势也不会误改列表筛选。
+- 手势需要横向方向锁和阈值：垂直位移先超过横向且大于 12px 时立即取消，只有符合方向且横向达到 64px 才切页。412px 视口中实测纵向 124px 不切页，双向横滑均跟手并到达目标。
+
+### Android 浏览器体验应拆成“可安装外壳”和“正文全屏”两层
+
+- Web App manifest 的 `display: standalone` 负责从桌面图标启动时去掉地址栏；阅读中的全屏按钮再调用 Fullscreen API，负责当前会话即时进入无浏览器栏的沉浸模式。两者并存，既不要求第三方阅读 App，也不依赖用户每次手动切换浏览器界面。
+- 手机上的长按选区会与浏览器原生菜单、Readeck 标注器和滚动手势竞争。用户已明确放弃手机划线/笔记，因此移动端用透明滚动层接管正文纵向滚动并禁用长按选择，桌面端仍保留原生划线与批注能力。
+- 左边缘返回只在正文视图、起点不超过 28 px 且横向位移至少 72 px 时触发；普通纵向阅读和文章列表都不绑定滑动。返回动作先按当前滚动位置计算并保存进度，再通过 History API 回到时间线，避免手势返回丢失阅读位置。
+- “已读”不是独立复制数据：`read_progress >= 100` 进入已读栏目，其他文章进入默认未读栏目；阅读到 80% 自动记为 100%，也可在设置中手动标为已读。
+
+### Reader 无法滚动来自 iframe 输入链，卡顿来自整列重建
+
+- 真实浏览器红线确认：选定文章的嵌入正文 `scrollHeight=5170`、`clientHeight=514`，直接设置 `scrollTop` 可以到 640，但鼠标滚轮和 PageDown 后仍为 0；因此不是正文高度不足，而是浏览器输入没有驱动同源 iframe 的滚动根节点。
+- 初始收件箱同时创建 218 个文章节点，收藏、阅读进度和标签变化又会整列重建并逐行重绑监听；时间线与正文面板的 `backdrop-filter` 还会增加滚动重绘成本。
+- 修复使用 iframe 内受控纵向滚动和键盘滚动，不把连续值写入应用状态；初始时间线限制为 60 篇并在接近底部时分批增加，文章在 hover/focus 时预取，正文主题完成后再移除骨架。Playwright 复测滚轮从 0 到 720，初始 DOM 为 60，390px 下无横向溢出。
+- Readeck 原生 annotator 仍负责 API 和选区锚点。其控制器把默认颜色单独保存在 `colorValue`，只设置透明 radio 的 `checked` 不会改变提交值，实际仍会保存 `yellow`；Reader 现在通过原生 click 同步为 `none`，并由真实拦截请求确认 payload。Enter 映射到 create/update，空笔记保存纯划线，Shift+Enter 保留换行。
+- Readeck 会把“从正文开始、在正文外结束”的 Range 规范化到正文最后一个文本节点，因此一次拖出边界可能变成整篇标注；真实鼠标拖选后又会派发 click，若此时过早聚焦 textarea，原生 outside-click 还会把刚出现的 annotator 立即关闭。Reader 在 Readeck 微任务前拒绝越界/近半篇误选，使用 Custom Highlight 保留待确认划线，并延后 48ms 聚焦输入框。
+- 公众号栏折叠状态保存在浏览器本地；全屏阅读同时隐藏两栏和顶部导航，并在浏览器允许时进入 Fullscreen API。Esc、`F` 或再次点击可以退出。
+
 ### 固定 WeRSS 镜像与 Firefox 不兼容
 
 - 背景：用户计划锁定 `BROWSER_TYPE=firefox`。
@@ -178,6 +201,31 @@
 - 域名、WeRSS 用户名、Obsidian Inbox 和 LaunchAgent HOME 已从个人硬编码改为 `.env` 或安装时替换。公共模板使用 `example.com` 和随机强密码，不复制维护者当前的本机弱密码选择。
 - 推送前当前文件与完整 Git 历史均扫描常见 GitHub Token、私钥、WeRSS Access Key 模式；`.env`、数据、备份、observations、sync-state、secrets 和 cloudflared 路径均验证被 Git 忽略。
 
+### 笔记同步助手到 Reader 是目录桥接，不是双向改写
+
+- 第三方插件负责“微信好友/云端 → Obsidian Markdown 与附件”，本项目只读它的专用目录并把外部原文链接加入 Readeck；Reader 的已读、收藏、划线和标签不会反写第三方云端。
+- 插件 API Key 只保存在独立 Vault 的插件 `data.json`，权限为 `600`，不得复制进 `.env`、日志或公开仓库。官方 v3.1.2 安装包的 `main.js` 与厂商当前 HTTPS 文件摘要一致，静态检查未发现 shell、`child_process` 或动态 `eval`。
+- macOS LaunchAgent 无法可靠读取 Documents 下的该 Vault；迁移完整 Vault 到 `~/Obsidian/obs-wechat-syn` 并更新 Obsidian 注册表后，5 分钟后台扫描恢复正常。
+
+### Readeck 重定向和 Markdown 图片都必须参与幂等边界
+
+- Readeck 加载外部链接后会把公开 API 的 `url` 更新为重定向终点；仅用当前 URL 去重会在下一轮再次创建同一原始链接。同步器新增 `helper_map`，创建书签后、等待正文前即持久化 `source_url → bookmark_id`，解析超时也不会重复创建。
+- 合并微信消息笔记会包含无扩展名图片 CDN；只按 `.png/.jpg` 后缀过滤会把图片误当文章。提取器先移除 Markdown 图片，并拒绝已确认的图片 CDN；调试期间产生的 66 个图片条目和 14 个重复副本均经“本轮创建、未读、未收藏、无批注”断言后清理。
+- 最终 74 个唯一文章链接与 Reader 74 个 loaded 条目一一对应；重复运行扫描 85 次引用时 created/labeled/failed 均为 0。
+
+### 微信消息原文与 Cloudflare 调度是两个独立边界
+
+- 旧同步器会扫描 `微信消息/`，但只提取外部 URL；因此消息链接已经进入 Reader，而无 URL 的每日消息没有任何 Reader 条目。新实现按 `#### 标题 + ## 时间` 拆分消息块，以相对路径和规范化内容摘要生成稳定 synthetic URL，140/140 条消息一次性回填，第二轮新增为 0。
+- 消息 HTML 在本机转义后直接提交给 Readeck，不让 Readeck 或 Cloudflare 重新抓取本机 Vault；原始 Markdown、附件和插件密钥不上传 Cloudflare。Reader 状态仍由 Readeck 持有，目录桥接不反写第三方同步助手。
+- Cloudflare 无法直接读取 Mac 本地 Obsidian 文件，正确边界是 Workflow 负责计划、持久状态与指数退避，Access Service Token 负责机器身份，Tunnel 只把请求送到现有 Caddy，本机回环控制端执行 `reading-sync`。
+- 当前 Wrangler OAuth 可以部署 Workers/Workflows，但没有 Access Service Token/policy 写权限。为了不制造同步空窗，live Access 门禁完成前保留 WeRSS 原生 Cron 与 5 分钟 LaunchAgent；切换时必须先验证 `sync`/`start` 实例，再停用两者，不能双调度长期并存。
+
+### 手机正文的透明滚动层只能在确认手势后接管指针
+
+- 为解决 Android iframe 惯性滚动，正文和列表使用父级透明触摸层；旧实现会在 `pointerdown` 立即捕获指针，导致返回、文章行和正文结尾按钮只有按压反馈而不触发点击。
+- 列表与左边缘返回现在都延迟到确认横向移动后才调用 `setPointerCapture`。正文透明层继续承担纵向滚动，但普通点击会按坐标转发给受控的 `[data-reader-action]` 或正文链接。
+- Readeck 原生底部表单不再作为 Reader 状态入口；Reader 接管收藏/归档按钮并统一调用书签 API，避免 iframe 表单状态与父级列表状态分叉。归档同时写 `is_archived` 和 `read_progress=100`，与“默认未读、归档进入已读栏目”的产品语义保持一致。
+
 ## 技术决策
 
 | 决策 | 选择 | 原因 | 替代方案 | 状态 |
@@ -200,3 +248,35 @@
 | Docker 协议/权限是否完成？ | App 安装后需用户操作 | user | 本机 smoke 前 |
 | Cloudflare Tunnel 是否完成？ | 已完成 Access、独立 Tunnel、DNS、LaunchAgent、授权/匿名浏览器边界和公网 smoke | user + coordinator | done |
 | Readeck 是否稳定？ | 当前 118 篇去重文章、真实高亮和 Obsidian 幂等样本通过；72 小时/7 天待观察 | user + coordinator | 完成判断前 |
+
+### Android 静态资源版本必须在最终样式落定后再提升
+
+- Reader 静态资源使用 5 分钟浏览器缓存；同一个 `?v=` 下继续修改 CSS 或 JS 时，Android 浏览器会稳定显示上一份资源，即使服务端文件已经更新。
+- 每个 UI 切片应在最终编辑完成后统一提升 CSS/JS 查询版本，并由 `verify-reader-ui.sh` 锁定版本；浏览器回归需重新加载后检查实际计算样式，不能只看仓库源码。
+- 高密度移动列表不应使用逐条描边圆角卡片。作者色适合落在小标签、渐隐谱线和轻微铺底，行本体保持无边框、无圆角，既能区分来源又不会形成厚重卡片墙。
+- 当十六色来源同时出现在一屏时，彩色铺底、双色谱线和底栏彩条会叠加成视觉噪声。更稳妥的层级是：中性背景与行分隔负责结构，作者 Tag 负责识别，2px 低透明度纯色短线只做快速扫视锚点。
+
+### 微信动态媒体必须区分已缓存 GIF 与脚本驱动的视频
+
+- 最新本机 Readeck 压缩归档中已经缓存 263 个 GIF、视频文件为 0；抽样通过 Reader 的同源资源路径返回 `200 image/gif`，因此普通 GIF 不应通过放宽外域 CSP 来修复。
+- 最新 WeRSS 1048 篇源文章中，原始 `content` 有 190 篇包含 `<video>`，但优先入库的 `content_html` 已将这些标签清理为 0；这些标签的 `src` 多为空，由微信公众号页面脚本在原文环境中补齐，Readeck 无法可靠重建直接播放地址。
+- Reader 保持 `img-src`、`media-src` 和 `frame-src` 的同源边界，避免把不受控外域播放器嵌入私人阅读器。正确降级是提供安全的“打开微信原文”入口，让微信的原始脚本与播放器处理视频和视频化动图。
+- 原文入口必须出现在正文第一屏，而不只藏在桌面顶栏或手机设置中。Reader 在同源 iframe 加载后幂等注入紧凑提示，真实文章 DOM 已确认入口位于标题之后、正文之前；普通静态 HTML 继续由 Readeck 清洗后呈现。
+
+### 手机左滑返回与文字选择必须按模式分流
+
+- 阅读模式由父级透明滚动层接收手势，可以让正文任意位置的左滑与纵向滚动通过方向阈值自然分流；确认横向移动前不能捕获指针，避免普通点击和惯性滚动失效。
+- 划线模式下横向拖动本身就是文字选择，不能继续把整段正文当作返回手势区。正文中间区域应完全让给原生选区，只在最右侧 32px 保留左滑返回，既不牺牲划线流畅度，也保留退出路径。
+- Readeck `DELETE /api/bookmarks/{bookmark_id}/annotations/{annotation_id}` 返回 204。删除成功后直接解除当前 `rd-annotation` 包裹并同步本地 annotation 状态，可避免重载正文和滚动位置跳变；失败时保留原划线并恢复可点击状态。
+
+### Cloudflare Free 不能直接 schedule Workflow，但可用 Cron Trigger 创建 Workflow
+
+- Cloudflare Free 部署带 `workflows[].schedules` 时会拒绝：scheduled Workflows 需要付费 Workers 计划。
+- 两个 Workers Cron Trigger 仍可免费使用。正确的兼容架构是 Cron Trigger 只创建带确定性 ID 的 Workflow 实例，长轮询、重试和状态持久化仍由 Workflow 承担。
+- 实际部署后，`sync` 以 5 分钟间隔稳定完成；`start` 实例已真实触发 WeRSS 队列、持续轮询并完成新增正文。因此不需要为本项目升级 Cloudflare 套餐。
+
+### 控制端不能把普通连续失败永久锁死
+
+- WeRSS 原生 Cron 和 Cloudflare 同一分钟抓取会导致并发失败；旧控制端累计两次失败后永久返回 409，即使队列和机器身份均健康。
+- 普通失败现在只记录次数并交给下一轮计划任务重试；只有微信授权失效会保留 `auth_required`。5 分钟同步不能清除该标志，因此用户点击刷新仍会收到二维码而不是被成功同步状态掩盖。
+- Cloudflare 接管时应将 WeRSS 任务维持为启用但把原生 Cron 停放到低频表达式；完全 disable 会同时禁用受保护的手工/机器 `start` 调用。

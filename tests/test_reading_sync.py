@@ -103,11 +103,250 @@ class ReadingSyncTests(unittest.TestCase):
             [self.bookmark()],
         )
         self.assertEqual(status["health"], "ok")
+        self.assertEqual(status["scheduler"], "werss")
         self.assertEqual(status["cron"], "17 * * * *")
+        self.assertEqual(status["werss_native_cron"], "17 * * * *")
         self.assertEqual(status["sync_interval_seconds"], 300)
         self.assertEqual(status["feeds"][0]["readeck_articles"], 1)
         self.assertEqual(status["feeds"][0]["unread"], 1)
         self.assertNotIn("token", str(status).lower())
+
+    def test_reader_status_reports_cloudflare_schedule_when_werss_cron_is_parked(self):
+        status = reading_sync.build_reader_status(
+            {
+                "cron": "43 3 29 2 *",
+                "cron_status": 1,
+                "feeds": [
+                    {
+                        "mp_name": "测试公众号",
+                        "articles": 1,
+                        "complete_articles": 1,
+                        "update_time": 1784029237,
+                    }
+                ],
+            },
+            [self.bookmark()],
+        )
+        self.assertEqual(status["health"], "ok")
+        self.assertEqual(status["scheduler"], "cloudflare")
+        self.assertEqual(status["cron"], "17 * * * *")
+        self.assertEqual(status["werss_native_cron"], "43 3 29 2 *")
+
+    def test_helper_note_extracts_frontmatter_and_body_urls(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            note = Path(tmp) / "2026-07-17-收藏.md"
+            note.write_text(
+                "---\nurl: https://mp.weixin.qq.com/s/example#part\n---\n\n"
+                "# 收藏\n\n[另一篇](https://example.com/article?a=1)\n"
+                "![](https://example.com/cover.png)\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(
+                reading_sync.helper_note_urls(note),
+                ["https://mp.weixin.qq.com/s/example"],
+            )
+
+    def test_helper_message_without_frontmatter_extracts_multiple_links(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            note = Path(tmp) / "同步助手_2026-07-17.md"
+            note.write_text(
+                "[第一篇](https://example.com/one)\n\nhttps://example.com/two\n"
+                "![](https://media.example.com/asset-without-extension)\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(
+                reading_sync.helper_note_urls(note),
+                ["https://example.com/one", "https://example.com/two"],
+            )
+
+    def test_helper_url_rejects_local_and_image_targets(self):
+        self.assertIsNone(reading_sync.canonical_external_url("http://127.0.0.1/private"))
+        self.assertIsNone(reading_sync.canonical_external_url("https://example.com/image.webp"))
+        self.assertIsNone(reading_sync.canonical_external_url("https://wx.qlogo.cn/asset-without-extension"))
+        self.assertEqual(
+            reading_sync.canonical_external_url("https://example.com/article#section"),
+            "https://example.com/article",
+        )
+        self.assertEqual(
+            reading_sync.canonical_external_url("https://example.com/…"),
+            reading_sync.canonical_external_url("https://example.com/%E2%80%A6"),
+        )
+
+    def test_helper_redirect_is_idempotent_across_runs(self):
+        class FakeClient:
+            def __init__(self):
+                self.items = []
+                self.created = 0
+
+            def list_bookmarks(self):
+                return list(self.items)
+
+            def add_helper_labels(self, bookmark):
+                return False
+
+            def create_external_bookmark(self, url, title):
+                self.created += 1
+                bookmark_id = f"bookmark-{self.created}"
+                self.items.append(
+                    {
+                        "id": bookmark_id,
+                        "url": "https://example.com/final-location",
+                        "title": title,
+                        "labels": [reading_sync.HELPER_LABEL],
+                    }
+                )
+                return bookmark_id
+
+            def wait_loaded(self, bookmark_id):
+                return next(item for item in self.items if item["id"] == bookmark_id)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "helper"
+            root.mkdir()
+            note = root / "收藏.md"
+            note.write_text(
+                "---\nurl: https://example.com/original-location\n---\n# 收藏\n",
+                encoding="utf-8",
+            )
+            state = reading_sync.State(Path(tmp) / "state.sqlite3")
+            client = FakeClient()
+
+            first = reading_sync.ingest_helper_notes(client, state, root)
+            second = reading_sync.ingest_helper_notes(client, state, root)
+
+            self.assertEqual(first, (1, 1, 0, 0))
+            self.assertEqual(second, (1, 0, 0, 0))
+            self.assertEqual(client.created, 1)
+
+    def test_helper_bookmark_is_upgraded_when_werss_gets_same_article(self):
+        class FakeClient:
+            def __init__(self):
+                self.patches = []
+
+            def list_bookmarks(self):
+                return [
+                    {
+                        "id": "helper-bookmark",
+                        "url": "https://example.com/redirected",
+                        "labels": [
+                            reading_sync.HELPER_LABEL,
+                            reading_sync.HELPER_ORIGIN_LABEL,
+                            reading_sync.HELPER_SOURCE_LABEL,
+                        ],
+                    }
+                ]
+
+            def create_bookmark(self, _article):
+                raise AssertionError("同一文章不应重复创建")
+
+            def patch_metadata(self, bookmark_id, article, existing_labels=()):
+                self.patches.append((bookmark_id, article, list(existing_labels)))
+
+        article = {
+            "id": "article-1",
+            "url": "https://example.com/original",
+            "title": "正式公众号文章",
+            "feed_name": "测试公众号",
+            "publish_time": 1784029237,
+            "has_content": 1,
+            "content_html": "<p>" + "完整正文" * 30 + "</p>",
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            state = reading_sync.State(Path(tmp) / "state.sqlite3")
+            state.upsert_helper(
+                article["url"],
+                "helper-bookmark",
+                Path(tmp) / "source.md",
+                article["title"],
+            )
+            client = FakeClient()
+
+            result = reading_sync.ingest(client, state, [article])
+
+            self.assertEqual(result, (1, 0, 0))
+            self.assertEqual(client.patches[0][0], "helper-bookmark")
+            self.assertIn(reading_sync.HELPER_LABEL, client.patches[0][2])
+            self.assertEqual(state.by_bookmark("helper-bookmark")["article_id"], "article-1")
+
+    def test_helper_message_without_url_becomes_safe_reader_item(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "helper"
+            message_dir = root / "微信消息"
+            message_dir.mkdir(parents=True)
+            note = message_dir / "同步助手_2026-07-17.md"
+            note.write_text(
+                "---\nsyncedIds: stable-source-id\n---\n\n---\n"
+                "#### 一条无链接消息\n## 2026-07-17 13:40:00\n"
+                "内容 <script>alert('x')</script>\n",
+                encoding="utf-8",
+            )
+
+            messages = reading_sync.helper_messages(note, root)
+
+            self.assertEqual(len(messages), 1)
+            self.assertEqual(messages[0]["title"], "一条无链接消息")
+            self.assertTrue(messages[0]["url"].startswith(reading_sync.WECHAT_MESSAGE_URL_PREFIX))
+            rendered = reading_sync.render_helper_message_html(messages[0])
+            self.assertIn("内容 &lt;script&gt;", rendered)
+            self.assertNotIn("<script>alert", rendered)
+
+    def test_helper_messages_are_incremental_and_idempotent(self):
+        class FakeClient:
+            def __init__(self):
+                self.items = []
+                self.created = 0
+
+            def list_bookmarks(self):
+                return list(self.items)
+
+            def add_helper_message_labels(self, bookmark):
+                return False
+
+            def create_helper_message(self, message):
+                self.created += 1
+                bookmark_id = f"message-{self.created}"
+                self.items.append(
+                    {
+                        "id": bookmark_id,
+                        "url": message["url"],
+                        "title": message["title"],
+                        "labels": [reading_sync.WECHAT_MESSAGE_LABEL],
+                    }
+                )
+                return bookmark_id
+
+            def wait_loaded(self, bookmark_id):
+                return next(item for item in self.items if item["id"] == bookmark_id)
+
+            def patch_helper_message(self, bookmark_id, message):
+                return None
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "helper"
+            message_dir = root / "微信消息"
+            message_dir.mkdir(parents=True)
+            note = message_dir / "同步助手_2026-07-17.md"
+            note.write_text(
+                "---\nsyncedIds: source-id\n---\n\n---\n"
+                "#### 第一条\n## 2026-07-17 13:40:00\n正文一\n",
+                encoding="utf-8",
+            )
+            state = reading_sync.State(Path(tmp) / "state.sqlite3")
+            client = FakeClient()
+
+            first = reading_sync.ingest_helper_messages(client, state, root)
+            second = reading_sync.ingest_helper_messages(client, state, root)
+            note.write_text(
+                note.read_text(encoding="utf-8")
+                + "\n---\n#### 第二条\n## 2026-07-17 13:45:00\n正文二\n",
+                encoding="utf-8",
+            )
+            third = reading_sync.ingest_helper_messages(client, state, root)
+
+            self.assertEqual(first, (1, 1, 0, 0))
+            self.assertEqual(second, (1, 0, 0, 0))
+            self.assertEqual(third, (2, 1, 0, 0))
+            self.assertEqual(client.created, 2)
 
 
 if __name__ == "__main__":

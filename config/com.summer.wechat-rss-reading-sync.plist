@@ -13,6 +13,8 @@
   <dict>
     <key>OBSIDIAN_INBOX_DIR</key>
     <string>__OBSIDIAN_INBOX_DIR__</string>
+    <key>OBSIDIAN_HELPER_VAULT</key>
+    <string>__OBSIDIAN_HELPER_VAULT__</string>
   </dict>
   <key>RunAtLoad</key>
   <true/>

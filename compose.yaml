@@ -4,6 +4,12 @@ services:
   we-mp-rss:
     image: ghcr.io/rachelos/we-mp-rss@sha256:53912fcb3d523d1e640adcb7066cc18123f00e9510882a7982d0991f3113845f
     restart: unless-stopped
+    command:
+      - /bin/bash
+      - -ec
+      - |
+        python3 /app/patch-werss-runtime.py
+        exec /app/start.sh
     environment:
       TZ: Asia/Shanghai
       DB: sqlite:///data/we_mp_rss.db
@@ -14,7 +20,8 @@ services:
       RSS_FULL_CONTEXT: "True"
       RSS_PAGE_SIZE: "20"
       RSS_LOCAL: "False"
-      MAX_PAGE: "2"
+      MAX_PAGE: "${WERSS_MAX_PAGE:-2}"
+      REFRESH_MAX_PAGE: "${WERSS_REFRESH_MAX_PAGE:-1}"
       THREADS: "1"
       BROWSER_TYPE: webkit
       HEADLESS: "true"
@@ -39,6 +46,7 @@ services:
       - "127.0.0.1:${WERSS_HOST_PORT:-8001}:8001"
     volumes:
       - ./data:/app/data
+      - ./scripts/patch-werss-runtime.py:/app/patch-werss-runtime.py:ro
     networks:
       - werss-internet
       - feed-proxy
@@ -184,6 +192,7 @@ services:
       READER_PUBLIC_HOST: ${READECK_PUBLIC_HOSTNAME:-reader.example.com}
       CF_ACCESS_EMAIL: ${CF_ACCESS_EMAIL:-disabled@example.invalid}
       READER_REFRESH_SECRET: ${READER_REFRESH_SECRET:-disabled}
+      READER_SCHEDULER_SECRET: ${READER_SCHEDULER_SECRET:-disabled}
     volumes:
       - ./Caddyfile.reader:/etc/caddy/Caddyfile:ro
       - ./reader-theme:/srv/reader-theme:ro
