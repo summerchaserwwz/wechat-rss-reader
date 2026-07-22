@@ -12,7 +12,7 @@
 [![Private by default](https://img.shields.io/badge/security-private%20by%20default-22c55e)](SECURITY.md)
 [![License](https://img.shields.io/badge/license-MIT-2f7cf6)](LICENSE)
 
-![WeChat RSS Reader 三栏磨砂工作台](docs/images/09-reader-folo-inbox.png)
+![WeChat RSS Reader 新版三栏阅读工作台](docs/media/reader-v2/reader-desktop-overview-v2.png)
 
 </div>
 
@@ -23,8 +23,9 @@
 | 你要的能力 | 由谁负责 | 结果 |
 | --- | --- | --- |
 | 公众号持续更新与全文抓取 | Cloudflare Workflow + WeRSS | Cloudflare 定时触发，也可在 Reader 主动刷新 |
-| 干净的三栏阅读体验 | 自定义 Reader + Readeck | 未读、收藏、价值、标签、字号、移动端 |
-| 划线、摘录与批注 | Readeck + Reader | 淡绿虚线不遮字，保存后原位显示笔记 |
+| 干净的三栏阅读体验 | 自定义 Reader + Readeck | 收起侧栏、全屏阅读、三套正文排版、紧凑移动端 |
+| 划线、摘录与批注 | Readeck + Reader | 选中即划线；可留空按 Enter 确认，也可进入纯划线模式 |
+| 图片、GIF 与微信视频 | Readeck + Reader | 图片和 GIF 留在阅读版；微信视频第一屏一键回原文播放 |
 | Markdown 与知识沉淀 | reading-sync + Obsidian | 精选原文、摘录、批注和人工笔记安全共存 |
 | 手机/外网私有访问 | Cloudflare Access + Tunnel | 不开放源端口，Reader 与管理端独立授权 |
 | 可恢复、可升级 | 备份/恢复脚本 + 固定镜像摘要 | SQLite、Token、授权和主题一起恢复 |
@@ -88,29 +89,26 @@ awk -F= '$1 == "WERSS_ADMIN_USERNAME" || $1 == "WERSS_BOOTSTRAP_PASSWORD" { prin
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/images/05-reader-划线批注.png" alt="划线与批注"></td>
-    <td width="50%"><img src="docs/images/15-reader-划线笔记与字号.png" alt="划线笔记与字号"></td>
+    <td width="50%"><img src="docs/media/reader-v2/reader-desktop-reading-v2.png" alt="桌面三栏与正文阅读"></td>
+    <td width="50%"><img src="docs/media/reader-v2/reader-mobile-sources-v2.png" alt="手机版公众号列表"></td>
   </tr>
   <tr>
-    <td align="center">批注弹层避让选区</td>
-    <td align="center">摘录集中管理与字号控制</td>
+    <td align="center">桌面三栏、正文排版与快捷操作</td>
+    <td align="center">手机端公众号列表</td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/media/reader-v2/reader-mobile-timeline-v2.png" alt="手机版文章时间线"></td>
+    <td width="50%"><img src="docs/media/reader-v2/reader-mobile-reading-v2.png" alt="手机版正文与原文入口"></td>
+  </tr>
+  <tr>
+    <td align="center">未读时间线与底部导航</td>
+    <td align="center">紧凑正文与微信原文入口</td>
   </tr>
 </table>
 
-<table>
-  <tr>
-    <td width="50%"><img src="docs/images/06-obsidian-高亮批注笔记.png" alt="Obsidian 原文笔记"></td>
-    <td width="50%"><img src="docs/images/14-reader-mobile.png" alt="移动端 Reader"></td>
-  </tr>
-  <tr>
-    <td align="center">原文、高亮、批注与我的笔记</td>
-    <td align="center">390 px 移动端阅读</td>
-  </tr>
-</table>
+截图来自维护者当前的真实阅读库。回归已覆盖多来源同步、收藏、自动已读、划线批注、Markdown/Obsidian 入库和重复同步不覆盖。完整操作见 [图文教程](docs/Readeck与Obsidian图文教程.md)，部署细节见 [部署指南](docs/DEPLOYMENT.md)。
 
-当前维护者部署已用 12 个公众号和 100+ 篇真实文章验证全量同步、收藏、自动已读、划线批注、Markdown/Obsidian 入库和重复同步不覆盖。完整操作见 [图文教程](docs/Readeck与Obsidian图文教程.md)，部署细节见 [部署指南](docs/DEPLOYMENT.md)。
-
-新版 Reader 已统一桌面与手机视觉，增加三套正文排版、全屏阅读、纯划线模式、微信原文媒体入口，并优化首屏渲染和归档返回。查看[新版更新实录](docs/wechat/公众号阅读器新版更新实录.md)，或直接播放[桌面版录屏](docs/media/reader-v2/reader-v2-desktop.mp4)与[手机版录屏](docs/media/reader-v2/reader-v2-mobile.mp4)。
+新版 Reader 统一了桌面与手机的阅读逻辑：桌面可收起侧栏和全屏，手机按来源、时间线、正文分屏浏览；划线可直接确认，图片/GIF 留在阅读版，微信视频一键打开原文。查看[新版更新实录](docs/wechat/公众号阅读器新版更新实录.md)，或直接播放[桌面版录屏](docs/media/reader-v2/reader-v2-desktop.mp4)与[手机版录屏](docs/media/reader-v2/reader-v2-mobile.mp4)。
 
 ## 服务地址和访问方式
 

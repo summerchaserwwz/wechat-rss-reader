@@ -390,3 +390,10 @@
 - 验证结果：桌面 MP4 为 1440×900、60.2 秒，手机 MP4 为 390×844、52.87 秒；两段 H.264 视频均完成逐帧解码检查，全部文章相对媒体链接存在，截图尺寸与视觉内容经联系表复核。Reader UI、29 个 Python 单元测试、7 个 Cloudflare Worker 测试、Shell/Compose/Harness 均通过；`verify.sh --local` 仅保留既有 WeRSS AMD64/Rosetta 架构门禁。
 - residual：本次只生成公众号成稿，不代替人工登录公众号后台发布；72 小时/7 天观察与最终人工确认仍需真实时间。
 - 证据：article:docs/wechat/公众号阅读器新版更新实录.md；media:docs/media/reader-v2/；command:ffprobe + ffmpeg full decode + link existence audit + project verification matrix。
+
+### [2026-07-22 20:10] - 真实截图替换与短更新稿重写
+
+- 做了什么：基于当前真实 Reader 阅读库重新截取的桌面总览、桌面正文、手机来源、手机时间线和手机正文五张图，替换 README 与公众号更新稿中的旧演示图。文章按“问题、截图、功能结果、必要边界”的短更新结构重写，保留桌面收起/全屏、手机滚动、纯划线、Readeck 多端批注、图片/GIF、微信视频回原文、即时归档和 Cloudflare 定时刷新等实测能力。
+- 写作依据：抽取腾讯技术工程 13 个标题及代表性正文、卡尔的AI沃茨 147 个去重标题及代表性正文，蒸馏出本机 `wechat-tech-update-writer` Skill；采用工程事实与第一人称实测节奏的混合写法，不复刻具体作者措辞。
+- 验证结果：两个 Markdown 正文均含 title/date/status 元数据，所有相对图片路径存在；README 新图路径存在；模板化营销措辞扫描与 `git diff --check` 通过。包含无关桌面/文档的截图未使用。
+- 证据：article:docs/wechat/公众号阅读器新版更新实录.md；media:docs/media/reader-v2/*-v2.png；skill:/Users/summer/.codex/skills/wechat-tech-update-writer/；command:SQLite corpus analysis + image visual audit + relative link audit。
